@@ -60,8 +60,6 @@ struct sample_info {
     VkDevice device;
     VkQueue graphics_queue;
     uint32_t graphics_queue_family_index;
-    VkPhysicalDeviceProperties gpu_props;
-    std::vector<VkQueueFamilyProperties> queue_props;
     VkPhysicalDeviceMemoryProperties memory_properties;
 
     VkCommandPool cmd_pool;

@@ -725,11 +725,19 @@ VKAPI_ATTR VkBool32 VKAPI_CALL dbgFunc(VkDebugReportFlagsEXT msgFlags, VkDebugRe
 /* ============================================================================================== */
 
 void init_compute_queue_family_index(struct sample_info &info) {
+    uint32_t queue_family_count = 0;
+    vkGetPhysicalDeviceQueueFamilyProperties(info.gpu, &queue_family_count, NULL);
+    assert(queue_family_count >= 1);
+
+    std::vector<VkQueueFamilyProperties> queue_props(queue_family_count);
+    vkGetPhysicalDeviceQueueFamilyProperties(info.gpu, &queue_family_count, queue_props.data());
+    assert(queue_family_count >= 1);
+
     /* This routine simply finds a compute queue for a later vkCreateDevice.
      */
     bool found = false;
-    for (unsigned int i = 0; i < info.queue_props.size(); i++) {
-        if (info.queue_props[i].queueFlags & VK_QUEUE_COMPUTE_BIT) {
+    for (unsigned int i = 0; i < queue_props.size(); i++) {
+        if (queue_props[i].queueFlags & VK_QUEUE_COMPUTE_BIT) {
             info.graphics_queue_family_index = i;
             found = true;
             break;
