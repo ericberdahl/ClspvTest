@@ -1848,6 +1848,7 @@ int sample_main(int argc, char *argv[]) {
 
     info.instance_extension_names.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
     init_instance(info, "vulkansamples_device");
+    init_debug_report_callback(info, dbgFunc);
 
     init_enumerate_device(info);
     init_compute_queue_family_index(info);
@@ -1857,8 +1858,6 @@ int sample_main(int argc, char *argv[]) {
     info.device_extension_names.push_back("VK_KHR_variable_pointers");
     init_device(info);
     init_device_queue(info);
-
-    init_debug_report_callback(info, dbgFunc);
 
     init_command_pool(info);
     my_init_descriptor_pool(info);
@@ -1891,8 +1890,8 @@ int sample_main(int argc, char *argv[]) {
 
     destroy_descriptor_pool(info);
     destroy_command_pool(info);
-    destroy_debug_report_callback(info);
     destroy_device(info);
+    destroy_debug_report_callback(info);
     destroy_instance(info);
 
     LOGI("Complete! %d tests passed. %d tests failed",
