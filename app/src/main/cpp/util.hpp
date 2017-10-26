@@ -66,11 +66,7 @@ struct sample_info {
     std::vector<VkQueueFamilyProperties> queue_props;
     VkPhysicalDeviceMemoryProperties memory_properties;
 
-    int width, height;
-
     VkCommandPool cmd_pool;
-
-    VkCommandBuffer cmd; // Buffer for initialization commands
 
     VkDescriptorPool desc_pool;
 
