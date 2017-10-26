@@ -219,11 +219,6 @@ void init_device_queue(struct sample_info &info) {
     /* DEPENDS on init_swapchain_extension() */
 
     vkGetDeviceQueue(info.device, info.graphics_queue_family_index, 0, &info.graphics_queue);
-    if (info.graphics_queue_family_index == info.present_queue_family_index) {
-        info.present_queue = info.graphics_queue;
-    } else {
-        vkGetDeviceQueue(info.device, info.present_queue_family_index, 0, &info.present_queue);
-    }
 }
 
 void destroy_descriptor_pool(struct sample_info &info) { vkDestroyDescriptorPool(info.device, info.desc_pool, NULL); }
