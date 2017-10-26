@@ -17,6 +17,9 @@
  * limitations under the License.
  */
 
+#ifndef CLSPVTEST_UTIL_HPP
+#define CLSPVTEST_UTIL_HPP
+
 #include <iostream>
 #include <string>
 #include <sstream>
@@ -25,7 +28,7 @@
 #include <unistd.h>
 #include <android/log.h>
 
-#include <vulkan/vulkan.h>
+#include <vulkan/vulkan.hpp>
 
 #if defined(NDEBUG) && defined(__GNUC__)
 #define U_ASSERT_ONLY __attribute__((unused))
@@ -37,10 +40,10 @@
  * A layer can expose extensions, keep track of those
  * extensions here.
  */
-typedef struct {
-    VkLayerProperties properties;
-    std::vector<VkExtensionProperties> extensions;
-} layer_properties;
+struct layer_properties {
+    vk::LayerProperties properties;
+    std::vector<vk::ExtensionProperties> extensions;
+};
 
 /*
  * Structure for tracking information used / created / modified
@@ -92,3 +95,5 @@ ANativeWindow* AndroidGetApplicationWindow();
 FILE* AndroidFopen(const char* fname, const char* mode);
 void AndroidGetWindowSize(int32_t *width, int32_t *height);
 bool AndroidLoadFile(const char* filePath, std::string *data);
+
+#endif // CLSPVTEST_UTIL_HPP

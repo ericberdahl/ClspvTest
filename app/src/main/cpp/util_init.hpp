@@ -18,16 +18,14 @@
  * limitations under the License.
  */
 
-#ifndef UTIL_INIT
-#define UTIL_INIT
+#ifndef CLSPVTEST_UTIL_INIT_HPP
+#define CLSPVTEST_UTIL_INIT_HPP
 
 #include "util.hpp"
 
 // Make sure functions start with init, execute, or destroy to assist codegen
 
-VkResult init_global_extension_properties(layer_properties &layer_props);
-
-VkResult init_global_layer_properties(sample_info &info);
+void init_global_layer_properties(sample_info &info);
 
 VkResult init_instance(struct sample_info &info,
                        char const *const app_short_name);
@@ -47,4 +45,4 @@ void destroy_command_pool(struct sample_info &info);
 void destroy_device(struct sample_info &info);
 void destroy_instance(struct sample_info &info);
 
-#endif // UTIL_INIT
+#endif // CLSPVTEST_UTIL_INIT
