@@ -73,8 +73,6 @@ struct sample_info {
     PFN_vkCreateDebugReportCallbackEXT dbgCreateDebugReportCallback;
     PFN_vkDestroyDebugReportCallbackEXT dbgDestroyDebugReportCallback;
     std::vector<VkDebugReportCallbackEXT> debug_report_callbacks;
-
-    uint32_t queue_family_count;
 };
 
 // Main entry point of samples

@@ -130,12 +130,13 @@ VkResult init_enumerate_device(struct sample_info &info, uint32_t gpu_count) {
     res = vkEnumeratePhysicalDevices(info.inst, &gpu_count, info.gpus.data());
     assert(!res && gpu_count >= req_count);
 
-    vkGetPhysicalDeviceQueueFamilyProperties(info.gpus[0], &info.queue_family_count, NULL);
-    assert(info.queue_family_count >= 1);
+    uint32_t queue_family_count = 0;
+    vkGetPhysicalDeviceQueueFamilyProperties(info.gpus[0], &queue_family_count, NULL);
+    assert(queue_family_count >= 1);
 
-    info.queue_props.resize(info.queue_family_count);
-    vkGetPhysicalDeviceQueueFamilyProperties(info.gpus[0], &info.queue_family_count, info.queue_props.data());
-    assert(info.queue_family_count >= 1);
+    info.queue_props.resize(queue_family_count);
+    vkGetPhysicalDeviceQueueFamilyProperties(info.gpus[0], &queue_family_count, info.queue_props.data());
+    assert(queue_family_count >= 1);
 
     /* This is as good a place as any to do this */
     vkGetPhysicalDeviceMemoryProperties(info.gpus[0], &info.memory_properties);
