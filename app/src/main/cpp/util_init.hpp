@@ -32,8 +32,8 @@ VkResult init_instance(struct sample_info &info,
 VkResult init_device(struct sample_info &info);
 VkResult init_enumerate_device(struct sample_info &info,
                                uint32_t gpu_count = 1);
-VkBool32 demo_check_layers(const std::vector<layer_properties> &layer_props,
-                           const std::vector<const char *> &layer_names);
+bool demo_check_layers(const std::vector<layer_properties> &layer_props,
+                       const std::vector<const char *> &layer_names);
 void init_command_pool(struct sample_info &info);
 void init_device_queue(struct sample_info &info);
 
