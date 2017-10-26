@@ -8,19 +8,11 @@
 #include <stdexcept>
 #include <string>
 
-#include <vulkan/vulkan.h>
+#include <vulkan/vulkan.hpp>
 
 struct sample_info;
 
 namespace vulkan_utils {
-
-    class error : public std::runtime_error {
-        VkResult    mResult;
-    public:
-        error(const std::string& s, VkResult result) : runtime_error(s), mResult(result) {}
-
-        VkResult get_result() const { return mResult; }
-    };
 
     void throwIfNotSuccess(VkResult result, const std::string& label);
 

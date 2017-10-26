@@ -23,13 +23,13 @@
 #include "vulkan_utils.hpp"
 
 #include <algorithm>
+#include <cassert>
+#include <cstdlib>
+#include <fstream>
 #include <functional>
 #include <iostream>
 #include <limits>
 #include <memory>
-#include <cassert>
-#include <cstdlib>
-#include <fstream>
 #include <iterator>
 #include <string>
 
@@ -1228,18 +1228,28 @@ namespace test_utils {
         try {
             result = f();
         }
-        catch(const vulkan_utils::error& e) {
-            LOGE("%s/%s: Vulkan error (%s, VkResult=%d)",
-                 label.c_str(), stage.c_str(),
-                 e.what(), e.get_result());
+        catch(const vk::SystemError& e) {
+            std::ostringstream os;
+            os << label << '/' << stage << ": vk::SystemError : " << e.code() << " (" << e.code().message() << ')';
+            LOGE("%s", os.str().c_str());
+            result = failure;
+        }
+        catch(const std::system_error& e) {
+            std::ostringstream os;
+            os << label << '/' << stage << ": std::system_error : " << e.code() << " (" << e.code().message() << ')';
+            LOGE("%s", os.str().c_str());
             result = failure;
         }
         catch(const std::exception& e) {
-            LOGE("%s/%s: unkonwn error (%s)", label.c_str(), stage.c_str(), e.what());
+            std::ostringstream os;
+            os << label << '/' << stage << ": std::exception : " << e.what();
+            LOGE("%s", os.str().c_str());
             result = failure;
         }
         catch(...) {
-            LOGE("%s/%s: unknown error", label.c_str(), stage.c_str());
+            std::ostringstream os;
+            os << label << '/' << stage << ": unknonwn error";
+            LOGE("%s", os.str().c_str());
             result = failure;
         }
 

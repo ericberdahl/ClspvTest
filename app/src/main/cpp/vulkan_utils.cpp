@@ -35,7 +35,7 @@ namespace vulkan_utils {
 
     void throwIfNotSuccess(VkResult result, const std::string& label) {
         if (VK_SUCCESS != result) {
-            throw error(label, result);
+            throw vk::SystemError( vk::make_error_code( vk::Result(result) ), label );
         }
     }
 
