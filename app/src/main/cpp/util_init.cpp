@@ -115,7 +115,7 @@ VkResult init_device(struct sample_info &info) {
     device_info.ppEnabledExtensionNames = device_info.enabledExtensionCount ? info.device_extension_names.data() : NULL;
     device_info.pEnabledFeatures = NULL;
 
-    res = vkCreateDevice(info.gpus[0], &device_info, NULL, &info.device);
+    res = vkCreateDevice(info.gpu, &device_info, NULL, &info.device);
     assert(res == VK_SUCCESS);
 
     return res;
@@ -125,22 +125,24 @@ VkResult init_enumerate_device(struct sample_info &info, uint32_t gpu_count) {
     uint32_t const U_ASSERT_ONLY req_count = gpu_count;
     VkResult res = vkEnumeratePhysicalDevices(info.inst, &gpu_count, NULL);
     assert(gpu_count);
-    info.gpus.resize(gpu_count);
+    std::vector<VkPhysicalDevice> gpus(gpu_count, VK_NULL_HANDLE);
+    assert(gpus.size() == gpu_count);
 
-    res = vkEnumeratePhysicalDevices(info.inst, &gpu_count, info.gpus.data());
+    res = vkEnumeratePhysicalDevices(info.inst, &gpu_count, gpus.data());
     assert(!res && gpu_count >= req_count);
+    info.gpu = gpus[0];
 
     uint32_t queue_family_count = 0;
-    vkGetPhysicalDeviceQueueFamilyProperties(info.gpus[0], &queue_family_count, NULL);
+    vkGetPhysicalDeviceQueueFamilyProperties(info.gpu, &queue_family_count, NULL);
     assert(queue_family_count >= 1);
 
     info.queue_props.resize(queue_family_count);
-    vkGetPhysicalDeviceQueueFamilyProperties(info.gpus[0], &queue_family_count, info.queue_props.data());
+    vkGetPhysicalDeviceQueueFamilyProperties(info.gpu, &queue_family_count, info.queue_props.data());
     assert(queue_family_count >= 1);
 
     /* This is as good a place as any to do this */
-    vkGetPhysicalDeviceMemoryProperties(info.gpus[0], &info.memory_properties);
-    vkGetPhysicalDeviceProperties(info.gpus[0], &info.gpu_props);
+    vkGetPhysicalDeviceMemoryProperties(info.gpu, &info.memory_properties);
+    vkGetPhysicalDeviceProperties(info.gpu, &info.gpu_props);
 
     return res;
 }

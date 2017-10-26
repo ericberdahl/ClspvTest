@@ -56,7 +56,7 @@ struct sample_info {
     VkInstance inst;
 
     std::vector<const char *> device_extension_names;
-    std::vector<VkPhysicalDevice> gpus;
+    VkPhysicalDevice gpu;
     VkDevice device;
     VkQueue graphics_queue;
     uint32_t graphics_queue_family_index;
