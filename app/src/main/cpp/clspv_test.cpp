@@ -18,6 +18,7 @@
  */
 
 #include "clspv_utils.hpp"
+#include "fp_utils.hpp"
 #include "half.hpp"
 #include "util_init.hpp"
 #include "vulkan_utils.hpp"
@@ -34,19 +35,6 @@
 #include <string>
 
 #include <vulkan/vulkan.hpp>
-
-/* ============================================================================================== */
-
-template<class T>
-typename std::enable_if<!std::numeric_limits<T>::is_integer, bool>::type
-almost_equal(T x, T y, int ulp)
-{
-    // the machine epsilon has to be scaled to the magnitude of the values used
-    // and multiplied by the desired precision in ULPs (units in the last place)
-    return std::abs(x-y) < std::numeric_limits<T>::epsilon() * std::abs(x+y) * ulp
-           // unless the result is subnormal
-           || std::abs(x-y) < std::numeric_limits<T>::min();
-}
 
 /* ============================================================================================== */
 
@@ -186,8 +174,8 @@ static_assert(sizeof(float2) == 8, "bad size for float2");
 template<>
 bool operator==(const float2& l, const float2& r) {
     const int ulp = 2;
-    return almost_equal(l.x, r.x, ulp)
-           && almost_equal(l.y, r.y, ulp);
+    return fp_utils::almost_equal(l.x, r.x, ulp)
+           && fp_utils::almost_equal(l.y, r.y, ulp);
 }
 
 typedef vec4<float> float4;
@@ -196,10 +184,10 @@ static_assert(sizeof(float4) == 16, "bad size for float4");
 template<>
 bool operator==(const float4& l, const float4& r) {
     const int ulp = 2;
-    return almost_equal(l.x, r.x, ulp)
-           && almost_equal(l.y, r.y, ulp)
-           && almost_equal(l.z, r.z, ulp)
-           && almost_equal(l.w, r.w, ulp);
+    return fp_utils::almost_equal(l.x, r.x, ulp)
+           && fp_utils::almost_equal(l.y, r.y, ulp)
+           && fp_utils::almost_equal(l.z, r.z, ulp)
+           && fp_utils::almost_equal(l.w, r.w, ulp);
 }
 
 typedef half_float::half    half;
@@ -1035,7 +1023,7 @@ namespace test_utils {
         struct pixel_comparator<float> {
             static bool is_equal(float l, float r) {
                 const int ulp = 2;
-                return almost_equal(l, r, ulp);
+                return fp_utils::almost_equal(l, r, ulp);
             }
         };
 
@@ -1043,7 +1031,7 @@ namespace test_utils {
         struct pixel_comparator<half> {
             static bool is_equal(half l, half r) {
                 const int ulp = 2;
-                return almost_equal(l, r, ulp);
+                return fp_utils::almost_equal(l, r, ulp);
             }
         };
 
