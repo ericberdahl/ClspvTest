@@ -34,6 +34,7 @@ set(CMAKE_SHARED_LINKER_FLAGS
     "${CMAKE_SHARED_LINKER_FLAGS} -u ANativeActivity_onCreate")
 
 add_library(native-activity SHARED
+    fill_kernel.cpp
     clspv_test.cpp
     clspv_utils.cpp
     gpu_types.cpp

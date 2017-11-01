@@ -18,6 +18,7 @@
  */
 
 #include "clspv_utils.hpp"
+#include "fill_kernel.hpp"
 #include "fp_utils.hpp"
 #include "gpu_types.hpp"
 #include "half.hpp"
@@ -157,58 +158,6 @@ VkSampler create_compatible_sampler(VkDevice device, int opencl_flags) {
 }
 
 /* ============================================================================================== */
-
-void invoke_fill_kernel(const clspv_utils::kernel_module&   module,
-                        const clspv_utils::kernel&          kernel,
-                        const sample_info&                  info,
-                        const std::vector<VkSampler>&       samplers,
-                        VkBuffer                            dst_buffer,
-                        int                                 pitch,
-                        int                                 device_format,
-                        int                                 offset_x,
-                        int                                 offset_y,
-                        int                                 width,
-                        int                                 height,
-                        const gpu_types::float4&            color) {
-    struct scalar_args {
-        int                 inPitch;        // offset 0
-        int                 inDeviceFormat; // DevicePixelFormat offset 4
-        int                 inOffsetX;      // offset 8
-        int                 inOffsetY;      // offset 12
-        int                 inWidth;        // offset 16
-        int                 inHeight;       // offset 20
-        gpu_types::float4   inColor;        // offset 32
-    };
-    static_assert(0 == offsetof(scalar_args, inPitch), "inPitch offset incorrect");
-    static_assert(4 == offsetof(scalar_args, inDeviceFormat), "inDeviceFormat offset incorrect");
-    static_assert(8 == offsetof(scalar_args, inOffsetX), "inOffsetX offset incorrect");
-    static_assert(12 == offsetof(scalar_args, inOffsetY), "inOffsetY offset incorrect");
-    static_assert(16 == offsetof(scalar_args, inWidth), "inWidth offset incorrect");
-    static_assert(20 == offsetof(scalar_args, inHeight), "inHeight offset incorrect");
-    static_assert(32 == offsetof(scalar_args, inColor), "inColor offset incorrect");
-
-    const scalar_args scalars = {
-            pitch,
-            device_format,
-            offset_x,
-            offset_y,
-            width,
-            height,
-            color
-    };
-
-    const clspv_utils::WorkgroupDimensions workgroup_sizes = kernel.getWorkgroupSize();
-    const clspv_utils::WorkgroupDimensions num_workgroups(
-            (scalars.inWidth + workgroup_sizes.x - 1) / workgroup_sizes.x,
-            (scalars.inHeight + workgroup_sizes.y - 1) / workgroup_sizes.y);
-
-    clspv_utils::kernel_invocation invocation(info.device, info.cmd_pool, info.memory_properties);
-
-    invocation.addLiteralSamplers(samplers.begin(), samplers.end());
-    invocation.addBufferArgument(dst_buffer);
-    invocation.addPodArgument(scalars);
-    invocation.run(info.graphics_queue, kernel, num_workgroups);
-}
 
 void invoke_copybuffertoimage_kernel(const clspv_utils::kernel_module&   module,
                                      const clspv_utils::kernel&          kernel,
@@ -384,74 +333,6 @@ test_utils::Results test_readlocalsize(const clspv_utils::kernel_module& module,
 
     return (success ? test_utils::Results::sTestSuccess : test_utils::Results::sTestFailure);
 };
-
-template <typename PixelType>
-test_utils::Results test_fill(const clspv_utils::kernel_module&     module,
-                              const clspv_utils::kernel&            kernel,
-                              const sample_info&                    info,
-                              const std::vector<VkSampler>&         samplers,
-                              const test_utils::options&            opts) {
-    const std::string typeLabel = pixels::traits<PixelType>::type_name;
-
-    std::string testLabel = "fills.spv/FillWithColorKernel/";
-    testLabel += typeLabel;
-
-    const int buffer_height = 64;
-    const int buffer_width = 64;
-    const gpu_types::float4 color = { 0.25f, 0.50f, 0.75f, 1.0f };
-
-    // allocate image buffer
-    const std::size_t buffer_size = buffer_width * buffer_height * sizeof(PixelType);
-    vulkan_utils::buffer dst_buffer(info, buffer_size);
-
-    {
-        const PixelType src_value = pixels::traits<PixelType>::translate((gpu_types::float4){ 0.0f, 0.0f, 0.0f, 0.0f });
-
-        vulkan_utils::memory_map dst_map(dst_buffer);
-        auto dst_data = static_cast<PixelType*>(dst_map.data);
-        std::fill(dst_data, dst_data + (buffer_width * buffer_height), src_value);
-    }
-
-    invoke_fill_kernel(module,
-                       kernel,
-                       info,
-                       samplers,
-                       dst_buffer.buf, // dst_buffer
-                       buffer_width,   // pitch
-                       pixels::traits<PixelType>::device_pixel_format, // device_format
-                       0, 0, // offset_x, offset_y
-                       buffer_width, buffer_height, // width, height
-                       color); // color
-
-    const bool success = test_utils::check_results<PixelType>(dst_buffer.mem,
-                                                  buffer_width, buffer_height,
-                                                  buffer_width,
-                                                  color,
-                                                  testLabel.c_str(),
-                                                  opts);
-
-    dst_buffer.reset();
-
-    return (success ? test_utils::Results::sTestSuccess : test_utils::Results::sTestFailure);
-}
-
-test_utils::Results test_fill_series(const clspv_utils::kernel_module&  module,
-                                     const clspv_utils::kernel&         kernel,
-                                     const sample_info&                 info,
-                                     const std::vector<VkSampler>&      samplers,
-                                     const test_utils::options&         opts) {
-    const test_utils::test_kernel_fn tests[] = {
-            test_fill<gpu_types::float4>,
-            test_fill<gpu_types::half4>,
-    };
-
-    return test_utils::test_kernel_invocation(module,
-                                              kernel,
-                                              std::begin(tests), std::end(tests),
-                                              info,
-                                              samplers,
-                                              opts);
-}
 
 /* ============================================================================================== */
 
@@ -689,7 +570,7 @@ const test_utils::module_test_bundle module_tests[] = {
         {
                 "clspv_tests/Fills",
                 {
-                        { "FillWithColorKernel", test_fill_series, { 32, 32 } }
+                        { "FillWithColorKernel", fill_kernel::test_series, { 32, 32 } }
                 }
         },
         {
@@ -867,3 +748,4 @@ int sample_main(int argc, char *argv[]) {
 
     return 0;
 }
+
