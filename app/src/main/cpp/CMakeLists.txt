@@ -36,6 +36,8 @@ set(CMAKE_SHARED_LINKER_FLAGS
 add_library(native-activity SHARED
     clspv_test.cpp
     clspv_utils.cpp
+    gpu_types.cpp
+    test_utils.cpp
     vulkan_utils.cpp
     util.cpp
     util_init.cpp)
