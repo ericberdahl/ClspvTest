@@ -5,7 +5,7 @@
 #ifndef CLSPVTEST_FP_UTILS_HPP
 #define CLSPVTEST_FP_UTILS_HPP
 
-#include <cstdlib>
+#include <cmath>
 #include <limits>
 #include <type_traits>
 

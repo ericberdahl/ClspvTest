@@ -19,13 +19,13 @@
 
 #include "clspv_utils.hpp"
 #include "fp_utils.hpp"
+#include "gpu_types.hpp"
 #include "half.hpp"
 #include "util_init.hpp"
 #include "vulkan_utils.hpp"
 
 #include <algorithm>
 #include <cassert>
-#include <cstdlib>
 #include <fstream>
 #include <functional>
 #include <iostream>
@@ -94,135 +94,6 @@ enum {
 
 /* ============================================================================================== */
 
-template <typename T>
-struct alignas(2*sizeof(T)) vec2 {
-    vec2(T a, T b) : x(a), y(b) {}
-    vec2(T a) : vec2(a, T(0)) {}
-    vec2() : vec2(T(0), T(0)) {}
-
-    vec2(const vec2<T>& other) : x(other.x), y(other.y) {}
-    vec2(vec2<T>&& other) : vec2() {
-        swap(*this, other);
-    }
-
-    vec2<T>& operator=(vec2<T> other) {
-        swap(*this, other);
-        return *this;
-    }
-
-    T   x;
-    T   y;
-};
-
-template <typename T>
-void swap(vec2<T>& first, vec2<T>& second) {
-    using std::swap;
-
-    swap(first.x, second.x);
-    swap(first.y, second.y);
-}
-
-template <typename T>
-bool operator==(const vec2<T>& l, const vec2<T>& r) {
-    return (l.x == r.x) && (l.y == r.y);
-}
-
-template <typename T>
-struct alignas(4*sizeof(T)) vec4 {
-    vec4(T a, T b, T c, T d) : x(a), y(b), z(c), w(d) {}
-    vec4(T a, T b, T c) : vec4(a, b, c, T(0)) {}
-    vec4(T a, T b) : vec4(a, b, T(0), T(0)) {}
-    vec4(T a) : vec4(a, T(0), T(0), T(0)) {}
-    vec4() : vec4(T(0), T(0), T(0), T(0)) {}
-
-    vec4(const vec4<T>& other) : x(other.x), y(other.y), z(other.z), w(other.w) {}
-    vec4(vec4<T>&& other) : vec4() {
-        swap(*this, other);
-    }
-
-    vec4<T>& operator=(vec4<T> other) {
-        swap(*this, other);
-        return *this;
-    }
-
-    T   x;
-    T   y;
-    T   z;
-    T   w;
-};
-
-template <typename T>
-void swap(vec4<T>& first, vec4<T>& second) {
-    using std::swap;
-
-    swap(first.x, second.x);
-    swap(first.y, second.y);
-    swap(first.z, second.z);
-    swap(first.w, second.w);
-}
-
-template <typename T>
-bool operator==(const vec4<T>& l, const vec4<T>& r) {
-    return (l.x == r.x) && (l.y == r.y) && (l.z == r.z) && (l.w == r.w);
-}
-
-static_assert(sizeof(float) == 4, "bad size for float");
-
-typedef vec2<float> float2;
-static_assert(sizeof(float2) == 8, "bad size for float2");
-
-template<>
-bool operator==(const float2& l, const float2& r) {
-    const int ulp = 2;
-    return fp_utils::almost_equal(l.x, r.x, ulp)
-           && fp_utils::almost_equal(l.y, r.y, ulp);
-}
-
-typedef vec4<float> float4;
-static_assert(sizeof(float4) == 16, "bad size for float4");
-
-template<>
-bool operator==(const float4& l, const float4& r) {
-    const int ulp = 2;
-    return fp_utils::almost_equal(l.x, r.x, ulp)
-           && fp_utils::almost_equal(l.y, r.y, ulp)
-           && fp_utils::almost_equal(l.z, r.z, ulp)
-           && fp_utils::almost_equal(l.w, r.w, ulp);
-}
-
-typedef half_float::half    half;
-static_assert(sizeof(half) == 2, "bad size for half");
-
-template <>
-struct std::is_floating_point<half> : std::true_type {};
-static_assert(std::is_floating_point<half>::value, "half should be floating point");
-
-typedef vec2<half> half2;
-static_assert(sizeof(half2) == 4, "bad size for half2");
-
-typedef vec4<half> half4;
-static_assert(sizeof(half4) == 8, "bad size for half4");
-
-typedef unsigned short   ushort;
-static_assert(sizeof(ushort) == 2, "bad size for ushort");
-
-typedef vec2<ushort> ushort2;
-static_assert(sizeof(ushort2) == 4, "bad size for ushort2");
-
-typedef vec4<ushort> ushort4;
-static_assert(sizeof(ushort4) == 8, "bad size for ushort4");
-
-typedef unsigned char   uchar;
-static_assert(sizeof(uchar) == 1, "bad size for uchar");
-
-typedef vec2<uchar> uchar2;
-static_assert(sizeof(uchar2) == 2, "bad size for uchar2");
-
-typedef vec4<uchar> uchar4;
-static_assert(sizeof(uchar4) == 4, "bad size for uchar4");
-
-/* ============================================================================================== */
-
 template <typename ComponentType, int N>
 struct pixel_vector { };
 
@@ -233,12 +104,12 @@ struct pixel_vector<ComponentType,1> {
 
 template <typename ComponentType>
 struct pixel_vector<ComponentType,2> {
-    typedef vec2<ComponentType> type;
+    typedef gpu_types::vec2<ComponentType> type;
 };
 
 template <typename ComponentType>
 struct pixel_vector<ComponentType,4> {
-    typedef vec4<ComponentType> type;
+    typedef gpu_types::vec4<ComponentType> type;
 };
 
 /* ============================================================================================== */
@@ -259,27 +130,27 @@ struct pixel_traits<float> {
 
     static float translate(const float& pixel) { return pixel; }
 
-    static float translate(half pixel) {
+    static float translate(gpu_types::half pixel) {
         return pixel;
     }
 
-    static float translate(uchar pixel) {
-        return (pixel / (float) std::numeric_limits<uchar>::max());
+    static float translate(gpu_types::uchar pixel) {
+        return (pixel / (float) std::numeric_limits<gpu_types::uchar>::max());
     }
 
     template <typename T>
-    static float translate(const vec2<T>& pixel) {
+    static float translate(const gpu_types::vec2<T>& pixel) {
         return translate(pixel.x);
     }
 
     template <typename T>
-    static float translate(const vec4<T>& pixel) {
+    static float translate(const gpu_types::vec4<T>& pixel) {
         return translate(pixel.x);
     }
 };
 
 template <>
-struct pixel_traits<float2> {
+struct pixel_traits<gpu_types::float2> {
     typedef float   component_t;
 
     static constexpr const int num_components = 2;
@@ -290,12 +161,12 @@ struct pixel_traits<float2> {
     static const VkFormat vk_pixel_type = VK_FORMAT_R32G32_SFLOAT;
 
     template <typename T>
-    static float2 translate(const vec4<T>& pixel) {
-        return translate((vec2<T>){ pixel.x, pixel.y });
+    static gpu_types::float2 translate(const gpu_types::vec4<T>& pixel) {
+        return translate((gpu_types::vec2<T>){ pixel.x, pixel.y });
     }
 
     template <typename T>
-    static float2 translate(const vec2<T>& pixel) {
+    static gpu_types::float2 translate(const gpu_types::vec2<T>& pixel) {
         return {
                 pixel_traits<component_t>::translate(pixel.x),
                 pixel_traits<component_t>::translate(pixel.y)
@@ -303,7 +174,7 @@ struct pixel_traits<float2> {
     }
 
     template <typename T>
-    static float2 translate(T pixel) {
+    static gpu_types::float2 translate(T pixel) {
         return {
                 pixel_traits<component_t>::translate(pixel),
                 component_t(0)
@@ -312,7 +183,7 @@ struct pixel_traits<float2> {
 };
 
 template <>
-struct pixel_traits<float4> {
+struct pixel_traits<gpu_types::float4> {
     typedef float   component_t;
 
     static constexpr const int num_components = 4;
@@ -324,7 +195,7 @@ struct pixel_traits<float4> {
     static const VkFormat vk_pixel_type = VK_FORMAT_R32G32B32A32_SFLOAT;
 
     template <typename T>
-    static float4 translate(const vec4<T>& pixel) {
+    static gpu_types::float4 translate(const gpu_types::vec4<T>& pixel) {
         return {
                 pixel_traits<component_t>::translate(pixel.x),
                 pixel_traits<component_t>::translate(pixel.y),
@@ -334,7 +205,7 @@ struct pixel_traits<float4> {
     }
 
     template <typename T>
-    static float4 translate(const vec2<T>& pixel) {
+    static gpu_types::float4 translate(const gpu_types::vec2<T>& pixel) {
         return {
                 pixel_traits<component_t>::translate(pixel.x),
                 pixel_traits<component_t>::translate(pixel.y),
@@ -344,7 +215,7 @@ struct pixel_traits<float4> {
     }
 
     template <typename T>
-    static float4 translate(T pixel) {
+    static gpu_types::float4 translate(T pixel) {
         return {
                 pixel_traits<component_t>::translate(pixel),
                 component_t(0),
@@ -355,8 +226,8 @@ struct pixel_traits<float4> {
 };
 
 template <>
-struct pixel_traits<half> {
-    typedef half    component_t;
+struct pixel_traits<gpu_types::half> {
+    typedef gpu_types::half    component_t;
 
     static constexpr const int num_components = 1;
     static constexpr const char* const type_name = "half";
@@ -365,28 +236,28 @@ struct pixel_traits<half> {
     static const cl_channel_type cl_pixel_type = CL_HALF_FLOAT;
     static const VkFormat vk_pixel_type = VK_FORMAT_R16_SFLOAT;
 
-    static half translate(float pixel) { return half(pixel); }
+    static gpu_types::half translate(float pixel) { return gpu_types::half(pixel); }
 
-    static half translate(const half& pixel) { return pixel; }
+    static gpu_types::half translate(const gpu_types::half& pixel) { return pixel; }
 
-    static half translate(uchar pixel) {
-        return translate(pixel / (float) std::numeric_limits<uchar>::max());
+    static gpu_types::half translate(gpu_types::uchar pixel) {
+        return translate(pixel / (float) std::numeric_limits<gpu_types::uchar>::max());
     }
 
     template <typename T>
-    static half translate(const vec2<T>& pixel) {
+    static gpu_types::half translate(const gpu_types::vec2<T>& pixel) {
         return translate(pixel.x);
     }
 
     template <typename T>
-    static half translate(const vec4<T>& pixel) {
+    static gpu_types::half translate(const gpu_types::vec4<T>& pixel) {
         return translate(pixel.x);
     }
 };
 
 template <>
-struct pixel_traits<half2> {
-    typedef half    component_t;
+struct pixel_traits<gpu_types::half2> {
+    typedef gpu_types::half    component_t;
 
     static constexpr const int num_components = 2;
     static constexpr const char* const type_name = "half2";
@@ -396,12 +267,12 @@ struct pixel_traits<half2> {
     static const VkFormat vk_pixel_type = VK_FORMAT_R16G16_SFLOAT;
 
     template <typename T>
-    static half2 translate(const vec4<T>& pixel) {
-        return translate((vec2<T>){ pixel.x, pixel.y });
+    static gpu_types::half2 translate(const gpu_types::vec4<T>& pixel) {
+        return translate((gpu_types::vec2<T>){ pixel.x, pixel.y });
     }
 
     template <typename T>
-    static half2 translate(const vec2<T>& pixel) {
+    static gpu_types::half2 translate(const gpu_types::vec2<T>& pixel) {
         return {
                 pixel_traits<component_t>::translate(pixel.x),
                 pixel_traits<component_t>::translate(pixel.y)
@@ -409,7 +280,7 @@ struct pixel_traits<half2> {
     }
 
     template <typename T>
-    static half2 translate(T pixel) {
+    static gpu_types::half2 translate(T pixel) {
         return {
                 pixel_traits<component_t>::translate(pixel),
                 component_t(0)
@@ -418,8 +289,8 @@ struct pixel_traits<half2> {
 };
 
 template <>
-struct pixel_traits<half4> {
-    typedef half    component_t;
+struct pixel_traits<gpu_types::half4> {
+    typedef gpu_types::half    component_t;
 
     static constexpr const int num_components = 4;
     static constexpr const char* const type_name = "half4";
@@ -430,7 +301,7 @@ struct pixel_traits<half4> {
     static const VkFormat vk_pixel_type = VK_FORMAT_R16G16B16A16_SFLOAT;
 
     template <typename T>
-    static half4 translate(const vec4<T>& pixel) {
+    static gpu_types::half4 translate(const gpu_types::vec4<T>& pixel) {
         return {
                 pixel_traits<component_t>::translate(pixel.x),
                 pixel_traits<component_t>::translate(pixel.y),
@@ -440,7 +311,7 @@ struct pixel_traits<half4> {
     }
 
     template <typename T>
-    static half4 translate(const vec2<T>& pixel) {
+    static gpu_types::half4 translate(const gpu_types::vec2<T>& pixel) {
         return {
                 pixel_traits<component_t>::translate(pixel.x),
                 pixel_traits<component_t>::translate(pixel.y),
@@ -450,7 +321,7 @@ struct pixel_traits<half4> {
     }
 
     template <typename T>
-    static half4 translate(T pixel) {
+    static gpu_types::half4 translate(T pixel) {
         return {
                 pixel_traits<component_t>::translate(pixel),
                 component_t(0),
@@ -461,8 +332,8 @@ struct pixel_traits<half4> {
 };
 
 template <>
-struct pixel_traits<ushort> {
-    typedef ushort    component_t;
+struct pixel_traits<gpu_types::ushort> {
+    typedef gpu_types::ushort    component_t;
 
     static constexpr const int num_components = 1;
     static constexpr const char* const type_name = "ushort";
@@ -471,26 +342,26 @@ struct pixel_traits<ushort> {
     static const cl_channel_type cl_pixel_type = CL_UNSIGNED_INT16;
     static const VkFormat vk_pixel_type = VK_FORMAT_R16_UINT;
 
-    static ushort translate(float pixel) {
-        return (ushort) (pixel * std::numeric_limits<ushort>::max());
+    static gpu_types::ushort translate(float pixel) {
+        return (gpu_types::ushort) (pixel * std::numeric_limits<gpu_types::ushort>::max());
     }
 
-    static ushort translate(ushort pixel) { return pixel; }
+    static gpu_types::ushort translate(gpu_types::ushort pixel) { return pixel; }
 
     template <typename T>
-    static ushort translate(const vec2<T>& pixel) {
+    static gpu_types::ushort translate(const gpu_types::vec2<T>& pixel) {
         return translate(pixel.x);
     }
 
     template <typename T>
-    static ushort translate(const vec4<T>& pixel) {
+    static gpu_types::ushort translate(const gpu_types::vec4<T>& pixel) {
         return translate(pixel.x);
     }
 };
 
 template <>
-struct pixel_traits<ushort2> {
-    typedef ushort    component_t;
+struct pixel_traits<gpu_types::ushort2> {
+    typedef gpu_types::ushort    component_t;
 
     static constexpr const int num_components = 2;
     static constexpr const char* const type_name = "ushort2";
@@ -500,12 +371,12 @@ struct pixel_traits<ushort2> {
     static const VkFormat vk_pixel_type = VK_FORMAT_R16G16_UINT;
 
     template <typename T>
-    static ushort2 translate(const vec4<T>& pixel) {
-        return translate((vec2<T>){ pixel.x, pixel.y });
+    static gpu_types::ushort2 translate(const gpu_types::vec4<T>& pixel) {
+        return translate((gpu_types::vec2<T>){ pixel.x, pixel.y });
     }
 
     template <typename T>
-    static ushort2 translate(const vec2<T>& pixel) {
+    static gpu_types::ushort2 translate(const gpu_types::vec2<T>& pixel) {
         return {
                 pixel_traits<component_t>::translate(pixel.x),
                 pixel_traits<component_t>::translate(pixel.y)
@@ -513,7 +384,7 @@ struct pixel_traits<ushort2> {
     }
 
     template <typename T>
-    static ushort2 translate(T pixel) {
+    static gpu_types::ushort2 translate(T pixel) {
         return {
                 pixel_traits<component_t>::translate(pixel),
                 0
@@ -522,8 +393,8 @@ struct pixel_traits<ushort2> {
 };
 
 template <>
-struct pixel_traits<ushort4> {
-    typedef ushort    component_t;
+struct pixel_traits<gpu_types::ushort4> {
+    typedef gpu_types::ushort    component_t;
 
     static constexpr const int num_components = 4;
     static constexpr const char* const type_name = "ushort4";
@@ -533,7 +404,7 @@ struct pixel_traits<ushort4> {
     static const VkFormat vk_pixel_type = VK_FORMAT_R16G16B16A16_UINT;
 
     template <typename T>
-    static ushort4 translate(const vec4<T>& pixel) {
+    static gpu_types::ushort4 translate(const gpu_types::vec4<T>& pixel) {
         return {
                 pixel_traits<component_t>::translate(pixel.x),
                 pixel_traits<component_t>::translate(pixel.y),
@@ -543,7 +414,7 @@ struct pixel_traits<ushort4> {
     }
 
     template <typename T>
-    static ushort4 translate(const vec2<T>& pixel) {
+    static gpu_types::ushort4 translate(const gpu_types::vec2<T>& pixel) {
         return {
                 pixel_traits<component_t>::translate(pixel.x),
                 pixel_traits<component_t>::translate(pixel.y),
@@ -553,7 +424,7 @@ struct pixel_traits<ushort4> {
     }
 
     template <typename T>
-    static ushort4 translate(T pixel) {
+    static gpu_types::ushort4 translate(T pixel) {
         return {
                 pixel_traits<component_t>::translate(pixel),
                 0,
@@ -564,8 +435,8 @@ struct pixel_traits<ushort4> {
 };
 
 template <>
-struct pixel_traits<uchar> {
-    typedef uchar    component_t;
+struct pixel_traits<gpu_types::uchar> {
+    typedef gpu_types::uchar    component_t;
 
     static constexpr const int num_components = 1;
     static constexpr const char* const type_name = "uchar";
@@ -574,30 +445,30 @@ struct pixel_traits<uchar> {
     static const cl_channel_type cl_pixel_type = CL_UNORM_INT8;
     static const VkFormat vk_pixel_type = VK_FORMAT_R8_UNORM;
 
-    static uchar translate(float pixel) {
-        return (uchar) (pixel * std::numeric_limits<uchar>::max());
+    static gpu_types::uchar translate(float pixel) {
+        return (gpu_types::uchar) (pixel * std::numeric_limits<gpu_types::uchar>::max());
     }
 
-    static uchar translate(half pixel) {
-        return (uchar) (pixel * std::numeric_limits<uchar>::max());
+    static gpu_types::uchar translate(gpu_types::half pixel) {
+        return (gpu_types::uchar) (pixel * std::numeric_limits<gpu_types::uchar>::max());
     }
 
-    static uchar translate(uchar pixel) { return pixel; }
+    static gpu_types::uchar translate(gpu_types::uchar pixel) { return pixel; }
 
     template <typename T>
-    static uchar translate(const vec2<T>& pixel) {
+    static gpu_types::uchar translate(const gpu_types::vec2<T>& pixel) {
         return translate(pixel.x);
     }
 
     template <typename T>
-    static uchar translate(const vec4<T>& pixel) {
+    static gpu_types::uchar translate(const gpu_types::vec4<T>& pixel) {
         return translate(pixel.x);
     }
 };
 
 template <>
-struct pixel_traits<uchar2> {
-    typedef uchar    component_t;
+struct pixel_traits<gpu_types::uchar2> {
+    typedef gpu_types::uchar    component_t;
 
     static constexpr const int num_components = 2;
     static constexpr const char* const type_name = "uchar2";
@@ -607,12 +478,12 @@ struct pixel_traits<uchar2> {
     static const VkFormat vk_pixel_type = VK_FORMAT_R8G8_UNORM;
 
     template <typename T>
-    static uchar2 translate(const vec4<T>& pixel) {
-        return translate((vec2<T>){ pixel.x, pixel.y });
+    static gpu_types::uchar2 translate(const gpu_types::vec4<T>& pixel) {
+        return translate((gpu_types::vec2<T>){ pixel.x, pixel.y });
     }
 
     template <typename T>
-    static uchar2 translate(const vec2<T>& pixel) {
+    static gpu_types::uchar2 translate(const gpu_types::vec2<T>& pixel) {
         return {
                 pixel_traits<component_t>::translate(pixel.x),
                 pixel_traits<component_t>::translate(pixel.y)
@@ -620,7 +491,7 @@ struct pixel_traits<uchar2> {
     }
 
     template <typename T>
-    static uchar2 translate(T pixel) {
+    static gpu_types::uchar2 translate(T pixel) {
         return {
                 pixel_traits<component_t>::translate(pixel),
                 0
@@ -629,8 +500,8 @@ struct pixel_traits<uchar2> {
 };
 
 template <>
-struct pixel_traits<uchar4> {
-    typedef uchar    component_t;
+struct pixel_traits<gpu_types::uchar4> {
+    typedef gpu_types::uchar    component_t;
 
     static constexpr const int num_components = 4;
     static constexpr const char* const type_name = "uchar4";
@@ -640,7 +511,7 @@ struct pixel_traits<uchar4> {
     static const VkFormat vk_pixel_type = VK_FORMAT_R8G8B8A8_UNORM;
 
     template <typename T>
-    static uchar4 translate(const vec4<T>& pixel) {
+    static gpu_types::uchar4 translate(const gpu_types::vec4<T>& pixel) {
         return {
                 pixel_traits<component_t>::translate(pixel.x),
                 pixel_traits<component_t>::translate(pixel.y),
@@ -650,7 +521,7 @@ struct pixel_traits<uchar4> {
     }
 
     template <typename T>
-    static uchar4 translate(const vec2<T>& pixel) {
+    static gpu_types::uchar4 translate(const gpu_types::vec2<T>& pixel) {
         return {
                 pixel_traits<component_t>::translate(pixel.x),
                 pixel_traits<component_t>::translate(pixel.y),
@@ -660,7 +531,7 @@ struct pixel_traits<uchar4> {
     }
 
     template <typename T>
-    static uchar4 translate(T pixel) {
+    static gpu_types::uchar4 translate(T pixel) {
         return {
                 pixel_traits<component_t>::translate(pixel),
                 0,
@@ -800,15 +671,15 @@ void invoke_fill_kernel(const clspv_utils::kernel_module&   module,
                         int                                 offset_y,
                         int                                 width,
                         int                                 height,
-                        const float4&                       color) {
+                        const gpu_types::float4&            color) {
     struct scalar_args {
-        int     inPitch;        // offset 0
-        int     inDeviceFormat; // DevicePixelFormat offset 4
-        int     inOffsetX;      // offset 8
-        int     inOffsetY;      // offset 12
-        int     inWidth;        // offset 16
-        int     inHeight;       // offset 20
-        float4  inColor;        // offset 32
+        int                 inPitch;        // offset 0
+        int                 inDeviceFormat; // DevicePixelFormat offset 4
+        int                 inOffsetX;      // offset 8
+        int                 inOffsetY;      // offset 12
+        int                 inWidth;        // offset 16
+        int                 inHeight;       // offset 20
+        gpu_types::float4   inColor;        // offset 32
     };
     static_assert(0 == offsetof(scalar_args, inPitch), "inPitch offset incorrect");
     static_assert(4 == offsetof(scalar_args, inDeviceFormat), "inDeviceFormat offset incorrect");
@@ -1028,32 +899,32 @@ namespace test_utils {
         };
 
         template<>
-        struct pixel_comparator<half> {
-            static bool is_equal(half l, half r) {
+        struct pixel_comparator<gpu_types::half> {
+            static bool is_equal(gpu_types::half l, gpu_types::half r) {
                 const int ulp = 2;
                 return fp_utils::almost_equal(l, r, ulp);
             }
         };
 
         template<>
-        struct pixel_comparator<uchar> {
-            static bool is_equal(uchar l, uchar r) {
+        struct pixel_comparator<gpu_types::uchar> {
+            static bool is_equal(gpu_types::uchar l, gpu_types::uchar r) {
                 return pixel_comparator<float>::is_equal(pixel_traits<float>::translate(l),
                                                          pixel_traits<float>::translate(r));
             }
         };
 
         template<typename T>
-        struct pixel_comparator<vec2<T> > {
-            static bool is_equal(const vec2<T> &l, const vec2<T> &r) {
+        struct pixel_comparator<gpu_types::vec2<T> > {
+            static bool is_equal(const gpu_types::vec2<T> &l, const gpu_types::vec2<T> &r) {
                 return pixel_comparator<T>::is_equal(l.x, r.x)
                        && pixel_comparator<T>::is_equal(l.y, r.y);
             }
         };
 
         template<typename T>
-        struct pixel_comparator<vec4<T> > {
-            static bool is_equal(const vec4<T> &l, const vec4<T> &r) {
+        struct pixel_comparator<gpu_types::vec4<T> > {
+            static bool is_equal(const gpu_types::vec4<T> &l, const gpu_types::vec4<T> &r) {
                 return pixel_comparator<T>::is_equal(l.x, r.x)
                        && pixel_comparator<T>::is_equal(l.y, r.y)
                        && pixel_comparator<T>::is_equal(l.z, r.z)
@@ -1143,13 +1014,13 @@ namespace test_utils {
         auto expected = pixel_traits<promotion_type>::translate(expected_pixel);
         auto observed = pixel_traits<promotion_type>::translate(observed_pixel);
 
-        auto t_expected = pixel_traits<float4>::translate(expected);
-        auto t_observed = pixel_traits<float4>::translate(observed);
+        auto t_expected = pixel_traits<gpu_types::float4>::translate(expected);
+        auto t_observed = pixel_traits<gpu_types::float4>::translate(observed);
 
         const bool pixel_is_correct = pixel_compare(observed, expected);
         if (opts.logVerbose && ((pixel_is_correct && opts.logCorrect) || (!pixel_is_correct && opts.logIncorrect))) {
-            const float4 log_expected = pixel_traits<float4>::translate(expected_pixel);
-            const float4 log_observed = pixel_traits<float4>::translate(observed_pixel);
+            const gpu_types::float4 log_expected = pixel_traits<gpu_types::float4>::translate(expected_pixel);
+            const gpu_types::float4 log_observed = pixel_traits<gpu_types::float4>::translate(observed_pixel);
 
             LOGE("%s: %s pixel{row:%d, col%d} expected{x=%f, y=%f, z=%f, w=%f} observed{x=%f, y=%f, z=%f, w=%f}",
                  pixel_is_correct ? "CORRECT" : "INCORRECT",
@@ -1280,7 +1151,7 @@ namespace test_utils {
                        int                                  width,
                        int                                  height,
                        int                                  pitch,
-                       const float4&                        expected,
+                       const gpu_types::float4&             expected,
                        const char*                          label,
                        const options&                       opts) {
         vulkan_utils::memory_map map(observed);
@@ -1449,14 +1320,14 @@ test_utils::Results test_fill(const clspv_utils::kernel_module&     module,
 
     const int buffer_height = 64;
     const int buffer_width = 64;
-    const float4 color = { 0.25f, 0.50f, 0.75f, 1.0f };
+    const gpu_types::float4 color = { 0.25f, 0.50f, 0.75f, 1.0f };
 
     // allocate image buffer
     const std::size_t buffer_size = buffer_width * buffer_height * sizeof(PixelType);
     vulkan_utils::buffer dst_buffer(info, buffer_size);
 
     {
-        const PixelType src_value = pixel_traits<PixelType>::translate((float4){ 0.0f, 0.0f, 0.0f, 0.0f });
+        const PixelType src_value = pixel_traits<PixelType>::translate((gpu_types::float4){ 0.0f, 0.0f, 0.0f, 0.0f });
 
         vulkan_utils::memory_map dst_map(dst_buffer);
         auto dst_data = static_cast<PixelType*>(dst_map.data);
@@ -1492,8 +1363,8 @@ test_utils::Results test_fill_series(const clspv_utils::kernel_module&  module,
                                      const std::vector<VkSampler>&      samplers,
                                      const test_utils::options&         opts) {
     const test_utils::test_kernel_fn tests[] = {
-            test_fill<float4>,
-            test_fill<half4>,
+            test_fill<gpu_types::float4>,
+            test_fill<gpu_types::half4>,
     };
 
     return test_utils::test_kernel_invocation(module,
@@ -1530,14 +1401,14 @@ test_utils::Results test_copytoimage(const clspv_utils::kernel_module&  module,
 
     // initialize source and destination buffers
     {
-        auto src_value = pixel_traits<BufferPixelType>::translate((float4){ 0.2f, 0.4f, 0.8f, 1.0f });
+        auto src_value = pixel_traits<BufferPixelType>::translate((gpu_types::float4){ 0.2f, 0.4f, 0.8f, 1.0f });
         vulkan_utils::memory_map src_map(src_buffer);
         auto src_data = static_cast<decltype(src_value)*>(src_map.data);
         std::fill(src_data, src_data + (buffer_width * buffer_height), src_value);
     }
 
     {
-        auto dst_value = pixel_traits<ImagePixelType>::translate((float4){ 0.1f, 0.3f, 0.5f, 0.7f });
+        auto dst_value = pixel_traits<ImagePixelType>::translate((gpu_types::float4){ 0.1f, 0.3f, 0.5f, 0.7f });
         vulkan_utils::memory_map dst_map(dstImage);
         auto dst_data = static_cast<decltype(dst_value)*>(dst_map.data);
         std::fill(dst_data, dst_data + (buffer_width * buffer_height), dst_value);
@@ -1576,13 +1447,13 @@ test_utils::Results test_copytoimage_series(const clspv_utils::kernel_module&   
                                             const std::vector<VkSampler>&       samplers,
                                             const test_utils::options&          opts) {
     const test_utils::test_kernel_fn tests[] = {
-            test_copytoimage<uchar, ImagePixelType>,
-            test_copytoimage<uchar4, ImagePixelType>,
-            test_copytoimage<half, ImagePixelType>,
-            test_copytoimage<half4, ImagePixelType>,
+            test_copytoimage<gpu_types::uchar, ImagePixelType>,
+            test_copytoimage<gpu_types::uchar4, ImagePixelType>,
+            test_copytoimage<gpu_types::half, ImagePixelType>,
+            test_copytoimage<gpu_types::half4, ImagePixelType>,
             test_copytoimage<float, ImagePixelType>,
-            test_copytoimage<float2, ImagePixelType>,
-            test_copytoimage<float4, ImagePixelType>,
+            test_copytoimage<gpu_types::float2, ImagePixelType>,
+            test_copytoimage<gpu_types::float4, ImagePixelType>,
     };
 
     return test_utils::test_kernel_invocation(module, kernel,
@@ -1598,15 +1469,15 @@ test_utils::Results test_copytoimage_matrix(const clspv_utils::kernel_module&   
                                             const std::vector<VkSampler>&       samplers,
                                             const test_utils::options&          opts) {
     const test_utils::test_kernel_fn tests[] = {
-            test_copytoimage_series<float4>,
-            test_copytoimage_series<half4>,
-            test_copytoimage_series<uchar4>,
-            test_copytoimage_series<float2>,
-            test_copytoimage_series<half2>,
-            test_copytoimage_series<uchar2>,
+            test_copytoimage_series<gpu_types::float4>,
+            test_copytoimage_series<gpu_types::half4>,
+            test_copytoimage_series<gpu_types::uchar4>,
+            test_copytoimage_series<gpu_types::float2>,
+            test_copytoimage_series<gpu_types::half2>,
+            test_copytoimage_series<gpu_types::uchar2>,
             test_copytoimage_series<float>,
-            test_copytoimage_series<half>,
-            test_copytoimage_series<uchar>,
+            test_copytoimage_series<gpu_types::half>,
+            test_copytoimage_series<gpu_types::uchar>,
     };
 
     return test_utils::test_kernel_invocation(module, kernel,
@@ -1642,14 +1513,14 @@ test_utils::Results test_copyfromimage(const clspv_utils::kernel_module&    modu
 
     // initialize source and destination buffers
     {
-        auto src_value = pixel_traits<ImagePixelType>::translate((float4){ 0.2f, 0.4f, 0.8f, 1.0f });
+        auto src_value = pixel_traits<ImagePixelType>::translate((gpu_types::float4){ 0.2f, 0.4f, 0.8f, 1.0f });
         vulkan_utils::memory_map src_map(srcImage);
         auto src_data = static_cast<decltype(src_value)*>(src_map.data);
         std::fill(src_data, src_data + (buffer_width * buffer_height), src_value);
     }
 
     {
-        auto dst_value = pixel_traits<BufferPixelType>::translate((float4){ 0.1f, 0.3f, 0.5f, 0.7f });
+        auto dst_value = pixel_traits<BufferPixelType>::translate((gpu_types::float4){ 0.1f, 0.3f, 0.5f, 0.7f });
         vulkan_utils::memory_map dst_map(dst_buffer);
         auto dst_data = static_cast<decltype(dst_value)*>(dst_map.data);
         std::fill(dst_data, dst_data + (buffer_width * buffer_height), dst_value);
@@ -1687,13 +1558,13 @@ test_utils::Results test_copyfromimage_series(const clspv_utils::kernel_module& 
                                               const std::vector<VkSampler>&         samplers,
                                               const test_utils::options&            opts) {
     const test_utils::test_kernel_fn tests[] = {
-            test_copyfromimage<uchar, ImagePixelType>,
-            test_copyfromimage<uchar4, ImagePixelType>,
-            test_copyfromimage<half, ImagePixelType>,
-            test_copyfromimage<half4, ImagePixelType>,
+            test_copyfromimage<gpu_types::uchar, ImagePixelType>,
+            test_copyfromimage<gpu_types::uchar4, ImagePixelType>,
+            test_copyfromimage<gpu_types::half, ImagePixelType>,
+            test_copyfromimage<gpu_types::half4, ImagePixelType>,
             test_copyfromimage<float, ImagePixelType>,
-            test_copyfromimage<float2, ImagePixelType>,
-            test_copyfromimage<float4, ImagePixelType>,
+            test_copyfromimage<gpu_types::float2, ImagePixelType>,
+            test_copyfromimage<gpu_types::float4, ImagePixelType>,
     };
 
     return test_utils::test_kernel_invocation(module, kernel,
@@ -1709,15 +1580,15 @@ test_utils::Results test_copyfromimage_matrix(const clspv_utils::kernel_module& 
                                               const std::vector<VkSampler>&         samplers,
                                               const test_utils::options&            opts) {
     const test_utils::test_kernel_fn tests[] = {
-            test_copyfromimage_series<float4>,
-            test_copyfromimage_series<half4>,
-            test_copyfromimage_series<uchar4>,
-            test_copyfromimage_series<float2>,
-            test_copyfromimage_series<half2>,
-            test_copyfromimage_series<uchar2>,
+            test_copyfromimage_series<gpu_types::float4>,
+            test_copyfromimage_series<gpu_types::half4>,
+            test_copyfromimage_series<gpu_types::uchar4>,
+            test_copyfromimage_series<gpu_types::float2>,
+            test_copyfromimage_series<gpu_types::half2>,
+            test_copyfromimage_series<gpu_types::uchar2>,
             test_copyfromimage_series<float>,
-            test_copyfromimage_series<half>,
-            test_copyfromimage_series<uchar>,
+            test_copyfromimage_series<gpu_types::half>,
+            test_copyfromimage_series<gpu_types::uchar>,
     };
 
     return test_utils::test_kernel_invocation(module, kernel,
