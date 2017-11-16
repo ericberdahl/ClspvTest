@@ -82,10 +82,13 @@ struct sample_info {
 int sample_main(int argc, char *argv[]);
 
 // Android specific definitions & helpers.
-#define LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, "VK-SAMPLE", __VA_ARGS__))
-#define LOGE(...) ((void)__android_log_print(ANDROID_LOG_ERROR, "VK-SAMPLE", __VA_ARGS__))
+#define LOG(LEVEL, ...) ((void)__android_log_print(ANDROID_LOG_##LEVEL, "VK-SAMPLE", __VA_ARGS__))
+#define LOGD(...) LOG(DEBUG, __VA_ARGS__)
+#define LOGI(...) LOG(INFO, __VA_ARGS__)
+#define LOGW(...) LOG(WARN, __VA_ARGS__)
+#define LOGE(...) LOG(ERROR, __VA_ARGS__)
 // Replace printf to logcat output.
-#define printf(...) __android_log_print(ANDROID_LOG_DEBUG, "VK-SAMPLE", __VA_ARGS__);
+#define printf(...) LOGD(__VA_ARGS__)
 
 bool Android_process_command();
 ANativeWindow* AndroidGetApplicationWindow();
