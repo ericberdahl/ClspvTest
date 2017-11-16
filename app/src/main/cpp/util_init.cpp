@@ -82,7 +82,7 @@ void init_instance(struct sample_info &info, char const *const app_short_name) {
             .setEnabledLayerCount(info.instance_layer_names.size())
             .setPpEnabledLayerNames(info.instance_layer_names.size() ? info.instance_layer_names.data() : NULL)
             .setEnabledExtensionCount(info.instance_extension_names.size())
-            .setPpEnabledExtensionNames(info.instance_extension_names.data());
+            .setPpEnabledExtensionNames(info.instance_extension_names.size() ? info.instance_extension_names.data() : NULL);
 
     info.inst = vk::createInstanceUnique(inst_info);
 }
