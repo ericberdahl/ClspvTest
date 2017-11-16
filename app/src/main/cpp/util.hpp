@@ -50,10 +50,19 @@ struct layer_properties {
  * by utility functions.
  */
 struct sample_info {
+    sample_info() : gpu(VK_NULL_HANDLE),
+                    device(VK_NULL_HANDLE),
+                    graphics_queue(VK_NULL_HANDLE),
+                    graphics_queue_family_index(0),
+                    memory_properties({}),
+                    cmd_pool(VK_NULL_HANDLE),
+                    desc_pool(VK_NULL_HANDLE)
+    {}
+
     std::vector<const char *> instance_layer_names;
     std::vector<const char *> instance_extension_names;
     std::vector<layer_properties> instance_layer_properties;
-    VkInstance inst;
+    vk::UniqueInstance inst;
 
     std::vector<const char *> device_extension_names;
     VkPhysicalDevice gpu;
@@ -66,9 +75,7 @@ struct sample_info {
 
     VkDescriptorPool desc_pool;
 
-    PFN_vkCreateDebugReportCallbackEXT dbgCreateDebugReportCallback;
-    PFN_vkDestroyDebugReportCallbackEXT dbgDestroyDebugReportCallback;
-    std::vector<VkDebugReportCallbackEXT> debug_report_callbacks;
+    std::vector<vk::UniqueDebugReportCallbackEXT> debug_report_callbacks;
 };
 
 // Main entry point of samples

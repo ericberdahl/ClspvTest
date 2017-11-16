@@ -69,30 +69,22 @@ bool demo_check_layers(const std::vector<layer_properties> &layer_props, const s
     return true;
 }
 
-VkResult init_instance(struct sample_info &info, char const *const app_short_name) {
-    VkApplicationInfo app_info = {};
-    app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-    app_info.pNext = NULL;
-    app_info.pApplicationName = app_short_name;
-    app_info.applicationVersion = 1;
-    app_info.pEngineName = app_short_name;
-    app_info.engineVersion = 1;
-    app_info.apiVersion = VK_API_VERSION_1_0;
+void init_instance(struct sample_info &info, char const *const app_short_name) {
+    vk::ApplicationInfo app_info;
+    app_info.setPApplicationName(app_short_name)
+            .setApplicationVersion(1)
+            .setPEngineName(app_short_name)
+            .setEngineVersion(1)
+            .setApiVersion(VK_API_VERSION_1_0);
 
-    VkInstanceCreateInfo inst_info = {};
-    inst_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-    inst_info.pNext = NULL;
-    inst_info.flags = 0;
-    inst_info.pApplicationInfo = &app_info;
-    inst_info.enabledLayerCount = info.instance_layer_names.size();
-    inst_info.ppEnabledLayerNames = info.instance_layer_names.size() ? info.instance_layer_names.data() : NULL;
-    inst_info.enabledExtensionCount = info.instance_extension_names.size();
-    inst_info.ppEnabledExtensionNames = info.instance_extension_names.data();
+    vk::InstanceCreateInfo inst_info;
+    inst_info.setPApplicationInfo(&app_info)
+            .setEnabledLayerCount(info.instance_layer_names.size())
+            .setPpEnabledLayerNames(info.instance_layer_names.size() ? info.instance_layer_names.data() : NULL)
+            .setEnabledExtensionCount(info.instance_extension_names.size())
+            .setPpEnabledExtensionNames(info.instance_extension_names.data());
 
-    VkResult res = vkCreateInstance(&inst_info, NULL, &info.inst);
-    assert(res == VK_SUCCESS);
-
-    return res;
+    info.inst = vk::createInstanceUnique(inst_info);
 }
 
 VkResult init_device(struct sample_info &info) {
@@ -121,77 +113,22 @@ VkResult init_device(struct sample_info &info) {
     return res;
 }
 
-VkResult init_enumerate_device(struct sample_info &info, uint32_t gpu_count) {
-    uint32_t const U_ASSERT_ONLY req_count = gpu_count;
-    VkResult res = vkEnumeratePhysicalDevices(info.inst, &gpu_count, NULL);
-    assert(gpu_count);
-    std::vector<VkPhysicalDevice> gpus(gpu_count, VK_NULL_HANDLE);
-    assert(gpus.size() == gpu_count);
-
-    res = vkEnumeratePhysicalDevices(info.inst, &gpu_count, gpus.data());
-    assert(!res && gpu_count >= req_count);
-    info.gpu = gpus[0];
+void init_enumerate_device(struct sample_info &info, uint32_t gpu_count) {
+    auto gpus = info.inst->enumeratePhysicalDevices();
+    assert(gpu_count >= gpus.size());
+    info.gpu = (VkPhysicalDevice) gpus[0];
 
     /* This is as good a place as any to do this */
     vkGetPhysicalDeviceMemoryProperties(info.gpu, &info.memory_properties);
-
-    return res;
 }
 
-VkResult init_debug_report_callback(struct sample_info &info, PFN_vkDebugReportCallbackEXT dbgFunc) {
-    VkResult res;
-    VkDebugReportCallbackEXT debug_report_callback;
+void init_debug_report_callback(struct sample_info &info, PFN_vkDebugReportCallbackEXT dbgFunc) {
+    vk::DebugReportCallbackCreateInfoEXT create_info;
+    create_info.setFlags(vk::DebugReportFlagBitsEXT::eError | vk::DebugReportFlagBitsEXT::eWarning)
+            .setPfnCallback(dbgFunc)
+            .setPUserData(NULL);
 
-    info.dbgCreateDebugReportCallback =
-        (PFN_vkCreateDebugReportCallbackEXT)vkGetInstanceProcAddr(info.inst, "vkCreateDebugReportCallbackEXT");
-    if (!info.dbgCreateDebugReportCallback) {
-        std::cout << "GetInstanceProcAddr: Unable to find "
-                     "vkCreateDebugReportCallbackEXT function."
-                  << std::endl;
-        return VK_ERROR_INITIALIZATION_FAILED;
-    }
-    std::cout << "Got dbgCreateDebugReportCallback function\n";
-
-    info.dbgDestroyDebugReportCallback =
-        (PFN_vkDestroyDebugReportCallbackEXT)vkGetInstanceProcAddr(info.inst, "vkDestroyDebugReportCallbackEXT");
-    if (!info.dbgDestroyDebugReportCallback) {
-        std::cout << "GetInstanceProcAddr: Unable to find "
-                     "vkDestroyDebugReportCallbackEXT function."
-                  << std::endl;
-        return VK_ERROR_INITIALIZATION_FAILED;
-    }
-    std::cout << "Got dbgDestroyDebugReportCallback function\n";
-
-    VkDebugReportCallbackCreateInfoEXT create_info = {};
-    create_info.sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT;
-    create_info.pNext = NULL;
-    create_info.flags = VK_DEBUG_REPORT_ERROR_BIT_EXT | VK_DEBUG_REPORT_WARNING_BIT_EXT;
-    create_info.pfnCallback = dbgFunc;
-    create_info.pUserData = NULL;
-
-    res = info.dbgCreateDebugReportCallback(info.inst, &create_info, NULL, &debug_report_callback);
-    switch (res) {
-        case VK_SUCCESS:
-            std::cout << "Successfully created debug report callback object\n";
-            info.debug_report_callbacks.push_back(debug_report_callback);
-            break;
-        case VK_ERROR_OUT_OF_HOST_MEMORY:
-            std::cout << "dbgCreateDebugReportCallback: out of host memory pointer\n" << std::endl;
-            return VK_ERROR_INITIALIZATION_FAILED;
-            break;
-        default:
-            std::cout << "dbgCreateDebugReportCallback: unknown failure\n" << std::endl;
-            return VK_ERROR_INITIALIZATION_FAILED;
-            break;
-    }
-    return res;
-}
-
-void destroy_debug_report_callback(struct sample_info &info) {
-    while (info.debug_report_callbacks.size() > 0) {
-        info.dbgDestroyDebugReportCallback(info.inst, info.debug_report_callbacks.back(), NULL);
-        info.debug_report_callbacks.pop_back();
-    }
+    info.debug_report_callbacks.push_back(info.inst->createDebugReportCallbackEXTUnique(create_info));
 }
 
 void init_command_pool(struct sample_info &info) {
@@ -222,7 +159,5 @@ void destroy_device(struct sample_info &info) {
     vkDeviceWaitIdle(info.device);
     vkDestroyDevice(info.device, NULL);
 }
-
-void destroy_instance(struct sample_info &info) { vkDestroyInstance(info.inst, NULL); }
 
 

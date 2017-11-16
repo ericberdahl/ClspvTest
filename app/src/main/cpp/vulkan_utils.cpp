@@ -8,6 +8,26 @@
 #include "util.hpp"
 #include "vulkan_utils.hpp"
 
+VkResult vkCreateDebugReportCallbackEXT(
+        VkInstance                                  instance,
+        const VkDebugReportCallbackCreateInfoEXT*   pCreateInfo,
+        const VkAllocationCallbacks*                pAllocator,
+        VkDebugReportCallbackEXT*                   pCallback) {
+    PFN_vkCreateDebugReportCallbackEXT fn = (PFN_vkCreateDebugReportCallbackEXT) vkGetInstanceProcAddr(instance, "vkCreateDebugReportCallbackEXT");
+    if (!fn) return VK_ERROR_INITIALIZATION_FAILED;
+
+    return fn(instance, pCreateInfo, pAllocator, pCallback);
+}
+
+void vkDestroyDebugReportCallbackEXT(
+        VkInstance                                  instance,
+        VkDebugReportCallbackEXT                    callback,
+        const VkAllocationCallbacks*                pAllocator) {
+    PFN_vkDestroyDebugReportCallbackEXT fn = (PFN_vkDestroyDebugReportCallbackEXT) vkGetInstanceProcAddr(instance, "vkDestroyDebugReportCallbackEXT");
+
+    if (fn) fn(instance, callback, pAllocator);
+}
+
 namespace vulkan_utils {
 
     namespace {

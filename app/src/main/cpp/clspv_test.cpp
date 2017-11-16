@@ -736,8 +736,6 @@ int sample_main(int argc, char *argv[]) {
     destroy_descriptor_pool(info);
     destroy_command_pool(info);
     destroy_device(info);
-    destroy_debug_report_callback(info);
-    destroy_instance(info);
 
     LOGI("Complete! %d tests passed. %d tests failed. %d kernels loaded, %d kernels skipped, %d kernels failed",
          test_results.mNumTestSuccess,
