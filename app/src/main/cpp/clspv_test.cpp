@@ -42,25 +42,31 @@
 
 /* ============================================================================================== */
 
-VKAPI_ATTR VkBool32 VKAPI_CALL dbgFunc(VkDebugReportFlagsEXT msgFlags, VkDebugReportObjectTypeEXT objType, uint64_t srcObject,
-                                       size_t location, int32_t msgCode, const char *pLayerPrefix, const char *pMsg,
-                                       void *pUserData) {
+VKAPI_ATTR VkBool32 VKAPI_CALL dbgFunc(VkDebugReportFlagsEXT        msgFlags,
+                                       VkDebugReportObjectTypeEXT   objType,
+                                       uint64_t                     srcObject,
+                                       size_t                       location,
+                                       int32_t                      msgCode,
+                                       const char*                  pLayerPrefix,
+                                       const char*                  pMsg,
+                                       void*                        pUserData) {
     std::ostringstream message;
 
-    if (msgFlags & VK_DEBUG_REPORT_ERROR_BIT_EXT) {
-        message << "ERROR: ";
-    } else if (msgFlags & VK_DEBUG_REPORT_WARNING_BIT_EXT) {
-        message << "WARNING: ";
-    } else if (msgFlags & VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT) {
-        message << "PERFORMANCE WARNING: ";
-    } else if (msgFlags & VK_DEBUG_REPORT_INFORMATION_BIT_EXT) {
-        message << "INFO: ";
-    } else if (msgFlags & VK_DEBUG_REPORT_DEBUG_BIT_EXT) {
-        message << "DEBUG: ";
+    if (msgFlags & VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT) {
+        message << "PERFORMANCE: ";
     }
+
     message << "[" << pLayerPrefix << "] Code " << msgCode << " : " << pMsg;
 
-    std::cout << message.str() << std::endl;
+    if (msgFlags & VK_DEBUG_REPORT_ERROR_BIT_EXT) {
+        LOGE("%s", message.str().c_str());
+    } else if ((msgFlags & VK_DEBUG_REPORT_WARNING_BIT_EXT) || (msgFlags & VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT)) {
+        LOGW("%s", message.str().c_str());
+    } else if (msgFlags & VK_DEBUG_REPORT_INFORMATION_BIT_EXT) {
+        LOGI("%s", message.str().c_str());
+    } else if (msgFlags & VK_DEBUG_REPORT_DEBUG_BIT_EXT) {
+        LOGD("%s", message.str().c_str());
+    }
 
     /*
      * false indicates that layer should not bail-out of an
