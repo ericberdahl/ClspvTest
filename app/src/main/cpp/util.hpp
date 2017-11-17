@@ -54,8 +54,7 @@ struct sample_info {
                     device(VK_NULL_HANDLE),
                     graphics_queue(VK_NULL_HANDLE),
                     graphics_queue_family_index(0),
-                    memory_properties({}),
-                    cmd_pool(VK_NULL_HANDLE)
+                    memory_properties({})
     {}
 
     std::vector<const char *> instance_layer_names;
@@ -70,8 +69,7 @@ struct sample_info {
     uint32_t graphics_queue_family_index;
     VkPhysicalDeviceMemoryProperties memory_properties;
 
-    VkCommandPool cmd_pool;
-
+    vk::UniqueCommandPool cmd_pool;
     vk::UniqueDescriptorPool desc_pool;
 
     std::vector<vk::UniqueDebugReportCallbackEXT> debug_report_callbacks;

@@ -132,17 +132,13 @@ void init_debug_report_callback(struct sample_info &info, PFN_vkDebugReportCallb
 }
 
 void init_command_pool(struct sample_info &info) {
-    /* DEPENDS on init_swapchain_extension() */
-    VkResult U_ASSERT_ONLY res;
+    vk::Device device(info.device);
 
-    VkCommandPoolCreateInfo cmd_pool_info = {};
-    cmd_pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-    cmd_pool_info.pNext = NULL;
-    cmd_pool_info.queueFamilyIndex = info.graphics_queue_family_index;
-    cmd_pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+    vk::CommandPoolCreateInfo cmd_pool_info;
+    cmd_pool_info.setQueueFamilyIndex(info.graphics_queue_family_index)
+            .setFlags(vk::CommandPoolCreateFlagBits::eResetCommandBuffer);
 
-    res = vkCreateCommandPool(info.device, &cmd_pool_info, NULL, &info.cmd_pool);
-    assert(res == VK_SUCCESS);
+    info.cmd_pool = device.createCommandPoolUnique(cmd_pool_info);
 }
 
 void init_device_queue(struct sample_info &info) {
@@ -150,8 +146,6 @@ void init_device_queue(struct sample_info &info) {
 
     vkGetDeviceQueue(info.device, info.graphics_queue_family_index, 0, &info.graphics_queue);
 }
-
-void destroy_command_pool(struct sample_info &info) { vkDestroyCommandPool(info.device, info.cmd_pool, NULL); }
 
 void destroy_device(struct sample_info &info) {
     vkDeviceWaitIdle(info.device);

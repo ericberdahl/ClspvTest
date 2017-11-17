@@ -211,7 +211,7 @@ void invoke_copybuffertoimage_kernel(const clspv_utils::kernel_module&   module,
             (width + workgroup_sizes.x - 1) / workgroup_sizes.x,
             (height + workgroup_sizes.y - 1) / workgroup_sizes.y);
 
-    clspv_utils::kernel_invocation invocation(info.device, info.cmd_pool, info.memory_properties);
+    clspv_utils::kernel_invocation invocation(info.device, (VkCommandPool) *info.cmd_pool, info.memory_properties);
 
     invocation.addLiteralSamplers(samplers.begin(), samplers.end());
     invocation.addBufferArgument(src_buffer);
@@ -266,7 +266,7 @@ void invoke_copyimagetobuffer_kernel(const clspv_utils::kernel_module&   module,
             (width + workgroup_sizes.x - 1) / workgroup_sizes.x,
             (height + workgroup_sizes.y - 1) / workgroup_sizes.y);
 
-    clspv_utils::kernel_invocation invocation(info.device, info.cmd_pool, info.memory_properties);
+    clspv_utils::kernel_invocation invocation(info.device, (VkCommandPool) *info.cmd_pool, info.memory_properties);
 
     invocation.addLiteralSamplers(samplers.begin(), samplers.end());
     invocation.addReadOnlyImageArgument(src_image);
@@ -294,7 +294,7 @@ std::tuple<int,int,int> invoke_localsize_kernel(const clspv_utils::kernel_module
     // The localsize kernel needs only a single workgroup with a single workitem
     const clspv_utils::WorkgroupDimensions num_workgroups(1, 1);
 
-    clspv_utils::kernel_invocation invocation(info.device, info.cmd_pool, info.memory_properties);
+    clspv_utils::kernel_invocation invocation(info.device, (VkCommandPool) *info.cmd_pool, info.memory_properties);
 
     invocation.addBufferArgument(outArgs.buf);
 
@@ -737,7 +737,7 @@ int sample_main(int argc, char *argv[]) {
     // tightly tied to the graphics pipeline (e.g. hard-coding the number and type of shaders).
 
     info.desc_pool.reset();
-    destroy_command_pool(info);
+    info.cmd_pool.reset();
     destroy_device(info);
 
     LOGI("Complete! %d tests passed. %d tests failed. %d kernels loaded, %d kernels skipped, %d kernels failed",
