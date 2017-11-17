@@ -55,8 +55,7 @@ struct sample_info {
                     graphics_queue(VK_NULL_HANDLE),
                     graphics_queue_family_index(0),
                     memory_properties({}),
-                    cmd_pool(VK_NULL_HANDLE),
-                    desc_pool(VK_NULL_HANDLE)
+                    cmd_pool(VK_NULL_HANDLE)
     {}
 
     std::vector<const char *> instance_layer_names;
@@ -73,7 +72,7 @@ struct sample_info {
 
     VkCommandPool cmd_pool;
 
-    VkDescriptorPool desc_pool;
+    vk::UniqueDescriptorPool desc_pool;
 
     std::vector<vk::UniqueDebugReportCallbackEXT> debug_report_callbacks;
 };

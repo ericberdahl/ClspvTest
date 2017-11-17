@@ -39,7 +39,6 @@ void init_device_queue(struct sample_info &info);
 
 void init_debug_report_callback(struct sample_info &info,
                                 PFN_vkDebugReportCallbackEXT dbgFunc);
-void destroy_descriptor_pool(struct sample_info &info);
 void destroy_command_pool(struct sample_info &info);
 void destroy_device(struct sample_info &info);
 

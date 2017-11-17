@@ -151,8 +151,6 @@ void init_device_queue(struct sample_info &info) {
     vkGetDeviceQueue(info.device, info.graphics_queue_family_index, 0, &info.graphics_queue);
 }
 
-void destroy_descriptor_pool(struct sample_info &info) { vkDestroyDescriptorPool(info.device, info.desc_pool, NULL); }
-
 void destroy_command_pool(struct sample_info &info) { vkDestroyCommandPool(info.device, info.cmd_pool, NULL); }
 
 void destroy_device(struct sample_info &info) {

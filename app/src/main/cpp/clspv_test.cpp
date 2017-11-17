@@ -103,25 +103,22 @@ void init_compute_queue_family_index(struct sample_info &info) {
 }
 
 void my_init_descriptor_pool(struct sample_info &info) {
-    const VkDescriptorPoolSize type_count[] = {
-            { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,    16 },
-            { VK_DESCRIPTOR_TYPE_SAMPLER,           16 },
-            { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,     16 },
-            { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,     16 }
+    vk::Device device(info.device);
+
+    const vk::DescriptorPoolSize type_count[] = {
+        { vk::DescriptorType::eStorageBuffer,   16 },
+        { vk::DescriptorType::eSampler,         16 },
+        { vk::DescriptorType::eSampledImage,    16 },
+        { vk::DescriptorType::eStorageImage,    16 }
     };
 
-    VkDescriptorPoolCreateInfo createInfo = {};
-    createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    createInfo.maxSets = 64;
-    createInfo.poolSizeCount = sizeof(type_count) / sizeof(type_count[0]);
-    createInfo.pPoolSizes = type_count;
-    createInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+    vk::DescriptorPoolCreateInfo createInfo;
+    createInfo.setMaxSets(64)
+            .setPoolSizeCount(sizeof(type_count) / sizeof(type_count[0]))
+            .setPPoolSizes(type_count)
+            .setFlags(vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet);
 
-    vulkan_utils::throwIfNotSuccess(vkCreateDescriptorPool(info.device,
-                                                           &createInfo,
-                                                           NULL,
-                                                           &info.desc_pool),
-                                    "vkCreateDescriptorPool");
+    info.desc_pool = device.createDescriptorPoolUnique(createInfo);
 }
 
 VkSampler create_compatible_sampler(VkDevice device, int opencl_flags) {
@@ -739,7 +736,7 @@ int sample_main(int argc, char *argv[]) {
     // Cannot use the shader module desctruction built into the sampel framework because it is too
     // tightly tied to the graphics pipeline (e.g. hard-coding the number and type of shaders).
 
-    destroy_descriptor_pool(info);
+    info.desc_pool.reset();
     destroy_command_pool(info);
     destroy_device(info);
 
