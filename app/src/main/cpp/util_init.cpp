@@ -119,7 +119,8 @@ void init_enumerate_device(struct sample_info &info, uint32_t gpu_count) {
     info.gpu = (VkPhysicalDevice) gpus[0];
 
     /* This is as good a place as any to do this */
-    vkGetPhysicalDeviceMemoryProperties(info.gpu, &info.memory_properties);
+    vk::PhysicalDevice pd(info.gpu);
+    info.memory_properties = pd.getMemoryProperties();
 }
 
 void init_debug_report_callback(struct sample_info &info, PFN_vkDebugReportCallbackEXT dbgFunc) {
