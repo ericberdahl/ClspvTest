@@ -195,6 +195,7 @@ namespace vulkan_utils {
         viewInfo.format = format;
         viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
         viewInfo.subresourceRange.levelCount = 1;
+        viewInfo.subresourceRange.layerCount = 1;
 
         throwIfNotSuccess(vkCreateImageView(dev, &viewInfo, nullptr, &view),
                           "vkCreateImageView");
