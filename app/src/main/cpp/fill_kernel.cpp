@@ -57,7 +57,7 @@ namespace fill_kernel {
         invocation.addLiteralSamplers(samplers.begin(), samplers.end());
         invocation.addBufferArgument(dst_buffer);
         invocation.addPodArgument(scalars);
-        invocation.run(info.graphics_queue, kernel, num_workgroups);
+        invocation.run((VkQueue) info.graphics_queue, kernel, num_workgroups);
     }
 
     test_utils::Results test_series(const clspv_utils::kernel_module&  module,

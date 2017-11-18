@@ -143,9 +143,9 @@ void init_command_pool(struct sample_info &info) {
 }
 
 void init_device_queue(struct sample_info &info) {
-    /* DEPENDS on init_swapchain_extension() */
+    vk::Device device(info.device);
 
-    vkGetDeviceQueue(info.device, info.graphics_queue_family_index, 0, &info.graphics_queue);
+    info.graphics_queue = device.getQueue(info.graphics_queue_family_index, 0);
 }
 
 void destroy_device(struct sample_info &info) {
