@@ -103,8 +103,6 @@ void init_compute_queue_family_index(struct sample_info &info) {
 }
 
 void my_init_descriptor_pool(struct sample_info &info) {
-    vk::Device device(info.device);
-
     const vk::DescriptorPoolSize type_count[] = {
         { vk::DescriptorType::eStorageBuffer,   16 },
         { vk::DescriptorType::eSampler,         16 },
@@ -118,7 +116,7 @@ void my_init_descriptor_pool(struct sample_info &info) {
             .setPPoolSizes(type_count)
             .setFlags(vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet);
 
-    info.desc_pool = device.createDescriptorPoolUnique(createInfo);
+    info.desc_pool = info.device->createDescriptorPoolUnique(createInfo);
 }
 
 VkSampler create_compatible_sampler(VkDevice device, int opencl_flags) {
@@ -211,7 +209,7 @@ void invoke_copybuffertoimage_kernel(const clspv_utils::kernel_module&   module,
             (width + workgroup_sizes.x - 1) / workgroup_sizes.x,
             (height + workgroup_sizes.y - 1) / workgroup_sizes.y);
 
-    clspv_utils::kernel_invocation invocation(info.device, (VkCommandPool) *info.cmd_pool, info.memory_properties);
+    clspv_utils::kernel_invocation invocation((VkDevice) *info.device, (VkCommandPool) *info.cmd_pool, info.memory_properties);
 
     invocation.addLiteralSamplers(samplers.begin(), samplers.end());
     invocation.addBufferArgument(src_buffer);
@@ -266,7 +264,7 @@ void invoke_copyimagetobuffer_kernel(const clspv_utils::kernel_module&   module,
             (width + workgroup_sizes.x - 1) / workgroup_sizes.x,
             (height + workgroup_sizes.y - 1) / workgroup_sizes.y);
 
-    clspv_utils::kernel_invocation invocation(info.device, (VkCommandPool) *info.cmd_pool, info.memory_properties);
+    clspv_utils::kernel_invocation invocation((VkDevice) *info.device, (VkCommandPool) *info.cmd_pool, info.memory_properties);
 
     invocation.addLiteralSamplers(samplers.begin(), samplers.end());
     invocation.addReadOnlyImageArgument(src_image);
@@ -294,7 +292,7 @@ std::tuple<int,int,int> invoke_localsize_kernel(const clspv_utils::kernel_module
     // The localsize kernel needs only a single workgroup with a single workitem
     const clspv_utils::WorkgroupDimensions num_workgroups(1, 1);
 
-    clspv_utils::kernel_invocation invocation(info.device, (VkCommandPool) *info.cmd_pool, info.memory_properties);
+    clspv_utils::kernel_invocation invocation((VkDevice) *info.device, (VkCommandPool) *info.cmd_pool, info.memory_properties);
 
     invocation.addBufferArgument(outArgs.buf);
 
@@ -722,7 +720,7 @@ int sample_main(int argc, char *argv[]) {
     std::vector<VkSampler> samplers;
     std::transform(std::begin(sampler_flags), std::end(sampler_flags),
                    std::back_inserter(samplers),
-                   std::bind(create_compatible_sampler, info.device, std::placeholders::_1));
+                   std::bind(create_compatible_sampler, (VkDevice) *info.device, std::placeholders::_1));
 
 
     const auto test_results = run_all_tests(info, samplers);
@@ -731,14 +729,15 @@ int sample_main(int argc, char *argv[]) {
     // Clean up
     //
 
-    std::for_each(samplers.begin(), samplers.end(), [&info] (VkSampler s) { vkDestroySampler(info.device, s, nullptr); });
+    std::for_each(samplers.begin(), samplers.end(), [&info] (VkSampler s) { vkDestroySampler((VkDevice) *info.device, s, nullptr); });
 
     // Cannot use the shader module desctruction built into the sampel framework because it is too
     // tightly tied to the graphics pipeline (e.g. hard-coding the number and type of shaders).
 
     info.desc_pool.reset();
     info.cmd_pool.reset();
-    destroy_device(info);
+    info.device->waitIdle();
+    info.device.reset();
 
     LOGI("Complete! %d tests passed. %d tests failed. %d kernels loaded, %d kernels skipped, %d kernels failed",
          test_results.mNumTestSuccess,

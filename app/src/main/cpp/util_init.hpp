@@ -29,7 +29,7 @@ void init_global_layer_properties(sample_info &info);
 
 void init_instance(struct sample_info &info,
                    char const *const app_short_name);
-VkResult init_device(struct sample_info &info);
+void init_device(struct sample_info &info);
 void init_enumerate_device(struct sample_info &info,
                            uint32_t gpu_count = 1);
 bool demo_check_layers(const std::vector<layer_properties> &layer_props,
@@ -39,6 +39,5 @@ void init_device_queue(struct sample_info &info);
 
 void init_debug_report_callback(struct sample_info &info,
                                 PFN_vkDebugReportCallbackEXT dbgFunc);
-void destroy_device(struct sample_info &info);
 
 #endif // CLSPVTEST_UTIL_INIT

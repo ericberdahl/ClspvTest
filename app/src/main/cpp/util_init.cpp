@@ -87,30 +87,23 @@ void init_instance(struct sample_info &info, char const *const app_short_name) {
     info.inst = vk::createInstanceUnique(inst_info);
 }
 
-VkResult init_device(struct sample_info &info) {
-    VkResult res;
-    VkDeviceQueueCreateInfo queue_info = {};
+void init_device(struct sample_info &info) {
+    vk::PhysicalDevice pd(info.gpu);
 
-    float queue_priorities[1] = {0.0};
-    queue_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-    queue_info.pNext = NULL;
-    queue_info.queueCount = 1;
-    queue_info.pQueuePriorities = queue_priorities;
-    queue_info.queueFamilyIndex = info.graphics_queue_family_index;
+    const float queue_priorities[1] = { 0.0f };
 
-    VkDeviceCreateInfo device_info = {};
-    device_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-    device_info.pNext = NULL;
-    device_info.queueCreateInfoCount = 1;
-    device_info.pQueueCreateInfos = &queue_info;
-    device_info.enabledExtensionCount = info.device_extension_names.size();
-    device_info.ppEnabledExtensionNames = device_info.enabledExtensionCount ? info.device_extension_names.data() : NULL;
-    device_info.pEnabledFeatures = NULL;
+    vk::DeviceQueueCreateInfo queue_info;
+    queue_info.setQueueCount(1)
+            .setPQueuePriorities(queue_priorities)
+            .setQueueFamilyIndex(info.graphics_queue_family_index);
 
-    res = vkCreateDevice(info.gpu, &device_info, NULL, &info.device);
-    assert(res == VK_SUCCESS);
+    vk::DeviceCreateInfo device_info;
+    device_info.setQueueCreateInfoCount(1)
+            .setPQueueCreateInfos(&queue_info)
+            .setEnabledExtensionCount(info.device_extension_names.size())
+            .setPpEnabledExtensionNames(info.device_extension_names.size() ? info.device_extension_names.data() : NULL);
 
-    return res;
+    info.device = pd.createDeviceUnique(device_info);
 }
 
 void init_enumerate_device(struct sample_info &info, uint32_t gpu_count) {
@@ -133,24 +126,13 @@ void init_debug_report_callback(struct sample_info &info, PFN_vkDebugReportCallb
 }
 
 void init_command_pool(struct sample_info &info) {
-    vk::Device device(info.device);
-
     vk::CommandPoolCreateInfo cmd_pool_info;
     cmd_pool_info.setQueueFamilyIndex(info.graphics_queue_family_index)
             .setFlags(vk::CommandPoolCreateFlagBits::eResetCommandBuffer);
 
-    info.cmd_pool = device.createCommandPoolUnique(cmd_pool_info);
+    info.cmd_pool = info.device->createCommandPoolUnique(cmd_pool_info);
 }
 
 void init_device_queue(struct sample_info &info) {
-    vk::Device device(info.device);
-
-    info.graphics_queue = device.getQueue(info.graphics_queue_family_index, 0);
+    info.graphics_queue = info.device->getQueue(info.graphics_queue_family_index, 0);
 }
-
-void destroy_device(struct sample_info &info) {
-    vkDeviceWaitIdle(info.device);
-    vkDestroyDevice(info.device, NULL);
-}
-
-

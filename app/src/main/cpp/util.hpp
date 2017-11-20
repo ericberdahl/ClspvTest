@@ -51,7 +51,6 @@ struct layer_properties {
  */
 struct sample_info {
     sample_info() : gpu(VK_NULL_HANDLE),
-                    device(VK_NULL_HANDLE),
                     graphics_queue_family_index(0)
     {}
 
@@ -62,7 +61,7 @@ struct sample_info {
 
     std::vector<const char *> device_extension_names;
     VkPhysicalDevice gpu;
-    VkDevice device;
+    vk::UniqueDevice                    device;
     vk::Queue                           graphics_queue;
 
     uint32_t                            graphics_queue_family_index;

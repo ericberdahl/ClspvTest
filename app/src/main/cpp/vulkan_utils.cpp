@@ -60,7 +60,7 @@ namespace vulkan_utils {
     }
 
     buffer::buffer(const sample_info &info, VkDeviceSize num_bytes) :
-            buffer(info.device, info.memory_properties, num_bytes)
+            buffer((VkDevice) *info.device, info.memory_properties, num_bytes)
     {
 
     }
@@ -69,7 +69,7 @@ namespace vulkan_utils {
                  uint32_t           width,
                  uint32_t           height,
                  VkFormat           format) :
-            image(info.device, info.memory_properties, width, height, format)
+            image((VkDevice) *info.device, info.memory_properties, width, height, format)
     {
 
     }

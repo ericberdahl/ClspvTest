@@ -51,7 +51,7 @@ namespace fill_kernel {
                 (scalars.inWidth + workgroup_sizes.x - 1) / workgroup_sizes.x,
                 (scalars.inHeight + workgroup_sizes.y - 1) / workgroup_sizes.y);
 
-        clspv_utils::kernel_invocation invocation(info.device, (VkCommandPool) *info.cmd_pool,
+        clspv_utils::kernel_invocation invocation((VkDevice) *info.device, (VkCommandPool) *info.cmd_pool,
                                                   info.memory_properties);
 
         invocation.addLiteralSamplers(samplers.begin(), samplers.end());

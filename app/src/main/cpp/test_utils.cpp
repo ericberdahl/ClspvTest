@@ -66,7 +66,7 @@ namespace test_utils {
                                      [&]() {
                                          Results results;
 
-                                         clspv_utils::kernel kernel(info.device, module,
+                                         clspv_utils::kernel kernel((VkDevice) *info.device, module,
                                                                     entryPoint, numWorkgroups);
                                          results += Results::sKernelLoadSuccess;
 
@@ -90,7 +90,7 @@ namespace test_utils {
         return runInExceptionContext(moduleName, "loading module", [&]() {
             Results result;
 
-            clspv_utils::kernel_module module(info.device, (VkDescriptorPool) *info.desc_pool, moduleName);
+            clspv_utils::kernel_module module((VkDevice) *info.device, (VkDescriptorPool) *info.desc_pool, moduleName);
             result += Results::sTestSuccess;
 
             std::vector<std::string> entryPoints(module.getEntryPoints());
