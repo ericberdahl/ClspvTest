@@ -88,8 +88,6 @@ void init_instance(struct sample_info &info, char const *const app_short_name) {
 }
 
 void init_device(struct sample_info &info) {
-    vk::PhysicalDevice pd(info.gpu);
-
     const float queue_priorities[1] = { 0.0f };
 
     vk::DeviceQueueCreateInfo queue_info;
@@ -103,17 +101,16 @@ void init_device(struct sample_info &info) {
             .setEnabledExtensionCount(info.device_extension_names.size())
             .setPpEnabledExtensionNames(info.device_extension_names.size() ? info.device_extension_names.data() : NULL);
 
-    info.device = pd.createDeviceUnique(device_info);
+    info.device = info.gpu.createDeviceUnique(device_info);
 }
 
 void init_enumerate_device(struct sample_info &info, uint32_t gpu_count) {
     auto gpus = info.inst->enumeratePhysicalDevices();
     assert(gpu_count >= gpus.size());
-    info.gpu = (VkPhysicalDevice) gpus[0];
+    info.gpu = gpus[0];
 
     /* This is as good a place as any to do this */
-    vk::PhysicalDevice pd(info.gpu);
-    info.memory_properties = pd.getMemoryProperties();
+    info.memory_properties = info.gpu.getMemoryProperties();
 }
 
 void init_debug_report_callback(struct sample_info &info, PFN_vkDebugReportCallbackEXT dbgFunc) {

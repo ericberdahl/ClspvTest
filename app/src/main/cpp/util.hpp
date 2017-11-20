@@ -50,17 +50,16 @@ struct layer_properties {
  * by utility functions.
  */
 struct sample_info {
-    sample_info() : gpu(VK_NULL_HANDLE),
-                    graphics_queue_family_index(0)
+    sample_info() : graphics_queue_family_index(0)
     {}
 
-    std::vector<const char *> instance_layer_names;
-    std::vector<const char *> instance_extension_names;
-    std::vector<layer_properties> instance_layer_properties;
+    std::vector<const char *>           instance_layer_names;
+    std::vector<const char *>           instance_extension_names;
+    std::vector<layer_properties>       instance_layer_properties;
     vk::UniqueInstance inst;
 
-    std::vector<const char *> device_extension_names;
-    VkPhysicalDevice gpu;
+    std::vector<const char *>           device_extension_names;
+    vk::PhysicalDevice                  gpu;
     vk::UniqueDevice                    device;
     vk::Queue                           graphics_queue;
 

@@ -81,25 +81,17 @@ VKAPI_ATTR VkBool32 VKAPI_CALL dbgFunc(VkDebugReportFlagsEXT        msgFlags,
 /* ============================================================================================== */
 
 void init_compute_queue_family_index(struct sample_info &info) {
-    uint32_t queue_family_count = 0;
-    vkGetPhysicalDeviceQueueFamilyProperties(info.gpu, &queue_family_count, NULL);
-    assert(queue_family_count >= 1);
-
-    std::vector<VkQueueFamilyProperties> queue_props(queue_family_count);
-    vkGetPhysicalDeviceQueueFamilyProperties(info.gpu, &queue_family_count, queue_props.data());
-    assert(queue_family_count >= 1);
-
     /* This routine simply finds a compute queue for a later vkCreateDevice.
      */
-    bool found = false;
-    for (unsigned int i = 0; i < queue_props.size(); i++) {
-        if (queue_props[i].queueFlags & VK_QUEUE_COMPUTE_BIT) {
-            info.graphics_queue_family_index = i;
-            found = true;
-            break;
-        }
-    }
-    assert(found);
+
+    auto queue_props = info.gpu.getQueueFamilyProperties();
+
+    auto found = std::find_if(queue_props.begin(), queue_props.end(), [](vk::QueueFamilyProperties p) {
+        return (p.queueFlags & vk::QueueFlagBits::eCompute);
+    });
+
+    info.graphics_queue_family_index = std::distance(queue_props.begin(), found);
+    assert(found != queue_props.end());
 }
 
 void my_init_descriptor_pool(struct sample_info &info) {
