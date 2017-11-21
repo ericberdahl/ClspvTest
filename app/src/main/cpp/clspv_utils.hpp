@@ -170,10 +170,10 @@ namespace clspv_utils {
 
     private:
         struct arg {
-            VkDescriptorType    type;
-            VkBuffer            buffer;
-            VkSampler           sampler;
-            VkImageView         image;
+            vk::DescriptorType  type;
+            vk::Buffer          buffer;
+            vk::Sampler         sampler;
+            vk::ImageView       image;
         };
 
     private:

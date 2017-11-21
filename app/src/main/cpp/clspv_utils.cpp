@@ -529,37 +529,37 @@ namespace clspv_utils {
     }
 
     void kernel_invocation::addBufferArgument(VkBuffer buf) {
-        arg item = {};
+        arg item;
 
-        item.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        item.buffer = buf;
+        item.type = vk::DescriptorType::eStorageBuffer;
+        item.buffer = vk::Buffer(buf);
 
         mArguments.push_back(item);
     }
 
     void kernel_invocation::addSamplerArgument(VkSampler samp) {
-        arg item = {};
+        arg item;
 
-        item.type = VK_DESCRIPTOR_TYPE_SAMPLER;
-        item.sampler = samp;
+        item.type = vk::DescriptorType::eSampler;
+        item.sampler = vk::Sampler(samp);
 
         mArguments.push_back(item);
     }
 
     void kernel_invocation::addReadOnlyImageArgument(VkImageView im) {
-        arg item = {};
+        arg item;
 
-        item.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-        item.image = im;
+        item.type = vk::DescriptorType::eSampledImage;
+        item.image = vk::ImageView(im);
 
         mArguments.push_back(item);
     }
 
     void kernel_invocation::addWriteOnlyImageArgument(VkImageView im) {
-        arg item = {};
+        arg item;
 
-        item.type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-        item.image = im;
+        item.type = vk::DescriptorType::eStorageImage;
+        item.image = vk::ImageView(im);
 
         mArguments.push_back(item);
     }
@@ -584,28 +584,28 @@ namespace clspv_utils {
         //
         for (auto& a : mArguments) {
             switch (a.type) {
-                case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-                case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE: {
+                case vk::DescriptorType::eStorageImage:
+                case vk::DescriptorType::eSampledImage: {
                     VkDescriptorImageInfo imageInfo = {};
-                    imageInfo.imageView = a.image;
+                    imageInfo.imageView = (VkImageView) a.image;
                     imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
 
                     imageList.push_back(imageInfo);
                     break;
                 }
 
-                case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER: {
+                case vk::DescriptorType::eStorageBuffer: {
                     VkDescriptorBufferInfo bufferInfo = {};
                     bufferInfo.range = VK_WHOLE_SIZE;
-                    bufferInfo.buffer = a.buffer;
+                    bufferInfo.buffer = (VkBuffer) a.buffer;
 
                     bufferList.push_back(bufferInfo);
                     break;
                 }
 
-                case VK_DESCRIPTOR_TYPE_SAMPLER: {
+                case vk::DescriptorType::eSampler: {
                     VkDescriptorImageInfo samplerInfo = {};
-                    samplerInfo.sampler = a.sampler;
+                    samplerInfo.sampler = (VkSampler) a.sampler;
 
                     imageList.push_back(samplerInfo);
                     break;
@@ -663,20 +663,20 @@ namespace clspv_utils {
 
         for (auto& a : mArguments) {
             switch (a.type) {
-                case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-                case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-                    argSet.descriptorType = a.type;
+                case vk::DescriptorType::eStorageImage:
+                case vk::DescriptorType::eSampledImage:
+                    argSet.descriptorType = (VkDescriptorType) a.type;
                     argSet.pImageInfo = &(*nextImage);
                     ++nextImage;
                     break;
 
-                case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+                case vk::DescriptorType::eStorageBuffer:
                     argSet.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
                     argSet.pBufferInfo = &(*nextBuffer);
                     ++nextBuffer;
                     break;
 
-                case VK_DESCRIPTOR_TYPE_SAMPLER:
+                case vk::DescriptorType::eSampler:
                     argSet.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
                     argSet.pImageInfo = &(*nextImage);
                     ++nextImage;
