@@ -212,16 +212,12 @@ namespace clspv_utils {
                 result.descriptors.push_back(create_descriptor_set_layout(device, descriptorTypes));
             };
 
-            VkPipelineLayoutCreateInfo createInfo = {};
-            createInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-            createInfo.setLayoutCount = result.descriptors.size();
-            createInfo.pSetLayouts = createInfo.setLayoutCount ? result.descriptors.data() : NULL;
+            vk::PipelineLayoutCreateInfo createInfo;
+            createInfo.setSetLayoutCount(result.descriptors.size())
+                    .setPSetLayouts(result.descriptors.size() ? (vk::DescriptorSetLayout*) result.descriptors.data() : nullptr);
 
-            vulkan_utils::throwIfNotSuccess(vkCreatePipelineLayout(device,
-                                                                   &createInfo,
-                                                                   NULL,
-                                                                   &result.pipeline),
-                                            "vkCreatePipelineLayout");
+            vk::Device d(device);
+            result.pipeline = d.createPipelineLayoutUnique(createInfo);
 
             return result;
         }
@@ -367,12 +363,9 @@ namespace clspv_utils {
             });
             descriptors.clear();
 
-            if (VK_NULL_HANDLE != device && VK_NULL_HANDLE != pipeline) {
-                vkDestroyPipelineLayout(device, pipeline, NULL);
-            }
+            pipeline.reset();
 
             device = VK_NULL_HANDLE;
-            pipeline = VK_NULL_HANDLE;
         }
 
         void pipeline_layout::swap(pipeline_layout& other) {
@@ -489,7 +482,7 @@ namespace clspv_utils {
                     .setPData(workGroupSizes);
 
             vk::ComputePipelineCreateInfo createInfo;
-            createInfo.setLayout(vk::PipelineLayout(result.mPipelineLayout.pipeline))
+            createInfo.setLayout(*result.mPipelineLayout.pipeline)
                     .stage.setStage(vk::ShaderStageFlagBits::eCompute)
                     .setModule(*mShaderModule)
                     .setPName(entryPoint.c_str())
@@ -525,7 +518,7 @@ namespace clspv_utils {
         vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_COMPUTE, mPipeline.mPipeline);
 
         vkCmdBindDescriptorSets(command, VK_PIPELINE_BIND_POINT_COMPUTE,
-                                mPipeline.mPipelineLayout.pipeline,
+                                (VkPipelineLayout) *mPipeline.mPipelineLayout.pipeline,
                                 0,
                                 mPipeline.mDescriptors.size(), mPipeline.mDescriptors.data(),
                                 0, NULL);

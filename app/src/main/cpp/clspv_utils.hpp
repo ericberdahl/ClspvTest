@@ -58,7 +58,7 @@ namespace clspv_utils {
         };
 
         struct pipeline_layout {
-            pipeline_layout() : device(VK_NULL_HANDLE), descriptors(), pipeline(VK_NULL_HANDLE) {};
+            pipeline_layout() : device(VK_NULL_HANDLE), descriptors(), pipeline() {};
 
             pipeline_layout(const pipeline_layout&) = delete;
 
@@ -75,7 +75,7 @@ namespace clspv_utils {
 
             VkDevice                            device;
             std::vector<VkDescriptorSetLayout>  descriptors;
-            VkPipelineLayout                    pipeline;
+            vk::UniquePipelineLayout            pipeline;
         };
 
         inline void swap(pipeline_layout& lhs, pipeline_layout& rhs) {
