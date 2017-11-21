@@ -55,7 +55,7 @@ namespace clspv_utils {
             return result;
         }
 
-        VkShaderModule create_shader(VkDevice device, const std::string& spvFilename) {
+        vk::UniqueShaderModule create_shader(const vk::Device& device, const std::string& spvFilename) {
             std::unique_ptr<std::FILE, decltype(&std::fclose)> spv_file(AndroidFopen(spvFilename.c_str(), "rb"),
                                                                         &std::fclose);
             if (!spv_file) {
@@ -77,19 +77,11 @@ namespace clspv_utils {
 
             spv_file.reset();
 
-            VkShaderModuleCreateInfo shaderModuleCreateInfo = {};
-            shaderModuleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-            shaderModuleCreateInfo.codeSize = num_bytes;
-            shaderModuleCreateInfo.pCode = spvModule.data();
+            vk::ShaderModuleCreateInfo shaderModuleCreateInfo;
+            shaderModuleCreateInfo.setCodeSize(num_bytes)
+                    .setPCode(spvModule.data());
 
-            VkShaderModule shaderModule = VK_NULL_HANDLE;
-            vulkan_utils::throwIfNotSuccess(vkCreateShaderModule(device,
-                                                                 &shaderModuleCreateInfo,
-                                                                 NULL,
-                                                                 &shaderModule),
-                                            "vkCreateShaderModule");
-
-            return shaderModule;
+            return device.createShaderModuleUnique(shaderModuleCreateInfo);
         }
 
         VkCommandBuffer allocate_command_buffer(VkDevice device, VkCommandPool cmd_pool) {
@@ -402,21 +394,16 @@ namespace clspv_utils {
             mName(moduleName),
             mDevice(device),
             mDescriptorPool(pool),
-            mShaderModule(VK_NULL_HANDLE),
+            mShaderModule(),
             mSpvMap() {
         const std::string spvFilename = moduleName + ".spv";
-        mShaderModule = create_shader(device, spvFilename.c_str());
+        mShaderModule = create_shader(mDevice, spvFilename.c_str());
 
         const std::string mapFilename = moduleName + ".spvmap";
         mSpvMap = create_spv_map(mapFilename.c_str());
     }
 
     kernel_module::~kernel_module() {
-        if (mDevice) {
-            if (mShaderModule) {
-                vkDestroyShaderModule(mDevice, mShaderModule, NULL);
-            }
-        }
     }
 
     std::vector<std::string> kernel_module::getEntryPoints() const {
@@ -433,9 +420,9 @@ namespace clspv_utils {
                                                     const WorkgroupDimensions& work_group_sizes) const {
         details::pipeline result;
         try {
-            result.mPipelineLayout = create_pipeline_layout(mDevice, mSpvMap, entryPoint);
-            result.mDescriptorPool = mDescriptorPool;
-            result.mDescriptors = allocate_descriptor_sets(mDevice, mDescriptorPool,
+            result.mPipelineLayout = create_pipeline_layout((VkDevice) mDevice, mSpvMap, entryPoint);
+            result.mDescriptorPool = (VkDescriptorPool) mDescriptorPool;
+            result.mDescriptors = allocate_descriptor_sets((VkDevice) mDevice, (VkDescriptorPool) mDescriptorPool,
                                                            result.mPipelineLayout.descriptors);
 
             if (-1 != mSpvMap.samplers_desc_set) {
@@ -453,7 +440,7 @@ namespace clspv_utils {
                     work_group_sizes.y,
                     1
             };
-            const VkSpecializationMapEntry specializationEntries[num_workgroup_sizes] = {
+            const vk::SpecializationMapEntry specializationEntries[num_workgroup_sizes] = {
                     {
                             0,                          // specialization constant 0 - workgroup size X
                             0 * sizeof(int32_t),          // offset - start of workGroupSizes array
@@ -470,29 +457,21 @@ namespace clspv_utils {
                             sizeof(workGroupSizes[2])   // sizeof the second element
                     }
             };
-            VkSpecializationInfo specializationInfo = {};
-            specializationInfo.mapEntryCount = num_workgroup_sizes;
-            specializationInfo.pMapEntries = specializationEntries;
-            specializationInfo.dataSize = sizeof(workGroupSizes);
-            specializationInfo.pData = workGroupSizes;
+            vk::SpecializationInfo specializationInfo;
+            specializationInfo.setMapEntryCount(num_workgroup_sizes)
+                    .setPMapEntries(specializationEntries)
+                    .setDataSize(sizeof(workGroupSizes))
+                    .setPData(workGroupSizes);
 
-            VkComputePipelineCreateInfo createInfo = {};
-            createInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-            createInfo.layout = result.mPipelineLayout.pipeline;
+            vk::ComputePipelineCreateInfo createInfo;
+            createInfo.setLayout(vk::PipelineLayout(result.mPipelineLayout.pipeline))
+                    .stage.setStage(vk::ShaderStageFlagBits::eCompute)
+                    .setModule(*mShaderModule)
+                    .setPName(entryPoint.c_str())
+                    .setPSpecializationInfo(&specializationInfo);
 
-            createInfo.stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-            createInfo.stage.stage = VK_SHADER_STAGE_COMPUTE_BIT;
-            createInfo.stage.module = mShaderModule;
-            createInfo.stage.pName = entryPoint.c_str();
-            createInfo.stage.pSpecializationInfo = &specializationInfo;
-
-            vulkan_utils::throwIfNotSuccess(vkCreateComputePipelines(mDevice,
-                                                                     VK_NULL_HANDLE,
-                                                                     1,
-                                                                     &createInfo,
-                                                                     NULL,
-                                                                     &result.mPipeline),
-                                            "vkCreateComputePipelines");
+            auto pipelines = mDevice.createComputePipelines(vk::PipelineCache(), createInfo);
+            result.mPipeline = (VkPipeline) pipelines[0];
         }
         catch(...)
         {

@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-#include <vulkan/vulkan.h>
+#include <vulkan/vulkan.hpp>
 
 #include "vulkan_utils.hpp"
 
@@ -109,9 +109,9 @@ namespace clspv_utils {
 
     private:
         std::string                         mName;
-        VkDevice                            mDevice;
-        VkDescriptorPool                    mDescriptorPool;
-        VkShaderModule                      mShaderModule;
+        vk::Device                          mDevice;
+        vk::DescriptorPool                  mDescriptorPool;
+        vk::UniqueShaderModule              mShaderModule;
         details::spv_map                    mSpvMap;
     };
 
