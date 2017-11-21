@@ -823,7 +823,9 @@ namespace VULKAN_HPP_NAMESPACE
 
   VULKAN_HPP_INLINE void throwResultException( Result result, char const * message )
   {
-    assert ( static_cast<long long int>(result) < 0 );
+      // eberdahl : Unfortunately, we cannot rely on non-negative values not being errors
+      assert ( static_cast<long long int>(result) != 0 );
+      //assert ( static_cast<long long int>(result) < 0 );
     switch ( result )
     {
     case Result::eErrorOutOfHostMemory: throw OutOfHostMemoryError ( message );
