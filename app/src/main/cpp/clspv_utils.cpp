@@ -344,6 +344,23 @@ namespace clspv_utils {
             return (kernel == kernels.end() ? nullptr : &(*kernel));
         }
 
+        pipeline_layout::pipeline_layout(pipeline_layout&& other) :
+                pipeline_layout()
+        {
+            swap(other);
+        }
+
+        pipeline_layout::~pipeline_layout() {
+            reset();
+        }
+
+        pipeline_layout& pipeline_layout::operator=(pipeline_layout&& other)
+        {
+            swap(other);
+            return *this;
+        }
+
+
         void pipeline_layout::reset() {
             std::for_each(descriptors.begin(), descriptors.end(), [this] (VkDescriptorSetLayout dsl) {
                 vkDestroyDescriptorSetLayout(this->device, dsl, nullptr);
@@ -356,6 +373,14 @@ namespace clspv_utils {
 
             device = VK_NULL_HANDLE;
             pipeline = VK_NULL_HANDLE;
+        }
+
+        void pipeline_layout::swap(pipeline_layout& other) {
+            using std::swap;
+
+            swap(device, other.device);
+            swap(descriptors, other.descriptors);
+            swap(pipeline, other.pipeline);
         }
 
         void pipeline::reset() {

@@ -60,12 +60,27 @@ namespace clspv_utils {
         struct pipeline_layout {
             pipeline_layout() : device(VK_NULL_HANDLE), descriptors(), pipeline(VK_NULL_HANDLE) {};
 
+            pipeline_layout(const pipeline_layout&) = delete;
+
+            pipeline_layout(pipeline_layout&& other);
+
+            ~pipeline_layout();
+
+            pipeline_layout&    operator=(const pipeline_layout& other) = delete;
+            pipeline_layout&    operator=(pipeline_layout&& other);
+
             void    reset();
+
+            void    swap(pipeline_layout& other);
 
             VkDevice                            device;
             std::vector<VkDescriptorSetLayout>  descriptors;
             VkPipelineLayout                    pipeline;
         };
+
+        inline void swap(pipeline_layout& lhs, pipeline_layout& rhs) {
+            lhs.swap(rhs);
+        }
 
         struct pipeline {
             pipeline() : mPipelineLayout(),
