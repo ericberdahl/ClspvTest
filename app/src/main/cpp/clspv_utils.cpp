@@ -336,12 +336,7 @@ namespace clspv_utils {
         }
 
         void pipeline::reset() {
-            if (mPipeline) {
-                assert(VK_NULL_HANDLE != mDevice);
-
-                vkDestroyPipeline(mDevice, mPipeline, NULL);
-                mPipeline = VK_NULL_HANDLE;
-            }
+            mPipeline.reset();
 
             // NULL out cached descriptors
             mArgumentsDescriptor = VK_NULL_HANDLE;
@@ -359,14 +354,16 @@ namespace clspv_utils {
                 mDescriptors.clear();
             }
 
+            mDescriptorPool = VK_NULL_HANDLE;
+
+            mPipelineLayout.reset();
+
             for (auto dsl : mDescriptorLayouts) {
                 vkDestroyDescriptorSetLayout(mDevice, dsl, nullptr);
             }
             mDescriptorLayouts.clear();
 
             mDevice = VK_NULL_HANDLE;
-            mDescriptorPool = VK_NULL_HANDLE;
-            mPipelineLayout.reset();
         }
 
     } // namespace details
@@ -457,8 +454,8 @@ namespace clspv_utils {
                     .setPName(entryPoint.c_str())
                     .setPSpecializationInfo(&specializationInfo);
 
-            auto pipelines = mDevice.createComputePipelines(vk::PipelineCache(), createInfo);
-            result.mPipeline = (VkPipeline) pipelines[0];
+            auto pipelines = mDevice.createComputePipelinesUnique(vk::PipelineCache(), createInfo);
+            result.mPipeline = std::move(pipelines[0]);
         }
         catch(...)
         {
@@ -484,7 +481,7 @@ namespace clspv_utils {
     }
 
     void kernel::bindCommand(VkCommandBuffer command) const {
-        vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_COMPUTE, mPipeline.mPipeline);
+        vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_COMPUTE, (VkPipeline) *mPipeline.mPipeline);
 
         vkCmdBindDescriptorSets(command, VK_PIPELINE_BIND_POINT_COMPUTE,
                                 (VkPipelineLayout) *mPipeline.mPipelineLayout,

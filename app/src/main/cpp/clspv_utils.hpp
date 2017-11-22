@@ -61,22 +61,21 @@ namespace clspv_utils {
             pipeline() : mDevice(VK_NULL_HANDLE),
                          mDescriptorLayouts(),
                          mPipelineLayout(),
-                         mDescriptors(),
                          mDescriptorPool(VK_NULL_HANDLE),
+                         mDescriptors(),
                          mLiteralSamplerDescriptor(VK_NULL_HANDLE),
-                         mArgumentsDescriptor(VK_NULL_HANDLE),
-                         mPipeline(VK_NULL_HANDLE) {};
+                         mArgumentsDescriptor(VK_NULL_HANDLE) {};
 
             void    reset();
 
             VkDevice                            mDevice;
             std::vector<VkDescriptorSetLayout>  mDescriptorLayouts;
             vk::UniquePipelineLayout            mPipelineLayout;
-            std::vector<VkDescriptorSet>        mDescriptors;
             VkDescriptorPool                    mDescriptorPool;
+            std::vector<VkDescriptorSet>        mDescriptors;
             VkDescriptorSet                     mLiteralSamplerDescriptor;
             VkDescriptorSet                     mArgumentsDescriptor;
-            VkPipeline                          mPipeline;
+            vk::UniquePipeline                  mPipeline;
         };
     } // namespace details
 
