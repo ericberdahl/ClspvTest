@@ -58,19 +58,17 @@ namespace clspv_utils {
         };
 
         struct pipeline {
-            pipeline() : mDevice(VK_NULL_HANDLE),
-                         mDescriptorLayouts(),
-                         mPipelineLayout() {};
+            pipeline() : mDevice(VK_NULL_HANDLE) {};
 
             void    reset();
 
             VkDevice                                mDevice;
-            std::vector<VkDescriptorSetLayout>      mDescriptorLayouts;
-            vk::UniquePipelineLayout                mPipelineLayout;
-            std::vector<vk::UniqueDescriptorSet>    mDescriptors;
-            vk::DescriptorSet                       mLiteralSamplerDescriptor;
-            vk::DescriptorSet                       mArgumentsDescriptor;
-            vk::UniquePipeline                      mPipeline;
+            std::vector<vk::UniqueDescriptorSetLayout>  mDescriptorLayouts;
+            vk::UniquePipelineLayout                    mPipelineLayout;
+            std::vector<vk::UniqueDescriptorSet>        mDescriptors;
+            vk::DescriptorSet                           mLiteralSamplerDescriptor;
+            vk::DescriptorSet                           mArgumentsDescriptor;
+            vk::UniquePipeline                          mPipeline;
         };
     } // namespace details
 
