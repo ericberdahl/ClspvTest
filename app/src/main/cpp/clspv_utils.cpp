@@ -151,13 +151,12 @@ namespace clspv_utils {
             return result;
         }
 
-        details::pipeline_layout create_pipeline_layout(VkDevice                device,
-                                                        const details::spv_map& spvMap,
-                                                        const std::string&      entryPoint) {
-            assert(!entryPoint.empty());
+        std::vector<VkDescriptorSetLayout> create_descriptor_layouts(VkDevice                device,
+                                                                const details::spv_map& spvMap,
+                                                                const std::string&      entryPoint) {
+            std::vector<VkDescriptorSetLayout> result;
 
-            details::pipeline_layout result;
-            result.device = device;
+            assert(!entryPoint.empty());
 
             std::vector<VkDescriptorType> descriptorTypes;
 
@@ -166,7 +165,7 @@ namespace clspv_utils {
 
                 descriptorTypes.clear();
                 descriptorTypes.resize(spvMap.samplers.size(), VK_DESCRIPTOR_TYPE_SAMPLER);
-                result.descriptors.push_back(create_descriptor_set_layout(device, descriptorTypes));
+                result.push_back(create_descriptor_set_layout(device, descriptorTypes));
             }
 
             const auto kernel = spvMap.findKernel(entryPoint);
@@ -209,8 +208,20 @@ namespace clspv_utils {
                     descriptorTypes.push_back(argType);
                 }
 
-                result.descriptors.push_back(create_descriptor_set_layout(device, descriptorTypes));
+                result.push_back(create_descriptor_set_layout(device, descriptorTypes));
             };
+
+            return result;
+        }
+
+        details::pipeline_layout create_pipeline_layout(VkDevice                device,
+                                                        const details::spv_map& spvMap,
+                                                        const std::string&      entryPoint) {
+            assert(!entryPoint.empty());
+
+            details::pipeline_layout result;
+            result.device = device;
+            result.descriptors = create_descriptor_layouts(device, spvMap, entryPoint);
 
             vk::PipelineLayoutCreateInfo createInfo;
             createInfo.setSetLayoutCount(result.descriptors.size())
