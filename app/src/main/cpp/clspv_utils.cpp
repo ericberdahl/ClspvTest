@@ -98,25 +98,16 @@ namespace clspv_utils {
             return result;
         }
 
-        std::vector<VkDescriptorSet> allocate_descriptor_sets(
-                VkDevice                                    device,
-                VkDescriptorPool                            pool,
+        std::vector<vk::UniqueDescriptorSet> allocate_descriptor_sets(
+                vk::Device                                  device,
+                vk::DescriptorPool                          pool,
                 const std::vector<VkDescriptorSetLayout>&   layouts) {
-            std::vector<VkDescriptorSet> result;
+            vk::DescriptorSetAllocateInfo createInfo;
+            createInfo.setDescriptorPool(pool)
+                    .setDescriptorSetCount(layouts.size())
+                    .setPSetLayouts(layouts.size() ? (const vk::DescriptorSetLayout*) layouts.data() : nullptr);
 
-            VkDescriptorSetAllocateInfo createInfo = {};
-            createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-            createInfo.descriptorPool = pool;
-            createInfo.descriptorSetCount = layouts.size();
-            createInfo.pSetLayouts = layouts.data();
-
-            result.resize(createInfo.descriptorSetCount, VK_NULL_HANDLE);
-            vulkan_utils::throwIfNotSuccess(vkAllocateDescriptorSets(device,
-                                                                     &createInfo,
-                                                                     result.data()),
-                                            "vkAllocateDescriptorSets");
-
-            return result;
+            return device.allocateDescriptorSetsUnique(createInfo);
         }
 
         VkDescriptorSetLayout create_descriptor_set_layout(
@@ -339,20 +330,9 @@ namespace clspv_utils {
             mPipeline.reset();
 
             // NULL out cached descriptors
-            mArgumentsDescriptor = VK_NULL_HANDLE;
-            mLiteralSamplerDescriptor = VK_NULL_HANDLE;
-
-            if (!mDescriptors.empty()) {
-                assert(VK_NULL_HANDLE != mDevice);
-
-                VkResult U_ASSERT_ONLY res = vkFreeDescriptorSets(mDevice,
-                                                                  mDescriptorPool,
-                                                                  mDescriptors.size(),
-                                                                  mDescriptors.data());
-                assert(res == VK_SUCCESS);
-
-                mDescriptors.clear();
-            }
+            mArgumentsDescriptor = nullptr;
+            mLiteralSamplerDescriptor = nullptr;
+            mDescriptors.clear();
 
             mDescriptorPool = VK_NULL_HANDLE;
 
@@ -405,17 +385,17 @@ namespace clspv_utils {
 
             result.mPipelineLayout = create_pipeline_layout(mDevice, result.mDescriptorLayouts);
             result.mDescriptorPool = (VkDescriptorPool) mDescriptorPool;
-            result.mDescriptors = allocate_descriptor_sets((VkDevice) mDevice, (VkDescriptorPool) mDescriptorPool,
+            result.mDescriptors = allocate_descriptor_sets(mDevice, mDescriptorPool,
                                                            result.mDescriptorLayouts);
 
 
             if (-1 != mSpvMap.samplers_desc_set) {
-                result.mLiteralSamplerDescriptor = result.mDescriptors[mSpvMap.samplers_desc_set];
+                result.mLiteralSamplerDescriptor = *result.mDescriptors[mSpvMap.samplers_desc_set];
             }
 
             const auto kernel_arg_map = mSpvMap.findKernel(entryPoint);
             if (kernel_arg_map && -1 != kernel_arg_map->descriptor_set) {
-                result.mArgumentsDescriptor = result.mDescriptors[kernel_arg_map->descriptor_set];
+                result.mArgumentsDescriptor = *result.mDescriptors[kernel_arg_map->descriptor_set];
             }
 
             const unsigned int num_workgroup_sizes = 3;
@@ -483,10 +463,12 @@ namespace clspv_utils {
     void kernel::bindCommand(VkCommandBuffer command) const {
         vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_COMPUTE, (VkPipeline) *mPipeline.mPipeline);
 
+        auto regular = vulkan_utils::extractUniques(mPipeline.mDescriptors);
+
         vkCmdBindDescriptorSets(command, VK_PIPELINE_BIND_POINT_COMPUTE,
                                 (VkPipelineLayout) *mPipeline.mPipelineLayout,
                                 0,
-                                mPipeline.mDescriptors.size(), mPipeline.mDescriptors.data(),
+                                regular.size(), (const VkDescriptorSet*) regular.data(),
                                 0, NULL);
     }
 

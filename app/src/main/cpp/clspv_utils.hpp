@@ -61,21 +61,18 @@ namespace clspv_utils {
             pipeline() : mDevice(VK_NULL_HANDLE),
                          mDescriptorLayouts(),
                          mPipelineLayout(),
-                         mDescriptorPool(VK_NULL_HANDLE),
-                         mDescriptors(),
-                         mLiteralSamplerDescriptor(VK_NULL_HANDLE),
-                         mArgumentsDescriptor(VK_NULL_HANDLE) {};
+                         mDescriptorPool(VK_NULL_HANDLE) {};
 
             void    reset();
 
-            VkDevice                            mDevice;
-            std::vector<VkDescriptorSetLayout>  mDescriptorLayouts;
-            vk::UniquePipelineLayout            mPipelineLayout;
-            VkDescriptorPool                    mDescriptorPool;
-            std::vector<VkDescriptorSet>        mDescriptors;
-            VkDescriptorSet                     mLiteralSamplerDescriptor;
-            VkDescriptorSet                     mArgumentsDescriptor;
-            vk::UniquePipeline                  mPipeline;
+            VkDevice                                mDevice;
+            std::vector<VkDescriptorSetLayout>      mDescriptorLayouts;
+            vk::UniquePipelineLayout                mPipelineLayout;
+            VkDescriptorPool                        mDescriptorPool;
+            std::vector<vk::UniqueDescriptorSet>    mDescriptors;
+            vk::DescriptorSet                       mLiteralSamplerDescriptor;
+            vk::DescriptorSet                       mArgumentsDescriptor;
+            vk::UniquePipeline                      mPipeline;
         };
     } // namespace details
 
@@ -122,8 +119,8 @@ namespace clspv_utils {
         std::string getEntryPoint() const { return mEntryPoint; }
         WorkgroupDimensions getWorkgroupSize() const { return mWorkgroupSizes; }
 
-        VkDescriptorSet getLiteralSamplerDescSet() const { return mPipeline.mLiteralSamplerDescriptor; }
-        VkDescriptorSet getArgumentDescSet() const { return mPipeline.mArgumentsDescriptor; }
+        VkDescriptorSet getLiteralSamplerDescSet() const { return (VkDescriptorSet) mPipeline.mLiteralSamplerDescriptor; }
+        VkDescriptorSet getArgumentDescSet() const { return (VkDescriptorSet) mPipeline.mArgumentsDescriptor; }
 
     private:
         std::string         mEntryPoint;

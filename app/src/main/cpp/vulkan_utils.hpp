@@ -14,6 +14,16 @@ struct sample_info;
 
 namespace vulkan_utils {
 
+    template <typename Type, typename Deleter>
+    std::vector<Type> extractUniques(const std::vector<vk::UniqueHandle<Type,Deleter> >& uniques) {
+        std::vector<Type> result;
+        result.reserve(uniques.size());
+        for (auto & u : uniques) {
+            result.push_back(*u);
+        }
+        return result;
+    };
+
     void throwIfNotSuccess(VkResult result, const std::string& label);
 
     struct device_memory {
