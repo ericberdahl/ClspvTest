@@ -58,7 +58,7 @@ namespace clspv_utils {
         };
 
         struct pipeline_layout {
-            pipeline_layout() : device(VK_NULL_HANDLE), descriptors(), pipeline() {};
+            pipeline_layout() : device(VK_NULL_HANDLE), pipeline() {};
 
             pipeline_layout(const pipeline_layout&) = delete;
 
@@ -73,9 +73,8 @@ namespace clspv_utils {
 
             void    swap(pipeline_layout& other);
 
-            VkDevice                            device;
-            std::vector<VkDescriptorSetLayout>  descriptors;
-            vk::UniquePipelineLayout            pipeline;
+            VkDevice                    device;
+            vk::UniquePipelineLayout    pipeline;
         };
 
         inline void swap(pipeline_layout& lhs, pipeline_layout& rhs) {
@@ -92,12 +91,13 @@ namespace clspv_utils {
 
             void    reset();
 
-            pipeline_layout                 mPipelineLayout;
-            std::vector<VkDescriptorSet>    mDescriptors;
-            VkDescriptorPool                mDescriptorPool;
-            VkDescriptorSet                 mLiteralSamplerDescriptor;
-            VkDescriptorSet                 mArgumentsDescriptor;
-            VkPipeline                      mPipeline;
+            pipeline_layout                     mPipelineLayout;
+            std::vector<VkDescriptorSetLayout>  mDescriptorLayouts;
+            std::vector<VkDescriptorSet>        mDescriptors;
+            VkDescriptorPool                    mDescriptorPool;
+            VkDescriptorSet                     mLiteralSamplerDescriptor;
+            VkDescriptorSet                     mArgumentsDescriptor;
+            VkPipeline                          mPipeline;
         };
     } // namespace details
 

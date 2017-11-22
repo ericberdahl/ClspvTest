@@ -143,9 +143,11 @@ namespace clspv_utils {
             return (VkDescriptorSetLayout) device.createDescriptorSetLayout(createInfo);
         }
 
-        std::vector<VkDescriptorSetLayout> create_descriptor_layouts(VkDevice                device,
+        std::vector<VkDescriptorSetLayout> create_descriptor_layouts(VkDevice           device,
                                                                 const details::spv_map& spvMap,
                                                                 const std::string&      entryPoint) {
+            assert(!entryPoint.empty());
+
             std::vector<VkDescriptorSetLayout> result;
 
             assert(!entryPoint.empty());
@@ -206,18 +208,14 @@ namespace clspv_utils {
             return result;
         }
 
-        details::pipeline_layout create_pipeline_layout(const vk::Device&       device,
-                                                        const details::spv_map& spvMap,
-                                                        const std::string&      entryPoint) {
-            assert(!entryPoint.empty());
-
+        details::pipeline_layout create_pipeline_layout(vk::Device                                  device,
+                                                        const std::vector<VkDescriptorSetLayout>&   descriptors) {
             details::pipeline_layout result;
             result.device = (VkDevice) device;
-            result.descriptors = create_descriptor_layouts((VkDevice) device, spvMap, entryPoint);
 
             vk::PipelineLayoutCreateInfo createInfo;
-            createInfo.setSetLayoutCount(result.descriptors.size())
-                    .setPSetLayouts(result.descriptors.size() ? (vk::DescriptorSetLayout*) result.descriptors.data() : nullptr);
+            createInfo.setSetLayoutCount(descriptors.size())
+                    .setPSetLayouts(descriptors.size() ? (vk::DescriptorSetLayout*) descriptors.data() : nullptr);
 
             result.pipeline = device.createPipelineLayoutUnique(createInfo);
 
@@ -360,11 +358,6 @@ namespace clspv_utils {
 
 
         void pipeline_layout::reset() {
-            std::for_each(descriptors.begin(), descriptors.end(), [this] (VkDescriptorSetLayout dsl) {
-                vkDestroyDescriptorSetLayout(this->device, dsl, nullptr);
-            });
-            descriptors.clear();
-
             pipeline.reset();
 
             device = VK_NULL_HANDLE;
@@ -374,7 +367,6 @@ namespace clspv_utils {
             using std::swap;
 
             swap(device, other.device);
-            swap(descriptors, other.descriptors);
             swap(pipeline, other.pipeline);
         }
 
@@ -401,6 +393,11 @@ namespace clspv_utils {
 
                 mDescriptors.clear();
             }
+
+            for (auto dsl : mDescriptorLayouts) {
+                vkDestroyDescriptorSetLayout(mPipelineLayout.device, dsl, nullptr);
+            }
+            mDescriptorLayouts.clear();
 
             mDescriptorPool = VK_NULL_HANDLE;
             mPipelineLayout.reset();
@@ -440,10 +437,13 @@ namespace clspv_utils {
                                                     const WorkgroupDimensions& work_group_sizes) const {
         details::pipeline result;
         try {
-            result.mPipelineLayout = create_pipeline_layout(mDevice, mSpvMap, entryPoint);
+            result.mDescriptorLayouts = create_descriptor_layouts((VkDevice) mDevice, mSpvMap, entryPoint);
+
+            result.mPipelineLayout = create_pipeline_layout(mDevice, result.mDescriptorLayouts);
             result.mDescriptorPool = (VkDescriptorPool) mDescriptorPool;
             result.mDescriptors = allocate_descriptor_sets((VkDevice) mDevice, (VkDescriptorPool) mDescriptorPool,
-                                                           result.mPipelineLayout.descriptors);
+                                                           result.mDescriptorLayouts);
+
 
             if (-1 != mSpvMap.samplers_desc_set) {
                 result.mLiteralSamplerDescriptor = result.mDescriptors[mSpvMap.samplers_desc_set];
