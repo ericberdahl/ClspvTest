@@ -208,7 +208,7 @@ void invoke_copybuffertoimage_kernel(const clspv_utils::kernel_module&   module,
     invocation.addWriteOnlyImageArgument(dst_image);
     invocation.addPodArgument(scalars);
 
-    invocation.run((VkQueue) info.graphics_queue, kernel, num_workgroups);
+    invocation.run(info.graphics_queue, kernel, num_workgroups);
 }
 
 void invoke_copyimagetobuffer_kernel(const clspv_utils::kernel_module&   module,
@@ -263,7 +263,7 @@ void invoke_copyimagetobuffer_kernel(const clspv_utils::kernel_module&   module,
     invocation.addBufferArgument(dst_buffer);
     invocation.addPodArgument(scalars);
 
-    invocation.run((VkQueue) info.graphics_queue, kernel, num_workgroups);
+    invocation.run(info.graphics_queue, kernel, num_workgroups);
 }
 
 std::tuple<int,int,int> invoke_localsize_kernel(const clspv_utils::kernel_module&   module,
@@ -288,7 +288,7 @@ std::tuple<int,int,int> invoke_localsize_kernel(const clspv_utils::kernel_module
 
     invocation.addBufferArgument(outArgs.buf);
 
-    invocation.run((VkQueue) info.graphics_queue, kernel, num_workgroups);
+    invocation.run(info.graphics_queue, kernel, num_workgroups);
 
     vulkan_utils::memory_map argMap(outArgs);
     auto outScalars = static_cast<const scalar_args*>(argMap.data);

@@ -84,18 +84,15 @@ namespace clspv_utils {
             return device.createShaderModuleUnique(shaderModuleCreateInfo);
         }
 
-        VkCommandBuffer allocate_command_buffer(VkDevice device, VkCommandPool cmd_pool) {
-            VkCommandBufferAllocateInfo allocInfo = {};
-            allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-            allocInfo.commandPool = cmd_pool;
-            allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-            allocInfo.commandBufferCount = 1;
+        vk::UniqueCommandBuffer allocate_command_buffer(vk::Device device, vk::CommandPool cmd_pool) {
+            vk::CommandBufferAllocateInfo allocInfo;
+            allocInfo.setCommandPool(cmd_pool)
+                    .setLevel(vk::CommandBufferLevel::ePrimary)
+                    .setCommandBufferCount(1);
 
-            VkCommandBuffer result = VK_NULL_HANDLE;
-            vulkan_utils::throwIfNotSuccess(vkAllocateCommandBuffers(device, &allocInfo, &result),
-                                            "vkAllocateCommandBuffers");
-
-            return result;
+            auto buffers = device.allocateCommandBuffersUnique(allocInfo);
+            assert(buffers.size() == 1);
+            return std::move(buffers[0]);
         }
 
         std::vector<vk::UniqueDescriptorSet> allocate_descriptor_sets(
@@ -142,9 +139,6 @@ namespace clspv_utils {
             assert(!entryPoint.empty());
 
             std::vector<vk::UniqueDescriptorSetLayout> result;
-
-            assert(!entryPoint.empty());
-
             std::vector<vk::DescriptorType> descriptorTypes;
 
             if (!spvMap.samplers.empty()) {
@@ -463,21 +457,15 @@ namespace clspv_utils {
                                          const VkPhysicalDeviceMemoryProperties&    memoryProperties) :
             mDevice(device),
             mCmdPool(cmdPool),
-            mCommand(VK_NULL_HANDLE),
+            mCommand(),
             mMemoryProperties(memoryProperties),
             mLiteralSamplers(),
             mArguments() {
-        mCommand = allocate_command_buffer(mDevice, mCmdPool);
+        mCommand = allocate_command_buffer(vk::Device(mDevice), vk::CommandPool(mCmdPool));
     }
 
     kernel_invocation::~kernel_invocation() {
         std::for_each(mPodBuffers.begin(), mPodBuffers.end(), std::mem_fun_ref(&vulkan_utils::buffer::reset));
-
-        if (mDevice) {
-            if (mCmdPool && mCommand) {
-                vkFreeCommandBuffers(mDevice, mCmdPool, 1, &mCommand);
-            }
-        }
     }
 
     void kernel_invocation::addBufferArgument(VkBuffer buf) {
@@ -516,8 +504,8 @@ namespace clspv_utils {
         mArguments.push_back(item);
     }
 
-    void kernel_invocation::updateDescriptorSets(VkDescriptorSet literalSamplerDescSet,
-                                                 VkDescriptorSet argumentDescSet) {
+    void kernel_invocation::updateDescriptorSets(vk::DescriptorSet literalSamplerDescSet,
+                                                 vk::DescriptorSet argumentDescSet) {
         std::vector<VkDescriptorImageInfo>  imageList;
         std::vector<VkDescriptorBufferInfo> bufferList;
 
@@ -585,7 +573,7 @@ namespace clspv_utils {
 
         VkWriteDescriptorSet literalSamplerSet = {};
         literalSamplerSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        literalSamplerSet.dstSet = literalSamplerDescSet;
+        literalSamplerSet.dstSet = (VkDescriptorSet) literalSamplerDescSet;
         literalSamplerSet.dstBinding = 0;
         literalSamplerSet.descriptorCount = 1;
         literalSamplerSet.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
@@ -607,7 +595,7 @@ namespace clspv_utils {
 
         VkWriteDescriptorSet argSet = {};
         argSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        argSet.dstSet = argumentDescSet;
+        argSet.dstSet = (VkDescriptorSet) argumentDescSet;
         argSet.dstBinding = 0;
         argSet.descriptorCount = 1;
 
@@ -651,38 +639,32 @@ namespace clspv_utils {
 
     void kernel_invocation::fillCommandBuffer(const kernel&                 inKernel,
                                               const WorkgroupDimensions&    num_workgroups) {
-        VkCommandBufferBeginInfo beginInfo = {};
-        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        vulkan_utils::throwIfNotSuccess(vkBeginCommandBuffer(mCommand, &beginInfo),
-                                        "vkBeginCommandBuffer");
+        mCommand->begin(vk::CommandBufferBeginInfo());
 
-        inKernel.bindCommand(mCommand);
+        inKernel.bindCommand((VkCommandBuffer) *mCommand);
 
-        vkCmdDispatch(mCommand, num_workgroups.x, num_workgroups.y, 1);
-
-        vulkan_utils::throwIfNotSuccess(vkEndCommandBuffer(mCommand),
-                                        "vkEndCommandBuffer");
+        mCommand->dispatch(num_workgroups.x, num_workgroups.y, 1);
+        mCommand->end();
     }
 
-    void kernel_invocation::submitCommand(VkQueue queue) {
-        VkSubmitInfo submitInfo = {};
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = &mCommand;
+    void kernel_invocation::submitCommand(vk::Queue queue) {
+        vk::CommandBuffer rawCommand = *mCommand;
+        vk::SubmitInfo submitInfo;
+        submitInfo.setCommandBufferCount(1)
+                .setPCommandBuffers(&rawCommand);
 
-        vulkan_utils::throwIfNotSuccess(vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE),
-                                        "vkQueueSubmit");
+        queue.submit(submitInfo, nullptr);
 
     }
 
-    void kernel_invocation::run(VkQueue                     queue,
+    void kernel_invocation::run(vk::Queue                   queue,
                                 const kernel&               kern,
                                 const WorkgroupDimensions&  num_workgroups) {
         updateDescriptorSets(kern.getLiteralSamplerDescSet(), kern.getArgumentDescSet());
         fillCommandBuffer(kern, num_workgroups);
         submitCommand(queue);
 
-        vkQueueWaitIdle(queue);
+        queue.waitIdle();
     }
 
 } // namespace clspv_utils

@@ -112,8 +112,8 @@ namespace clspv_utils {
         std::string getEntryPoint() const { return mEntryPoint; }
         WorkgroupDimensions getWorkgroupSize() const { return mWorkgroupSizes; }
 
-        VkDescriptorSet getLiteralSamplerDescSet() const { return (VkDescriptorSet) mPipeline.mLiteralSamplerDescriptor; }
-        VkDescriptorSet getArgumentDescSet() const { return (VkDescriptorSet) mPipeline.mArgumentsDescriptor; }
+        vk::DescriptorSet getLiteralSamplerDescSet() const { return mPipeline.mLiteralSamplerDescriptor; }
+        vk::DescriptorSet getArgumentDescSet() const { return mPipeline.mArgumentsDescriptor; }
 
     private:
         std::string         mEntryPoint;
@@ -140,16 +140,16 @@ namespace clspv_utils {
         template <typename T>
         void    addPodArgument(const T& pod);
 
-        void    run(VkQueue                     queue,
+        void    run(vk::Queue                   queue,
                     const kernel&               kern,
                     const WorkgroupDimensions&  num_workgroups);
 
     private:
         void        fillCommandBuffer(const kernel&                 kern,
                                       const WorkgroupDimensions&    num_workgroups);
-        void        updateDescriptorSets(VkDescriptorSet literalSamplerSet,
-                                         VkDescriptorSet argumentSet);
-        void        submitCommand(VkQueue queue);
+        void        updateDescriptorSets(vk::DescriptorSet literalSamplerSet,
+                                         vk::DescriptorSet argumentSet);
+        void        submitCommand(vk::Queue queue);
 
     private:
         struct arg {
@@ -162,7 +162,7 @@ namespace clspv_utils {
     private:
         VkDevice                            mDevice;
         VkCommandPool                       mCmdPool;
-        VkCommandBuffer                     mCommand;
+        vk::UniqueCommandBuffer             mCommand;
         VkPhysicalDeviceMemoryProperties    mMemoryProperties;
 
         std::vector<VkSampler>              mLiteralSamplers;
