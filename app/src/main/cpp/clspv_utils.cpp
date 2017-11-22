@@ -452,16 +452,15 @@ namespace clspv_utils {
                                 0, NULL);
     }
 
-    kernel_invocation::kernel_invocation(VkDevice           device,
-                                         VkCommandPool      cmdPool,
+    kernel_invocation::kernel_invocation(vk::Device                                 device,
+                                         vk::CommandPool                            cmdPool,
                                          const VkPhysicalDeviceMemoryProperties&    memoryProperties) :
             mDevice(device),
-            mCmdPool(cmdPool),
             mCommand(),
             mMemoryProperties(memoryProperties),
             mLiteralSamplers(),
             mArguments() {
-        mCommand = allocate_command_buffer(vk::Device(mDevice), vk::CommandPool(mCmdPool));
+        mCommand = allocate_command_buffer(mDevice, cmdPool);
     }
 
     kernel_invocation::~kernel_invocation() {
@@ -506,15 +505,15 @@ namespace clspv_utils {
 
     void kernel_invocation::updateDescriptorSets(vk::DescriptorSet literalSamplerDescSet,
                                                  vk::DescriptorSet argumentDescSet) {
-        std::vector<VkDescriptorImageInfo>  imageList;
-        std::vector<VkDescriptorBufferInfo> bufferList;
+        std::vector<vk::DescriptorImageInfo>    imageList;
+        std::vector<vk::DescriptorBufferInfo>   bufferList;
 
         //
         // Collect information about the literal samplers
         //
         for (auto s : mLiteralSamplers) {
-            VkDescriptorImageInfo samplerInfo = {};
-            samplerInfo.sampler = s;
+            vk::DescriptorImageInfo samplerInfo;
+            samplerInfo.setSampler(vk::Sampler(s));
 
             imageList.push_back(samplerInfo);
         }
@@ -526,26 +525,26 @@ namespace clspv_utils {
             switch (a.type) {
                 case vk::DescriptorType::eStorageImage:
                 case vk::DescriptorType::eSampledImage: {
-                    VkDescriptorImageInfo imageInfo = {};
-                    imageInfo.imageView = (VkImageView) a.image;
-                    imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+                    vk::DescriptorImageInfo imageInfo;
+                    imageInfo.setImageView(a.image)
+                            .setImageLayout(vk::ImageLayout::eGeneral);
 
                     imageList.push_back(imageInfo);
                     break;
                 }
 
                 case vk::DescriptorType::eStorageBuffer: {
-                    VkDescriptorBufferInfo bufferInfo = {};
-                    bufferInfo.range = VK_WHOLE_SIZE;
-                    bufferInfo.buffer = (VkBuffer) a.buffer;
+                    vk::DescriptorBufferInfo bufferInfo;
+                    bufferInfo.setRange(VK_WHOLE_SIZE)
+                            .setBuffer(a.buffer);
 
                     bufferList.push_back(bufferInfo);
                     break;
                 }
 
                 case vk::DescriptorType::eSampler: {
-                    VkDescriptorImageInfo samplerInfo = {};
-                    samplerInfo.sampler = (VkSampler) a.sampler;
+                    vk::DescriptorImageInfo samplerInfo;
+                    samplerInfo.setSampler(a.sampler);
 
                     imageList.push_back(samplerInfo);
                     break;
@@ -562,26 +561,24 @@ namespace clspv_utils {
         // picking up image and buffer infos in order.
         //
 
-        std::vector<VkWriteDescriptorSet> writeSets;
+        std::vector<vk::WriteDescriptorSet> writeSets;
         auto nextImage = imageList.begin();
         auto nextBuffer = bufferList.begin();
-
 
         //
         // Update the literal samplers' descriptor set
         //
 
-        VkWriteDescriptorSet literalSamplerSet = {};
-        literalSamplerSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        literalSamplerSet.dstSet = (VkDescriptorSet) literalSamplerDescSet;
-        literalSamplerSet.dstBinding = 0;
-        literalSamplerSet.descriptorCount = 1;
-        literalSamplerSet.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+        vk::WriteDescriptorSet literalSamplerSet;
+        literalSamplerSet.setDstSet(literalSamplerDescSet)
+                .setDstBinding(0)
+                .setDescriptorCount(1)
+                .setDescriptorType(vk::DescriptorType::eSampler);
 
         assert(mLiteralSamplers.empty() || literalSamplerDescSet);
 
         for (auto s : mLiteralSamplers) {
-            literalSamplerSet.pImageInfo = &(*nextImage);
+            literalSamplerSet.setPImageInfo(&(*nextImage));
             ++nextImage;
 
             writeSets.push_back(literalSamplerSet);
@@ -593,11 +590,10 @@ namespace clspv_utils {
         // Update the kernel's argument descriptor set
         //
 
-        VkWriteDescriptorSet argSet = {};
-        argSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        argSet.dstSet = (VkDescriptorSet) argumentDescSet;
-        argSet.dstBinding = 0;
-        argSet.descriptorCount = 1;
+        vk::WriteDescriptorSet argSet;
+        argSet.setDstSet(argumentDescSet)
+                .setDstBinding(0)
+                .setDescriptorCount(1);
 
         assert(mArguments.empty() || argumentDescSet);
 
@@ -605,20 +601,20 @@ namespace clspv_utils {
             switch (a.type) {
                 case vk::DescriptorType::eStorageImage:
                 case vk::DescriptorType::eSampledImage:
-                    argSet.descriptorType = (VkDescriptorType) a.type;
-                    argSet.pImageInfo = &(*nextImage);
+                    argSet.setDescriptorType(a.type)
+                            .setPImageInfo(&(*nextImage));
                     ++nextImage;
                     break;
 
                 case vk::DescriptorType::eStorageBuffer:
-                    argSet.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-                    argSet.pBufferInfo = &(*nextBuffer);
+                    argSet.setDescriptorType(vk::DescriptorType::eStorageBuffer)
+                            .setPBufferInfo(&(*nextBuffer));
                     ++nextBuffer;
                     break;
 
                 case vk::DescriptorType::eSampler:
-                    argSet.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
-                    argSet.pImageInfo = &(*nextImage);
+                    argSet.setDescriptorType(vk::DescriptorType::eSampler)
+                            .setPImageInfo(&(*nextImage));
                     ++nextImage;
                     break;
 
@@ -634,7 +630,7 @@ namespace clspv_utils {
         //
         // Do the actual descriptor set updates
         //
-        vkUpdateDescriptorSets(mDevice, writeSets.size(), writeSets.data(), 0, nullptr);
+        mDevice.updateDescriptorSets(writeSets, nullptr);
     }
 
     void kernel_invocation::fillCommandBuffer(const kernel&                 inKernel,

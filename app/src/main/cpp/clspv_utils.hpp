@@ -123,8 +123,8 @@ namespace clspv_utils {
 
     class kernel_invocation {
     public:
-        kernel_invocation(VkDevice              device,
-                          VkCommandPool         cmdPool,
+        kernel_invocation(vk::Device                                device,
+                          vk::CommandPool                           cmdPool,
                           const VkPhysicalDeviceMemoryProperties&   memoryProperties);
 
         ~kernel_invocation();
@@ -160,8 +160,7 @@ namespace clspv_utils {
         };
 
     private:
-        VkDevice                            mDevice;
-        VkCommandPool                       mCmdPool;
+        vk::Device                          mDevice;
         vk::UniqueCommandBuffer             mCommand;
         VkPhysicalDeviceMemoryProperties    mMemoryProperties;
 
@@ -177,7 +176,7 @@ namespace clspv_utils {
 
     template <typename T>
     void kernel_invocation::addPodArgument(const T& pod) {
-        vulkan_utils::buffer scalar_args(mDevice, mMemoryProperties, sizeof(T));
+        vulkan_utils::buffer scalar_args((VkDevice) mDevice, mMemoryProperties, sizeof(T));
         mPodBuffers.push_back(scalar_args);
 
         {
