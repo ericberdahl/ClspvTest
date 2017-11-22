@@ -329,12 +329,9 @@ namespace clspv_utils {
         void pipeline::reset() {
             mPipeline.reset();
 
-            // NULL out cached descriptors
             mArgumentsDescriptor = nullptr;
             mLiteralSamplerDescriptor = nullptr;
             mDescriptors.clear();
-
-            mDescriptorPool = VK_NULL_HANDLE;
 
             mPipelineLayout.reset();
 
@@ -384,7 +381,6 @@ namespace clspv_utils {
             result.mDescriptorLayouts = create_descriptor_layouts((VkDevice) mDevice, mSpvMap, entryPoint);
 
             result.mPipelineLayout = create_pipeline_layout(mDevice, result.mDescriptorLayouts);
-            result.mDescriptorPool = (VkDescriptorPool) mDescriptorPool;
             result.mDescriptors = allocate_descriptor_sets(mDevice, mDescriptorPool,
                                                            result.mDescriptorLayouts);
 
