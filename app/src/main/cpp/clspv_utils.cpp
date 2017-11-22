@@ -55,7 +55,7 @@ namespace clspv_utils {
             return result;
         }
 
-        vk::UniqueShaderModule create_shader(const vk::Device& device, const std::string& spvFilename) {
+        vk::UniqueShaderModule create_shader(vk::Device device, const std::string& spvFilename) {
             std::unique_ptr<std::FILE, decltype(&std::fclose)> spv_file(AndroidFopen(spvFilename.c_str(), "rb"),
                                                                         &std::fclose);
             if (!spv_file) {
@@ -120,7 +120,7 @@ namespace clspv_utils {
         }
 
         VkDescriptorSetLayout create_descriptor_set_layout(
-                const vk::Device&                       device,
+                vk::Device                              device,
                 const std::vector<VkDescriptorType>&    descriptorTypes) {
             std::vector<vk::DescriptorSetLayoutBinding> bindingSet;
 
