@@ -58,11 +58,8 @@ namespace clspv_utils {
         };
 
         struct pipeline {
-            pipeline() : mDevice(VK_NULL_HANDLE) {};
-
             void    reset();
 
-            VkDevice                                mDevice;
             std::vector<vk::UniqueDescriptorSetLayout>  mDescriptorLayouts;
             vk::UniquePipelineLayout                    mPipelineLayout;
             std::vector<vk::UniqueDescriptorSet>        mDescriptors;

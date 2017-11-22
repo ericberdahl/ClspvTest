@@ -114,7 +114,7 @@ namespace clspv_utils {
 
         vk::UniqueDescriptorSetLayout create_descriptor_set_layout(
                 vk::Device                              device,
-                const std::vector<VkDescriptorType>&    descriptorTypes) {
+                const std::vector<vk::DescriptorType>&  descriptorTypes) {
             std::vector<vk::DescriptorSetLayoutBinding> bindingSet;
 
             vk::DescriptorSetLayoutBinding binding;
@@ -123,7 +123,7 @@ namespace clspv_utils {
                     .setBinding(0);
 
             for (auto type : descriptorTypes) {
-                binding.descriptorType = (vk::DescriptorType) type;
+                binding.descriptorType = type;
                 bindingSet.push_back(binding);
 
                 ++binding.binding;
@@ -145,13 +145,13 @@ namespace clspv_utils {
 
             assert(!entryPoint.empty());
 
-            std::vector<VkDescriptorType> descriptorTypes;
+            std::vector<vk::DescriptorType> descriptorTypes;
 
             if (!spvMap.samplers.empty()) {
                 assert(0 == spvMap.samplers_desc_set);
 
                 descriptorTypes.clear();
-                descriptorTypes.resize(spvMap.samplers.size(), VK_DESCRIPTOR_TYPE_SAMPLER);
+                descriptorTypes.resize(spvMap.samplers.size(), vk::DescriptorType::eSampler);
                 result.push_back(create_descriptor_set_layout(device, descriptorTypes));
             }
 
@@ -168,24 +168,24 @@ namespace clspv_utils {
                     // ignore any argument not in offset 0
                     if (0 != ka.offset) continue;
 
-                    VkDescriptorType argType;
+                    vk::DescriptorType argType;
 
                     switch (ka.kind) {
                         case details::spv_map::arg::kind_pod:
                         case details::spv_map::arg::kind_buffer:
-                            argType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+                            argType = vk::DescriptorType::eStorageBuffer;
                             break;
 
                         case details::spv_map::arg::kind_ro_image:
-                            argType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+                            argType = vk::DescriptorType::eSampledImage;
                             break;
 
                         case details::spv_map::arg::kind_wo_image:
-                            argType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+                            argType = vk::DescriptorType::eStorageImage;
                             break;
 
                         case details::spv_map::arg::kind_sampler:
-                            argType = VK_DESCRIPTOR_TYPE_SAMPLER;
+                            argType = vk::DescriptorType::eSampler;
                             break;
 
                         default:
@@ -339,8 +339,6 @@ namespace clspv_utils {
 
             mPipelineLayout.reset();
             mDescriptorLayouts.clear();
-
-            mDevice = VK_NULL_HANDLE;
         }
 
     } // namespace details
@@ -376,68 +374,61 @@ namespace clspv_utils {
     details::pipeline kernel_module::createPipeline(const std::string&         entryPoint,
                                                     const WorkgroupDimensions& work_group_sizes) const {
         details::pipeline result;
-        try {
-            result.mDevice = (VkDevice) mDevice;
-            result.mDescriptorLayouts = create_descriptor_layouts(mDevice, mSpvMap, entryPoint);
 
-            result.mPipelineLayout = create_pipeline_layout(mDevice, result.mDescriptorLayouts);
-            result.mDescriptors = allocate_descriptor_sets(mDevice, mDescriptorPool,
-                                                           result.mDescriptorLayouts);
+        result.mDescriptorLayouts = create_descriptor_layouts(mDevice, mSpvMap, entryPoint);
+
+        result.mPipelineLayout = create_pipeline_layout(mDevice, result.mDescriptorLayouts);
+        result.mDescriptors = allocate_descriptor_sets(mDevice, mDescriptorPool,
+                                                       result.mDescriptorLayouts);
 
 
-            if (-1 != mSpvMap.samplers_desc_set) {
-                result.mLiteralSamplerDescriptor = *result.mDescriptors[mSpvMap.samplers_desc_set];
-            }
-
-            const auto kernel_arg_map = mSpvMap.findKernel(entryPoint);
-            if (kernel_arg_map && -1 != kernel_arg_map->descriptor_set) {
-                result.mArgumentsDescriptor = *result.mDescriptors[kernel_arg_map->descriptor_set];
-            }
-
-            const unsigned int num_workgroup_sizes = 3;
-            const int32_t workGroupSizes[num_workgroup_sizes] = {
-                    work_group_sizes.x,
-                    work_group_sizes.y,
-                    1
-            };
-            const vk::SpecializationMapEntry specializationEntries[num_workgroup_sizes] = {
-                    {
-                            0,                          // specialization constant 0 - workgroup size X
-                            0 * sizeof(int32_t),          // offset - start of workGroupSizes array
-                            sizeof(workGroupSizes[0])   // sizeof the first element
-                    },
-                    {
-                            1,                          // specialization constant 1 - workgroup size Y
-                            1 * sizeof(int32_t),            // offset - one element into the array
-                            sizeof(workGroupSizes[1])   // sizeof the second element
-                    },
-                    {
-                            2,                          // specialization constant 2 - workgroup size Z
-                            2 * sizeof(int32_t),          // offset - two elements into the array
-                            sizeof(workGroupSizes[2])   // sizeof the second element
-                    }
-            };
-            vk::SpecializationInfo specializationInfo;
-            specializationInfo.setMapEntryCount(num_workgroup_sizes)
-                    .setPMapEntries(specializationEntries)
-                    .setDataSize(sizeof(workGroupSizes))
-                    .setPData(workGroupSizes);
-
-            vk::ComputePipelineCreateInfo createInfo;
-            createInfo.setLayout(*result.mPipelineLayout)
-                    .stage.setStage(vk::ShaderStageFlagBits::eCompute)
-                    .setModule(*mShaderModule)
-                    .setPName(entryPoint.c_str())
-                    .setPSpecializationInfo(&specializationInfo);
-
-            auto pipelines = mDevice.createComputePipelinesUnique(vk::PipelineCache(), createInfo);
-            result.mPipeline = std::move(pipelines[0]);
+        if (-1 != mSpvMap.samplers_desc_set) {
+            result.mLiteralSamplerDescriptor = *result.mDescriptors[mSpvMap.samplers_desc_set];
         }
-        catch(...)
-        {
-            result.reset();
-            throw;
+
+        const auto kernel_arg_map = mSpvMap.findKernel(entryPoint);
+        if (kernel_arg_map && -1 != kernel_arg_map->descriptor_set) {
+            result.mArgumentsDescriptor = *result.mDescriptors[kernel_arg_map->descriptor_set];
         }
+
+        const unsigned int num_workgroup_sizes = 3;
+        const int32_t workGroupSizes[num_workgroup_sizes] = {
+                work_group_sizes.x,
+                work_group_sizes.y,
+                1
+        };
+        const vk::SpecializationMapEntry specializationEntries[num_workgroup_sizes] = {
+                {
+                        0,                          // specialization constant 0 - workgroup size X
+                        0 * sizeof(int32_t),          // offset - start of workGroupSizes array
+                        sizeof(workGroupSizes[0])   // sizeof the first element
+                },
+                {
+                        1,                          // specialization constant 1 - workgroup size Y
+                        1 * sizeof(int32_t),            // offset - one element into the array
+                        sizeof(workGroupSizes[1])   // sizeof the second element
+                },
+                {
+                        2,                          // specialization constant 2 - workgroup size Z
+                        2 * sizeof(int32_t),          // offset - two elements into the array
+                        sizeof(workGroupSizes[2])   // sizeof the second element
+                }
+        };
+        vk::SpecializationInfo specializationInfo;
+        specializationInfo.setMapEntryCount(num_workgroup_sizes)
+                .setPMapEntries(specializationEntries)
+                .setDataSize(sizeof(workGroupSizes))
+                .setPData(workGroupSizes);
+
+        vk::ComputePipelineCreateInfo createInfo;
+        createInfo.setLayout(*result.mPipelineLayout)
+                .stage.setStage(vk::ShaderStageFlagBits::eCompute)
+                .setModule(*mShaderModule)
+                .setPName(entryPoint.c_str())
+                .setPSpecializationInfo(&specializationInfo);
+
+        auto pipelines = mDevice.createComputePipelinesUnique(vk::PipelineCache(), createInfo);
+        result.mPipeline = std::move(pipelines[0]);
 
         return result;
     }
@@ -453,7 +444,6 @@ namespace clspv_utils {
     }
 
     kernel::~kernel() {
-        mPipeline.reset();
     }
 
     void kernel::bindCommand(VkCommandBuffer command) const {
