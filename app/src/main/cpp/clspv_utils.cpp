@@ -208,18 +208,13 @@ namespace clspv_utils {
             return result;
         }
 
-        details::pipeline_layout create_pipeline_layout(vk::Device                                  device,
+        vk::UniquePipelineLayout create_pipeline_layout(vk::Device                                  device,
                                                         const std::vector<VkDescriptorSetLayout>&   descriptors) {
-            details::pipeline_layout result;
-            result.device = (VkDevice) device;
-
             vk::PipelineLayoutCreateInfo createInfo;
             createInfo.setSetLayoutCount(descriptors.size())
                     .setPSetLayouts(descriptors.size() ? (vk::DescriptorSetLayout*) descriptors.data() : nullptr);
 
-            result.pipeline = device.createPipelineLayoutUnique(createInfo);
-
-            return result;
+            return device.createPipelineLayoutUnique(createInfo);
         }
 
     } // anonymous namespace
@@ -340,41 +335,11 @@ namespace clspv_utils {
             return (kernel == kernels.end() ? nullptr : &(*kernel));
         }
 
-        pipeline_layout::pipeline_layout(pipeline_layout&& other) :
-                pipeline_layout()
-        {
-            swap(other);
-        }
-
-        pipeline_layout::~pipeline_layout() {
-            reset();
-        }
-
-        pipeline_layout& pipeline_layout::operator=(pipeline_layout&& other)
-        {
-            swap(other);
-            return *this;
-        }
-
-
-        void pipeline_layout::reset() {
-            pipeline.reset();
-
-            device = VK_NULL_HANDLE;
-        }
-
-        void pipeline_layout::swap(pipeline_layout& other) {
-            using std::swap;
-
-            swap(device, other.device);
-            swap(pipeline, other.pipeline);
-        }
-
         void pipeline::reset() {
             if (mPipeline) {
-                assert(VK_NULL_HANDLE != mPipelineLayout.device);
+                assert(VK_NULL_HANDLE != mDevice);
 
-                vkDestroyPipeline(mPipelineLayout.device, mPipeline, NULL);
+                vkDestroyPipeline(mDevice, mPipeline, NULL);
                 mPipeline = VK_NULL_HANDLE;
             }
 
@@ -383,9 +348,9 @@ namespace clspv_utils {
             mLiteralSamplerDescriptor = VK_NULL_HANDLE;
 
             if (!mDescriptors.empty()) {
-                assert(VK_NULL_HANDLE != mPipelineLayout.device);
+                assert(VK_NULL_HANDLE != mDevice);
 
-                VkResult U_ASSERT_ONLY res = vkFreeDescriptorSets(mPipelineLayout.device,
+                VkResult U_ASSERT_ONLY res = vkFreeDescriptorSets(mDevice,
                                                                   mDescriptorPool,
                                                                   mDescriptors.size(),
                                                                   mDescriptors.data());
@@ -395,10 +360,11 @@ namespace clspv_utils {
             }
 
             for (auto dsl : mDescriptorLayouts) {
-                vkDestroyDescriptorSetLayout(mPipelineLayout.device, dsl, nullptr);
+                vkDestroyDescriptorSetLayout(mDevice, dsl, nullptr);
             }
             mDescriptorLayouts.clear();
 
+            mDevice = VK_NULL_HANDLE;
             mDescriptorPool = VK_NULL_HANDLE;
             mPipelineLayout.reset();
         }
@@ -437,6 +403,7 @@ namespace clspv_utils {
                                                     const WorkgroupDimensions& work_group_sizes) const {
         details::pipeline result;
         try {
+            result.mDevice = (VkDevice) mDevice;
             result.mDescriptorLayouts = create_descriptor_layouts((VkDevice) mDevice, mSpvMap, entryPoint);
 
             result.mPipelineLayout = create_pipeline_layout(mDevice, result.mDescriptorLayouts);
@@ -484,7 +451,7 @@ namespace clspv_utils {
                     .setPData(workGroupSizes);
 
             vk::ComputePipelineCreateInfo createInfo;
-            createInfo.setLayout(*result.mPipelineLayout.pipeline)
+            createInfo.setLayout(*result.mPipelineLayout)
                     .stage.setStage(vk::ShaderStageFlagBits::eCompute)
                     .setModule(*mShaderModule)
                     .setPName(entryPoint.c_str())
@@ -520,7 +487,7 @@ namespace clspv_utils {
         vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_COMPUTE, mPipeline.mPipeline);
 
         vkCmdBindDescriptorSets(command, VK_PIPELINE_BIND_POINT_COMPUTE,
-                                (VkPipelineLayout) *mPipeline.mPipelineLayout.pipeline,
+                                (VkPipelineLayout) *mPipeline.mPipelineLayout,
                                 0,
                                 mPipeline.mDescriptors.size(), mPipeline.mDescriptors.data(),
                                 0, NULL);
