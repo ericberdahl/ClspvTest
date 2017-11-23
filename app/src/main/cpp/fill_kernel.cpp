@@ -6,10 +6,10 @@
 
 namespace fill_kernel {
 
-    void invoke(const clspv_utils::kernel_module &module,
-                const clspv_utils::kernel &kernel,
-                const sample_info &info,
-                const std::vector<VkSampler> &samplers,
+    void invoke(const clspv_utils::kernel_module&   module,
+                const clspv_utils::kernel&          kernel,
+                const sample_info&                  info,
+                vk::ArrayProxy<const vk::Sampler>   samplers,
                 VkBuffer dst_buffer,
                 int pitch,
                 int device_format,
@@ -54,17 +54,17 @@ namespace fill_kernel {
         clspv_utils::kernel_invocation invocation(*info.device, *info.cmd_pool,
                                                   info.memory_properties);
 
-        invocation.addLiteralSamplers(samplers.begin(), samplers.end());
+        invocation.addLiteralSamplers(samplers);
         invocation.addBufferArgument(dst_buffer);
         invocation.addPodArgument(scalars);
         invocation.run(info.graphics_queue, kernel, num_workgroups);
     }
 
-    test_utils::Results test_series(const clspv_utils::kernel_module&  module,
-                                    const clspv_utils::kernel&         kernel,
-                                    const sample_info&                 info,
-                                    const std::vector<VkSampler>&      samplers,
-                                    const test_utils::options&         opts) {
+    test_utils::Results test_series(const clspv_utils::kernel_module&   module,
+                                    const clspv_utils::kernel&          kernel,
+                                    const sample_info&                  info,
+                                    vk::ArrayProxy<const vk::Sampler>   samplers,
+                                    const test_utils::options&          opts) {
         const test_utils::test_kernel_fn tests[] = {
                 test<gpu_types::float4>,
                 test<gpu_types::half4>,

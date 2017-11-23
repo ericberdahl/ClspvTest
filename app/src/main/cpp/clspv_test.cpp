@@ -111,51 +111,46 @@ void my_init_descriptor_pool(struct sample_info &info) {
     info.desc_pool = info.device->createDescriptorPoolUnique(createInfo);
 }
 
-VkSampler create_compatible_sampler(VkDevice device, int opencl_flags) {
-    typedef std::pair<int,VkSamplerAddressMode> address_mode_map;
+vk::UniqueSampler create_compatible_sampler(vk::Device device, int opencl_flags) {
+    typedef std::pair<int,vk::SamplerAddressMode> address_mode_map;
     const address_mode_map address_mode_translator[] = {
-            { CLK_ADDRESS_NONE, VK_SAMPLER_ADDRESS_MODE_REPEAT },
-            { CLK_ADDRESS_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE},
-            { CLK_ADDRESS_CLAMP, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER },
-            { CLK_ADDRESS_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT },
-            { CLK_ADDRESS_MIRRORED_REPEAT, VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT }
+            { CLK_ADDRESS_NONE, vk::SamplerAddressMode::eRepeat },
+            { CLK_ADDRESS_CLAMP_TO_EDGE, vk::SamplerAddressMode::eClampToEdge },
+            { CLK_ADDRESS_CLAMP, vk::SamplerAddressMode::eClampToBorder },
+            { CLK_ADDRESS_REPEAT, vk::SamplerAddressMode::eRepeat },
+            { CLK_ADDRESS_MIRRORED_REPEAT, vk::SamplerAddressMode::eMirroredRepeat }
     };
 
-    const VkFilter filter = ((opencl_flags & CLK_FILTER_MASK) == CLK_FILTER_LINEAR ?
-                             VK_FILTER_LINEAR :
-                             VK_FILTER_NEAREST);
-    const VkBool32 unnormalizedCoordinates = ((opencl_flags & CLK_NORMALIZED_COORDS_MASK) == CLK_NORMALIZED_COORDS_FALSE ? VK_FALSE : VK_TRUE);
+    const vk::Filter filter = ((opencl_flags & CLK_FILTER_MASK) == CLK_FILTER_LINEAR ?
+                             vk::Filter::eLinear :
+                             vk::Filter::eNearest);
+    const vk::Bool32 unnormalizedCoordinates = ((opencl_flags & CLK_NORMALIZED_COORDS_MASK) == CLK_NORMALIZED_COORDS_FALSE ? VK_FALSE : VK_TRUE);
 
     const auto found_map = std::find_if(std::begin(address_mode_translator), std::end(address_mode_translator), [&opencl_flags](const address_mode_map& am) {
         return (am.first == (opencl_flags & CLK_ADDRESS_MASK));
     });
-    const VkSamplerAddressMode addressMode = (found_map == std::end(address_mode_translator) ? VK_SAMPLER_ADDRESS_MODE_REPEAT : found_map->second);
+    const vk::SamplerAddressMode addressMode = (found_map == std::end(address_mode_translator) ? vk::SamplerAddressMode::eRepeat : found_map->second);
 
-    VkSamplerCreateInfo samplerCreateInfo = {};
-    samplerCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-    samplerCreateInfo.magFilter = filter;
-    samplerCreateInfo.minFilter = filter ;
-    samplerCreateInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-    samplerCreateInfo.addressModeU = addressMode;
-    samplerCreateInfo.addressModeV = samplerCreateInfo.addressModeU;
-    samplerCreateInfo.addressModeW = samplerCreateInfo.addressModeU;
-    samplerCreateInfo.anisotropyEnable = VK_FALSE;
-    samplerCreateInfo.compareEnable = VK_FALSE;
-    samplerCreateInfo.unnormalizedCoordinates = unnormalizedCoordinates;
+    vk::SamplerCreateInfo samplerCreateInfo;
+    samplerCreateInfo.setMagFilter(filter)
+            .setMinFilter(filter)
+            .setMipmapMode(vk::SamplerMipmapMode::eNearest)
+            .setAddressModeU(addressMode)
+            .setAddressModeV(addressMode)
+            .setAddressModeW(addressMode)
+            .setAnisotropyEnable(VK_FALSE)
+            .setCompareEnable(VK_FALSE)
+            .setUnnormalizedCoordinates(unnormalizedCoordinates);
 
-    VkSampler result = VK_NULL_HANDLE;
-    vulkan_utils::throwIfNotSuccess(vkCreateSampler(device, &samplerCreateInfo, NULL, &result),
-                                    "vkCreateSampler");
-
-    return result;
+    return device.createSamplerUnique(samplerCreateInfo);
 }
 
 /* ============================================================================================== */
 
-void invoke_copybuffertoimage_kernel(const clspv_utils::kernel_module&   module,
-                                     const clspv_utils::kernel&          kernel,
+void invoke_copybuffertoimage_kernel(const clspv_utils::kernel_module&  module,
+                                     const clspv_utils::kernel&         kernel,
                                      const sample_info& info,
-                                  const std::vector<VkSampler>& samplers,
+                                     vk::ArrayProxy<const vk::Sampler>  samplers,
                                   VkBuffer  src_buffer,
                                   VkImageView   dst_image,
                                   int src_offset,
@@ -203,7 +198,7 @@ void invoke_copybuffertoimage_kernel(const clspv_utils::kernel_module&   module,
 
     clspv_utils::kernel_invocation invocation(*info.device, *info.cmd_pool, info.memory_properties);
 
-    invocation.addLiteralSamplers(samplers.begin(), samplers.end());
+    invocation.addLiteralSamplers(samplers);
     invocation.addBufferArgument(src_buffer);
     invocation.addWriteOnlyImageArgument(dst_image);
     invocation.addPodArgument(scalars);
@@ -211,10 +206,10 @@ void invoke_copybuffertoimage_kernel(const clspv_utils::kernel_module&   module,
     invocation.run(info.graphics_queue, kernel, num_workgroups);
 }
 
-void invoke_copyimagetobuffer_kernel(const clspv_utils::kernel_module&   module,
-                                     const clspv_utils::kernel&          kernel,
+void invoke_copyimagetobuffer_kernel(const clspv_utils::kernel_module&  module,
+                                     const clspv_utils::kernel&         kernel,
                                      const sample_info& info,
-                                  const std::vector<VkSampler>& samplers,
+                                     vk::ArrayProxy<const vk::Sampler>  samplers,
                                   VkImageView src_image,
                                   VkBuffer dst_buffer,
                                   int dst_offset,
@@ -258,7 +253,7 @@ void invoke_copyimagetobuffer_kernel(const clspv_utils::kernel_module&   module,
 
     clspv_utils::kernel_invocation invocation(*info.device, *info.cmd_pool, info.memory_properties);
 
-    invocation.addLiteralSamplers(samplers.begin(), samplers.end());
+    invocation.addLiteralSamplers(samplers);
     invocation.addReadOnlyImageArgument(src_image);
     invocation.addBufferArgument(dst_buffer);
     invocation.addPodArgument(scalars);
@@ -269,7 +264,7 @@ void invoke_copyimagetobuffer_kernel(const clspv_utils::kernel_module&   module,
 std::tuple<int,int,int> invoke_localsize_kernel(const clspv_utils::kernel_module&   module,
                                                 const clspv_utils::kernel&          kernel,
                                                 const sample_info&                  info,
-                                                const std::vector<VkSampler>&       samplers) {
+                                                vk::ArrayProxy<const vk::Sampler>   samplers) {
     struct scalar_args {
         int outWorkgroupX;  // offset 0
         int outWorkgroupY;  // offset 4
@@ -302,11 +297,11 @@ std::tuple<int,int,int> invoke_localsize_kernel(const clspv_utils::kernel_module
 
 /* ============================================================================================== */
 
-test_utils::Results test_readlocalsize(const clspv_utils::kernel_module& module,
-                                       const clspv_utils::kernel&        kernel,
-                                       const sample_info&                info,
-                                       const std::vector<VkSampler>&     samplers,
-                                       const test_utils::options&        opts) {
+test_utils::Results test_readlocalsize(const clspv_utils::kernel_module&    module,
+                                       const clspv_utils::kernel&           kernel,
+                                       const sample_info&                   info,
+                                       vk::ArrayProxy<const vk::Sampler>    samplers,
+                                       const test_utils::options&           opts) {
     const clspv_utils::WorkgroupDimensions expected = kernel.getWorkgroupSize();
 
     const auto observed = invoke_localsize_kernel(module, kernel, info, samplers);
@@ -333,7 +328,7 @@ template <typename BufferPixelType, typename ImagePixelType>
 test_utils::Results test_copytoimage(const clspv_utils::kernel_module&  module,
                                      const clspv_utils::kernel&         kernel,
                                      const sample_info&                 info,
-                                     const std::vector<VkSampler>&      samplers,
+                                     vk::ArrayProxy<const vk::Sampler>  samplers,
                                      const test_utils::options&         opts) {
     std::string typeLabel = pixels::traits<BufferPixelType>::type_name;
     typeLabel += '-';
@@ -396,7 +391,7 @@ template <typename ImagePixelType>
 test_utils::Results test_copytoimage_series(const clspv_utils::kernel_module&   module,
                                             const clspv_utils::kernel&          kernel,
                                             const sample_info&                  info,
-                                            const std::vector<VkSampler>&       samplers,
+                                            vk::ArrayProxy<const vk::Sampler>   samplers,
                                             const test_utils::options&          opts) {
     const test_utils::test_kernel_fn tests[] = {
             test_copytoimage<gpu_types::uchar, ImagePixelType>,
@@ -418,7 +413,7 @@ test_utils::Results test_copytoimage_series(const clspv_utils::kernel_module&   
 test_utils::Results test_copytoimage_matrix(const clspv_utils::kernel_module&   module,
                                             const clspv_utils::kernel&          kernel,
                                             const sample_info&                  info,
-                                            const std::vector<VkSampler>&       samplers,
+                                            vk::ArrayProxy<const vk::Sampler>   samplers,
                                             const test_utils::options&          opts) {
     const test_utils::test_kernel_fn tests[] = {
             test_copytoimage_series<gpu_types::float4>,
@@ -445,7 +440,7 @@ template <typename BufferPixelType, typename ImagePixelType>
 test_utils::Results test_copyfromimage(const clspv_utils::kernel_module&    module,
                                        const clspv_utils::kernel&           kernel,
                                        const sample_info&                   info,
-                                       const std::vector<VkSampler>&        samplers,
+                                       vk::ArrayProxy<const vk::Sampler>    samplers,
                                        const test_utils::options&           opts) {
     std::string typeLabel = pixels::traits<BufferPixelType>::type_name;
     typeLabel += '-';
@@ -507,7 +502,7 @@ template <typename ImagePixelType>
 test_utils::Results test_copyfromimage_series(const clspv_utils::kernel_module&     module,
                                               const clspv_utils::kernel&            kernel,
                                               const sample_info&                    info,
-                                              const std::vector<VkSampler>&         samplers,
+                                              vk::ArrayProxy<const vk::Sampler>     samplers,
                                               const test_utils::options&            opts) {
     const test_utils::test_kernel_fn tests[] = {
             test_copyfromimage<gpu_types::uchar, ImagePixelType>,
@@ -529,7 +524,7 @@ test_utils::Results test_copyfromimage_series(const clspv_utils::kernel_module& 
 test_utils::Results test_copyfromimage_matrix(const clspv_utils::kernel_module&     module,
                                               const clspv_utils::kernel&            kernel,
                                               const sample_info&                    info,
-                                              const std::vector<VkSampler>&         samplers,
+                                              vk::ArrayProxy<const vk::Sampler>     samplers,
                                               const test_utils::options&            opts) {
     const test_utils::test_kernel_fn tests[] = {
             test_copyfromimage_series<gpu_types::float4>,
@@ -636,7 +631,7 @@ std::vector<test_utils::module_test_bundle> read_loadmodule_file() {
     return result;
 }
 
-test_utils::Results run_all_tests(const sample_info& info, const std::vector<VkSampler>& samplers) {
+test_utils::Results run_all_tests(const sample_info& info, vk::ArrayProxy<const vk::Sampler> samplers) {
     const test_utils::options opts = {
             false,  // logVerbose
             true,   // logIncorrect
@@ -709,23 +704,20 @@ int sample_main(int argc, char *argv[]) {
             CLK_ADDRESS_NONE            | CLK_FILTER_NEAREST    | CLK_NORMALIZED_COORDS_FALSE,
             CLK_ADDRESS_CLAMP_TO_EDGE   | CLK_FILTER_LINEAR     | CLK_NORMALIZED_COORDS_TRUE
     };
-    std::vector<VkSampler> samplers;
+    std::vector<vk::UniqueSampler> samplers;
     std::transform(std::begin(sampler_flags), std::end(sampler_flags),
                    std::back_inserter(samplers),
-                   std::bind(create_compatible_sampler, (VkDevice) *info.device, std::placeholders::_1));
+                   std::bind(create_compatible_sampler, *info.device, std::placeholders::_1));
 
 
-    const auto test_results = run_all_tests(info, samplers);
+    const auto rawSamplers = vulkan_utils::extractUniques(samplers);
+    const auto test_results = run_all_tests(info, rawSamplers);
 
     //
     // Clean up
     //
 
-    std::for_each(samplers.begin(), samplers.end(), [&info] (VkSampler s) { vkDestroySampler((VkDevice) *info.device, s, nullptr); });
-
-    // Cannot use the shader module desctruction built into the sampel framework because it is too
-    // tightly tied to the graphics pipeline (e.g. hard-coding the number and type of shaders).
-
+    samplers.clear();
     info.desc_pool.reset();
     info.cmd_pool.reset();
     info.device->waitIdle();

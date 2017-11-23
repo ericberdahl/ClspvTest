@@ -467,6 +467,10 @@ namespace clspv_utils {
         std::for_each(mPodBuffers.begin(), mPodBuffers.end(), std::mem_fun_ref(&vulkan_utils::buffer::reset));
     }
 
+    void kernel_invocation::addLiteralSamplers(vk::ArrayProxy<const vk::Sampler> samplers) {
+        mLiteralSamplers.insert(mLiteralSamplers.end(), samplers.begin(), samplers.end());
+    }
+
     void kernel_invocation::addBufferArgument(VkBuffer buf) {
         arg item;
 
@@ -513,7 +517,7 @@ namespace clspv_utils {
         //
         for (auto s : mLiteralSamplers) {
             vk::DescriptorImageInfo samplerInfo;
-            samplerInfo.setSampler(vk::Sampler(s));
+            samplerInfo.setSampler(s);
 
             imageList.push_back(samplerInfo);
         }

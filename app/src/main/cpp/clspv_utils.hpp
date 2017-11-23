@@ -129,8 +129,7 @@ namespace clspv_utils {
 
         ~kernel_invocation();
 
-        template <typename Iterator>
-        void    addLiteralSamplers(Iterator first, Iterator last);
+        void    addLiteralSamplers(vk::ArrayProxy<const vk::Sampler> samplers);
 
         void    addBufferArgument(VkBuffer buf);
         void    addReadOnlyImageArgument(VkImageView image);
@@ -164,15 +163,10 @@ namespace clspv_utils {
         vk::UniqueCommandBuffer             mCommand;
         VkPhysicalDeviceMemoryProperties    mMemoryProperties;
 
-        std::vector<VkSampler>              mLiteralSamplers;
+        std::vector<vk::Sampler>            mLiteralSamplers;
         std::vector<arg>                    mArguments;
         std::vector<vulkan_utils::buffer>   mPodBuffers;
     };
-
-    template <typename Iterator>
-    void kernel_invocation::addLiteralSamplers(Iterator first, Iterator last) {
-        mLiteralSamplers.insert(mLiteralSamplers.end(), first, last);
-    }
 
     template <typename T>
     void kernel_invocation::addPodArgument(const T& pod) {

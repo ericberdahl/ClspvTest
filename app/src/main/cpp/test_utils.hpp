@@ -129,11 +129,11 @@ namespace test_utils {
         bool logCorrect;
     };
 
-    typedef Results (*test_kernel_fn)(const clspv_utils::kernel_module &module,
-                                      const clspv_utils::kernel &kernel,
-                                      const sample_info &info,
-                                      const std::vector<VkSampler> &samplers,
-                                      const options &opts);
+    typedef Results (*test_kernel_fn)(const clspv_utils::kernel_module& module,
+                                      const clspv_utils::kernel&        kernel,
+                                      const sample_info&                info,
+                                      vk::ArrayProxy<const vk::Sampler> samplers,
+                                      const options&                    opts);
 
     struct kernel_test_map {
         std::string entry;
@@ -317,7 +317,7 @@ namespace test_utils {
                                    const clspv_utils::kernel&           kernel,
                                    test_kernel_fn                       testFn,
                                    const sample_info&                   info,
-                                   const std::vector<VkSampler>&        samplers,
+                                   vk::ArrayProxy<const vk::Sampler>    samplers,
                                    const options&                       opts);
 
     Results test_kernel_invocation(const clspv_utils::kernel_module&    module,
@@ -325,7 +325,7 @@ namespace test_utils {
                                    const test_kernel_fn*                first,
                                    const test_kernel_fn*                last,
                                    const sample_info&                   info,
-                                   const std::vector<VkSampler>&        samplers,
+                                   vk::ArrayProxy<const vk::Sampler>    samplers,
                                    const options&                       opts);
 
     Results test_kernel(const clspv_utils::kernel_module&       module,
@@ -333,13 +333,13 @@ namespace test_utils {
                         test_kernel_fn                          testFn,
                         const clspv_utils::WorkgroupDimensions& numWorkgroups,
                         const sample_info&                      info,
-                        const std::vector<VkSampler>&           samplers,
+                        vk::ArrayProxy<const vk::Sampler>       samplers,
                         const options&                          opts);
 
     Results test_module(const std::string&                  moduleName,
                         const std::vector<kernel_test_map>& kernelTests,
                         const sample_info&                  info,
-                        const std::vector<VkSampler>&       samplers,
+                        vk::ArrayProxy<const vk::Sampler>   samplers,
                         const options&                      opts);
 
 }

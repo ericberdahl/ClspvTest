@@ -15,7 +15,7 @@ namespace test_utils {
                                    const clspv_utils::kernel&           kernel,
                                    test_kernel_fn                       testFn,
                                    const sample_info&                   info,
-                                   const std::vector<VkSampler>&        samplers,
+                                   vk::ArrayProxy<const vk::Sampler>    samplers,
                                    const options&                       opts) {
         Results result;
 
@@ -43,7 +43,7 @@ namespace test_utils {
                                    const test_kernel_fn*                first,
                                    const test_kernel_fn*                last,
                                    const sample_info&                   info,
-                                   const std::vector<VkSampler>&        samplers,
+                                   vk::ArrayProxy<const vk::Sampler>    samplers,
                                    const options&                       opts) {
         Results result;
 
@@ -59,7 +59,7 @@ namespace test_utils {
                         test_kernel_fn                          testFn,
                         const clspv_utils::WorkgroupDimensions& numWorkgroups,
                         const sample_info&                      info,
-                        const std::vector<VkSampler>&           samplers,
+                        vk::ArrayProxy<const vk::Sampler>       samplers,
                         const options&                          opts) {
         return runInExceptionContext(module.getName() + "/" + entryPoint,
                                      "compiling kernel",
@@ -85,7 +85,7 @@ namespace test_utils {
     Results test_module(const std::string&                  moduleName,
                         const std::vector<kernel_test_map>& kernelTests,
                         const sample_info&                  info,
-                        const std::vector<VkSampler>&       samplers,
+                        vk::ArrayProxy<const vk::Sampler>   samplers,
                         const options&                      opts) {
         return runInExceptionContext(moduleName, "loading module", [&]() {
             Results result;

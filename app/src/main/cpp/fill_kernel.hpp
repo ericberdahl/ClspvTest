@@ -20,7 +20,7 @@ namespace fill_kernel {
     void invoke(const clspv_utils::kernel_module &module,
                 const clspv_utils::kernel &kernel,
                 const sample_info &info,
-                const std::vector<VkSampler> &samplers,
+                vk::ArrayProxy<const vk::Sampler> samplers,
                 VkBuffer dst_buffer,
                 int pitch,
                 int device_format,
@@ -30,18 +30,18 @@ namespace fill_kernel {
                 int height,
                 const gpu_types::float4 &color);
 
-    test_utils::Results test_series(const clspv_utils::kernel_module&  module,
-                                    const clspv_utils::kernel&         kernel,
-                                    const sample_info&                 info,
-                                    const std::vector<VkSampler>&      samplers,
-                                    const test_utils::options&         opts);
+    test_utils::Results test_series(const clspv_utils::kernel_module&   module,
+                                    const clspv_utils::kernel&          kernel,
+                                    const sample_info&                  info,
+                                    vk::ArrayProxy<const vk::Sampler>   samplers,
+                                    const test_utils::options&          opts);
 
         template <typename PixelType>
-    test_utils::Results test(const clspv_utils::kernel_module&     module,
-                             const clspv_utils::kernel&            kernel,
-                             const sample_info&                    info,
-                             const std::vector<VkSampler>&         samplers,
-                             const test_utils::options&            opts) {
+    test_utils::Results test(const clspv_utils::kernel_module&      module,
+                             const clspv_utils::kernel&             kernel,
+                             const sample_info&                     info,
+                             vk::ArrayProxy<const vk::Sampler>      samplers,
+                             const test_utils::options&             opts) {
         const std::string typeLabel = pixels::traits<PixelType>::type_name;
 
         std::string testLabel = "fills.spv/FillWithColorKernel/";
