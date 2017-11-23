@@ -454,7 +454,7 @@ namespace clspv_utils {
 
     kernel_invocation::kernel_invocation(vk::Device                                 device,
                                          vk::CommandPool                            cmdPool,
-                                         const VkPhysicalDeviceMemoryProperties&    memoryProperties) :
+                                         const vk::PhysicalDeviceMemoryProperties&  memoryProperties) :
             mDevice(device),
             mCommand(),
             mMemoryProperties(memoryProperties),
@@ -505,6 +505,18 @@ namespace clspv_utils {
         item.image = vk::ImageView(im);
 
         mArguments.push_back(item);
+    }
+
+    void kernel_invocation::addPodArgument(const void* pod, std::size_t sizeofPod) {
+        vulkan_utils::buffer scalar_args((VkDevice) mDevice, mMemoryProperties, sizeofPod);
+        mPodBuffers.push_back(scalar_args);
+
+        {
+            vulkan_utils::memory_map scalar_map(scalar_args);
+            memcpy(scalar_map.data, pod, sizeofPod);
+        }
+
+        addBufferArgument(scalar_args.buf);
     }
 
     void kernel_invocation::updateDescriptorSets(vk::DescriptorSet literalSamplerDescSet,

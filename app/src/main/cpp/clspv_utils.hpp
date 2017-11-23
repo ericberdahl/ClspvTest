@@ -125,7 +125,7 @@ namespace clspv_utils {
     public:
         kernel_invocation(vk::Device                                device,
                           vk::CommandPool                           cmdPool,
-                          const VkPhysicalDeviceMemoryProperties&   memoryProperties);
+                          const vk::PhysicalDeviceMemoryProperties& memoryProperties);
 
         ~kernel_invocation();
 
@@ -135,6 +135,8 @@ namespace clspv_utils {
         void    addReadOnlyImageArgument(VkImageView image);
         void    addWriteOnlyImageArgument(VkImageView image);
         void    addSamplerArgument(VkSampler samp);
+
+        void    addPodArgument(const void* pod, std::size_t sizeofPod);
 
         template <typename T>
         void    addPodArgument(const T& pod);
@@ -161,7 +163,7 @@ namespace clspv_utils {
     private:
         vk::Device                          mDevice;
         vk::UniqueCommandBuffer             mCommand;
-        VkPhysicalDeviceMemoryProperties    mMemoryProperties;
+        vk::PhysicalDeviceMemoryProperties  mMemoryProperties;
 
         std::vector<vk::Sampler>            mLiteralSamplers;
         std::vector<arg>                    mArguments;
@@ -169,16 +171,8 @@ namespace clspv_utils {
     };
 
     template <typename T>
-    void kernel_invocation::addPodArgument(const T& pod) {
-        vulkan_utils::buffer scalar_args((VkDevice) mDevice, mMemoryProperties, sizeof(T));
-        mPodBuffers.push_back(scalar_args);
-
-        {
-            vulkan_utils::memory_map scalar_map(scalar_args);
-            memcpy(scalar_map.data, &pod, sizeof(T));
-        }
-
-        addBufferArgument(scalar_args.buf);
+    inline void kernel_invocation::addPodArgument(const T& pod) {
+        addPodArgument(&pod, sizeof(pod));
     }
 }
 
