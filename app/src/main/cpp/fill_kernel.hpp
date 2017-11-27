@@ -59,7 +59,7 @@ namespace fill_kernel {
             const PixelType src_value = pixels::traits<PixelType>::translate((gpu_types::float4){ 0.0f, 0.0f, 0.0f, 0.0f });
 
             vulkan_utils::memory_map dst_map(dst_buffer);
-            auto dst_data = static_cast<PixelType*>(dst_map.data);
+            auto dst_data = static_cast<PixelType*>(dst_map.map());
             std::fill(dst_data, dst_data + (buffer_width * buffer_height), src_value);
         }
 

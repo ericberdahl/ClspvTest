@@ -26,6 +26,10 @@ namespace vulkan_utils {
 
     void throwIfNotSuccess(VkResult result, const std::string& label);
 
+    vk::UniqueDeviceMemory allocate_device_memory(vk::Device device,
+                                                  const vk::MemoryRequirements&             mem_reqs,
+                                                  const vk::PhysicalDeviceMemoryProperties& mem_props);
+
     struct device_memory {
         device_memory() : device(VK_NULL_HANDLE), mem(VK_NULL_HANDLE) {}
         device_memory(VkDevice                                  dev,
@@ -34,6 +38,8 @@ namespace vulkan_utils {
                 : device_memory() {
             allocate(dev, mem_reqs, memoryProperties);
         };
+
+        ~device_memory();
 
         void    allocate(VkDevice                                   dev,
                          const VkMemoryRequirements&                mem_reqs,
@@ -51,6 +57,8 @@ namespace vulkan_utils {
         buffer(VkDevice dev, const VkPhysicalDeviceMemoryProperties memoryProperties, VkDeviceSize num_bytes) : buffer() {
             allocate(dev, memoryProperties, num_bytes);
         };
+
+        ~buffer();
 
         void    allocate(VkDevice dev, const VkPhysicalDeviceMemoryProperties& memory_properties, VkDeviceSize num_bytes);
         void    reset();
@@ -74,6 +82,8 @@ namespace vulkan_utils {
             allocate(dev, memoryProperties, width, height, format);
         };
 
+        ~image();
+
         void    allocate(VkDevice                                   dev,
                          const VkPhysicalDeviceMemoryProperties&    memory_properties,
                          uint32_t                                   width,
@@ -86,16 +96,25 @@ namespace vulkan_utils {
         VkImageView     view;
     };
 
-    struct memory_map {
-        memory_map(VkDevice dev, VkDeviceMemory mem);
-        memory_map(const device_memory& mem) : memory_map(mem.device, mem.mem) {}
+    class memory_map {
+    public:
+        memory_map(vk::Device dev, vk::DeviceMemory mem);
+        memory_map(const device_memory& mem) : memory_map(vk::Device(mem.device), vk::DeviceMemory(mem.mem)) {}
         memory_map(const buffer& buf) : memory_map(buf.mem) {}
         memory_map(const image& im) : memory_map(im.mem) {}
+
+        memory_map(const memory_map& other) = delete;
+        memory_map& operator=(const memory_map& other) = delete;
+
         ~memory_map();
 
-        VkDevice        dev;
-        VkDeviceMemory  mem;
-        void*           data;
+        void*   map();
+        void    unmap();
+
+    private:
+        vk::Device        dev;
+        vk::DeviceMemory  mem;
+        void*             data;
     };
 }
 

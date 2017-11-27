@@ -258,8 +258,8 @@ namespace test_utils {
                        const options &opts) {
         vulkan_utils::memory_map src_map(expected);
         vulkan_utils::memory_map dst_map(observed);
-        auto src_pixels = static_cast<const ExpectedPixelType *>(src_map.data);
-        auto dst_pixels = static_cast<const ObservedPixelType *>(dst_map.data);
+        auto src_pixels = static_cast<const ExpectedPixelType *>(src_map.map());
+        auto dst_pixels = static_cast<const ObservedPixelType *>(dst_map.map());
 
         return check_results(src_pixels, dst_pixels, width, height, pitch, label, opts);
     }
@@ -309,7 +309,7 @@ namespace test_utils {
                        const char *label,
                        const options &opts) {
         vulkan_utils::memory_map map(observed);
-        auto pixels = static_cast<const ObservedPixelType *>(map.data);
+        auto pixels = static_cast<const ObservedPixelType *>(map.map());
         return check_results(pixels, width, height, pitch, expected, label, opts);
     }
 

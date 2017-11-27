@@ -31,17 +31,17 @@ void vkDestroyDebugReportCallbackEXT(
 namespace vulkan_utils {
 
     namespace {
-        uint32_t find_compatible_memory_index(const VkPhysicalDeviceMemoryProperties& memory_properties,
+        uint32_t find_compatible_memory_index(const vk::PhysicalDeviceMemoryProperties& mem_props,
                                               uint32_t   typeBits,
-                                              VkFlags    requirements_mask) {
+                                              vk::MemoryPropertyFlags   requirements_mask) {
             uint32_t result = std::numeric_limits<uint32_t>::max();
-            assert(memory_properties.memoryTypeCount < std::numeric_limits<uint32_t>::max());
+            assert(mem_props.memoryTypeCount < std::numeric_limits<uint32_t>::max());
 
             // Search memtypes to find first index with those properties
-            for (uint32_t i = 0; i < memory_properties.memoryTypeCount; i++) {
+            for (uint32_t i = 0; i < mem_props.memoryTypeCount; i++) {
                 if ((typeBits & 1) == 1) {
                     // Type is available, does it match user properties?
-                    if ((memory_properties.memoryTypes[i].propertyFlags & requirements_mask) == requirements_mask) {
+                    if ((mem_props.memoryTypes[i].propertyFlags & requirements_mask) == requirements_mask) {
                         result = i;
                         break;
                     }
@@ -59,6 +59,21 @@ namespace vulkan_utils {
         }
     }
 
+    vk::UniqueDeviceMemory allocate_device_memory(vk::Device device,
+                                                  const vk::MemoryRequirements&             mem_reqs,
+                                                  const vk::PhysicalDeviceMemoryProperties& mem_props)
+    {
+        // Allocate memory for the buffer
+        vk::MemoryAllocateInfo alloc_info;
+        alloc_info.setAllocationSize(mem_reqs.size)
+                .setMemoryTypeIndex(find_compatible_memory_index(mem_props,
+                                                                 mem_reqs.memoryTypeBits,
+                                                                 vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent));
+        assert(alloc_info.memoryTypeIndex < std::numeric_limits<uint32_t>::max() &&
+               "No mappable, coherent memory");
+        return device.allocateMemoryUnique(alloc_info);
+    }
+
     buffer::buffer(const sample_info &info, VkDeviceSize num_bytes) :
             buffer((VkDevice) *info.device, info.memory_properties, num_bytes)
     {
@@ -74,15 +89,38 @@ namespace vulkan_utils {
 
     }
 
-    memory_map::memory_map(VkDevice device, VkDeviceMemory memory) :
-            dev(device), mem(memory), data(nullptr) {
-        throwIfNotSuccess(vkMapMemory(device, memory, 0, VK_WHOLE_SIZE, 0, &data),
-                          "vkMapMemory");
+    memory_map::memory_map(vk::Device device, vk::DeviceMemory memory) :
+            dev(device),
+            mem(memory),
+            data(nullptr)
+    {
+        map();
     }
 
-    memory_map::~memory_map() {
-        if (dev && mem) {
-            vkUnmapMemory(dev, mem);
+    memory_map::~memory_map()
+    {
+        unmap();
+    }
+
+    void* memory_map::map()
+    {
+        if (!data) {
+            data = dev.mapMemory(mem, 0, VK_WHOLE_SIZE, vk::MemoryMapFlags());
+        }
+        return data;
+    }
+
+    void memory_map::unmap()
+    {
+        if (data) {
+            dev.unmapMemory(mem);
+            data = nullptr;
+        }
+    }
+
+    device_memory::~device_memory() {
+        if (device != VK_NULL_HANDLE || mem != VK_NULL_HANDLE) {
+            LOGI("device_memory was not reset");
         }
     }
 
@@ -91,20 +129,10 @@ namespace vulkan_utils {
                                  const VkPhysicalDeviceMemoryProperties &memory_properties) {
         reset();
 
-        device = dev;
+        auto memory = allocate_device_memory(vk::Device(dev), (const vk::MemoryRequirements&) mem_reqs, (const vk::PhysicalDeviceMemoryProperties&) memory_properties);
 
-        // Allocate memory for the buffer
-        VkMemoryAllocateInfo alloc_info = {};
-        alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-        alloc_info.allocationSize = mem_reqs.size;
-        alloc_info.memoryTypeIndex = find_compatible_memory_index(memory_properties,
-                                                                  mem_reqs.memoryTypeBits,
-                                                                  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                                                                  VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-        assert(alloc_info.memoryTypeIndex < std::numeric_limits<uint32_t>::max() &&
-               "No mappable, coherent memory");
-        throwIfNotSuccess(vkAllocateMemory(device, &alloc_info, NULL, &mem),
-                          "vkAllocateMemory");
+        device = dev;
+        mem = (VkDeviceMemory) memory.release();
     }
 
     void device_memory::reset() {
@@ -114,6 +142,12 @@ namespace vulkan_utils {
         }
 
         device = VK_NULL_HANDLE;
+    }
+
+    buffer::~buffer() {
+        if (buf != VK_NULL_HANDLE) {
+            LOGI("buffer was not reset");
+        }
     }
 
     void buffer::allocate(VkDevice dev,
@@ -149,6 +183,12 @@ namespace vulkan_utils {
         }
 
         mem.reset();
+    }
+
+    image::~image() {
+        if (im != VK_NULL_HANDLE) {
+            LOGI("image was not reset");
+        }
     }
 
     void image::allocate(VkDevice dev,

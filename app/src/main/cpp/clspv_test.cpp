@@ -286,7 +286,7 @@ std::tuple<int,int,int> invoke_localsize_kernel(const clspv_utils::kernel_module
     invocation.run(info.graphics_queue, kernel, num_workgroups);
 
     vulkan_utils::memory_map argMap(outArgs);
-    auto outScalars = static_cast<const scalar_args*>(argMap.data);
+    auto outScalars = static_cast<const scalar_args*>(argMap.map());
 
     const auto result = std::make_tuple(outScalars->outWorkgroupX,
                                         outScalars->outWorkgroupY,
@@ -350,14 +350,14 @@ test_utils::Results test_copytoimage(const clspv_utils::kernel_module&  module,
     {
         auto src_value = pixels::traits<BufferPixelType>::translate((gpu_types::float4){ 0.2f, 0.4f, 0.8f, 1.0f });
         vulkan_utils::memory_map src_map(src_buffer);
-        auto src_data = static_cast<decltype(src_value)*>(src_map.data);
+        auto src_data = static_cast<decltype(src_value)*>(src_map.map());
         std::fill(src_data, src_data + (buffer_width * buffer_height), src_value);
     }
 
     {
         auto dst_value = pixels::traits<ImagePixelType>::translate((gpu_types::float4){ 0.1f, 0.3f, 0.5f, 0.7f });
         vulkan_utils::memory_map dst_map(dstImage);
-        auto dst_data = static_cast<decltype(dst_value)*>(dst_map.data);
+        auto dst_data = static_cast<decltype(dst_value)*>(dst_map.map());
         std::fill(dst_data, dst_data + (buffer_width * buffer_height), dst_value);
     }
 
@@ -462,14 +462,14 @@ test_utils::Results test_copyfromimage(const clspv_utils::kernel_module&    modu
     {
         auto src_value = pixels::traits<ImagePixelType>::translate((gpu_types::float4){ 0.2f, 0.4f, 0.8f, 1.0f });
         vulkan_utils::memory_map src_map(srcImage);
-        auto src_data = static_cast<decltype(src_value)*>(src_map.data);
+        auto src_data = static_cast<decltype(src_value)*>(src_map.map());
         std::fill(src_data, src_data + (buffer_width * buffer_height), src_value);
     }
 
     {
         auto dst_value = pixels::traits<BufferPixelType>::translate((gpu_types::float4){ 0.1f, 0.3f, 0.5f, 0.7f });
         vulkan_utils::memory_map dst_map(dst_buffer);
-        auto dst_data = static_cast<decltype(dst_value)*>(dst_map.data);
+        auto dst_data = static_cast<decltype(dst_value)*>(dst_map.map());
         std::fill(dst_data, dst_data + (buffer_width * buffer_height), dst_value);
     }
 

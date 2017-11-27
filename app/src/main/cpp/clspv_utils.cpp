@@ -511,7 +511,7 @@ namespace clspv_utils {
 
         {
             vulkan_utils::memory_map scalar_map(scalar_args);
-            memcpy(scalar_map.data, pod, sizeofPod);
+            memcpy(scalar_map.map(), pod, sizeofPod);
         }
 
         addBufferArgument(scalar_args.buf);
