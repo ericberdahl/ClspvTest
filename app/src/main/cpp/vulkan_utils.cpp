@@ -91,9 +91,30 @@ namespace vulkan_utils {
         map();
     }
 
+    memory_map::memory_map(memory_map&& other) :
+            memory_map()
+    {
+        swap(other);
+    }
+
     memory_map::~memory_map()
     {
         unmap();
+    }
+
+    memory_map& memory_map::operator=(memory_map&& other)
+    {
+        swap(other);
+        return *this;
+    }
+
+    void memory_map::swap(memory_map& other)
+    {
+        using std::swap;
+
+        swap(dev, other.dev);
+        swap(mem, other.mem);
+        swap(data, other.data);
     }
 
     void* memory_map::map()
@@ -112,10 +133,30 @@ namespace vulkan_utils {
         }
     }
 
+    device_memory::device_memory(device_memory&& other) :
+            device_memory()
+    {
+        swap(other);
+    }
+
     device_memory::~device_memory() {
         if (device || mem) {
             LOGI("device_memory was not reset");
         }
+    }
+
+    device_memory& device_memory::operator=(device_memory&& other)
+    {
+        swap(other);
+        return *this;
+    }
+
+    void device_memory::swap(device_memory& other)
+    {
+        using std::swap;
+
+        swap(device, other.device);
+        swap(mem, other.mem);
     }
 
     void device_memory::allocate(vk::Device                                 dev,
@@ -138,10 +179,30 @@ namespace vulkan_utils {
         device = nullptr;
     }
 
+    buffer::buffer(buffer&& other) :
+            buffer()
+    {
+        swap(other);
+    }
+
     buffer::~buffer() {
         if (buf) {
             LOGI("buffer was not reset");
         }
+    }
+
+    buffer& buffer::operator=(buffer&& other)
+    {
+        swap(other);
+        return *this;
+    }
+
+    void buffer::swap(buffer& other)
+    {
+        using std::swap;
+
+        swap(mem, other.mem);
+        swap(buf, other.buf);
     }
 
     void buffer::allocate(vk::Device                                dev,
@@ -172,10 +233,31 @@ namespace vulkan_utils {
         mem.reset();
     }
 
+    image::image(image&& other) :
+            image()
+    {
+        swap(other);
+    }
+
     image::~image() {
         if (im) {
             LOGI("image was not reset");
         }
+    }
+
+    image& image::operator=(image&& other)
+    {
+        swap(other);
+        return *this;
+    }
+
+    void image::swap(image& other)
+    {
+        using std::swap;
+
+        swap(mem, other.mem);
+        swap(im, other.im);
+        swap(view, other.view);
     }
 
     void image::allocate(vk::Device                                 dev,

@@ -29,7 +29,8 @@ namespace vulkan_utils {
                                                   const vk::PhysicalDeviceMemoryProperties& mem_props);
 
     struct device_memory {
-        device_memory() : device(), mem() {}
+        device_memory() {}
+
         device_memory(vk::Device                                dev,
                       const vk::MemoryRequirements&             mem_reqs,
                       const vk::PhysicalDeviceMemoryProperties  mem_props)
@@ -37,7 +38,17 @@ namespace vulkan_utils {
             allocate(dev, mem_reqs, mem_props);
         };
 
+        device_memory(const device_memory& other) = delete;
+
+        device_memory(device_memory&& other);
+
         ~device_memory();
+
+        device_memory&  operator=(const device_memory& other) = delete;
+
+        device_memory&  operator=(device_memory&& other);
+
+        void    swap(device_memory& other);
 
         void    allocate(vk::Device                                 dev,
                          const vk::MemoryRequirements&              mem_reqs,
@@ -48,15 +59,31 @@ namespace vulkan_utils {
         vk::DeviceMemory  mem;
     };
 
+    inline void swap(device_memory& lhs, device_memory& rhs)
+    {
+        lhs.swap(rhs);
+    }
+
     struct buffer {
-        buffer() : mem(), buf() {}
+        buffer() {}
+
         buffer(const sample_info &info, vk::DeviceSize num_bytes);
 
         buffer(vk::Device dev, const vk::PhysicalDeviceMemoryProperties memoryProperties, vk::DeviceSize num_bytes) : buffer() {
             allocate(dev, memoryProperties, num_bytes);
         };
 
+        buffer(const buffer& other) = delete;
+
+        buffer(buffer&& other);
+
         ~buffer();
+
+        buffer& operator=(const buffer& other) = delete;
+
+        buffer& operator=(buffer&& other);
+
+        void    swap(buffer& other);
 
         void    allocate(vk::Device dev, const vk::PhysicalDeviceMemoryProperties& memory_properties, vk::DeviceSize num_bytes);
         void    reset();
@@ -65,8 +92,14 @@ namespace vulkan_utils {
         vk::Buffer      buf;
     };
 
+    inline void swap(buffer& lhs, buffer& rhs)
+    {
+        lhs.swap(rhs);
+    }
+
     struct image {
-        image() : mem(), im(), view() {}
+        image() {}
+
         image(const sample_info&  info,
               uint32_t      width,
               uint32_t      height,
@@ -80,7 +113,17 @@ namespace vulkan_utils {
             allocate(dev, memoryProperties, width, height, format);
         };
 
+        image(const image& other) = delete;
+
+        image(image&& other);
+
         ~image();
+
+        image&  operator=(const image& other) = delete;
+
+        image&  operator=(image&& other);
+
+        void    swap(image& other);
 
         void    allocate(vk::Device                                 dev,
                          const vk::PhysicalDeviceMemoryProperties&  memory_properties,
@@ -94,17 +137,34 @@ namespace vulkan_utils {
         vk::ImageView   view;
     };
 
+    inline void swap(image& lhs, image& rhs)
+    {
+        lhs.swap(rhs);
+    }
+
     class memory_map {
     public:
-        memory_map(vk::Device dev, vk::DeviceMemory mem);
+        memory_map() : data(nullptr) {}
+
+        memory_map(vk::Device device, vk::DeviceMemory memory);
+
         memory_map(const device_memory& mem) : memory_map(mem.device, mem.mem) {}
+
         memory_map(const buffer& buf) : memory_map(buf.mem) {}
+
         memory_map(const image& im) : memory_map(im.mem) {}
 
         memory_map(const memory_map& other) = delete;
-        memory_map& operator=(const memory_map& other) = delete;
+
+        memory_map(memory_map&& other);
 
         ~memory_map();
+
+        memory_map& operator=(const memory_map& other) = delete;
+
+        memory_map& operator=(memory_map&& other);
+
+        void    swap(memory_map& other);
 
         void*   map();
         void    unmap();
@@ -114,6 +174,11 @@ namespace vulkan_utils {
         vk::DeviceMemory  mem;
         void*             data;
     };
+
+    inline void swap(memory_map& lhs, memory_map& rhs)
+    {
+        lhs.swap(rhs);
+    }
 }
 
 #endif //VULKAN_UTILS_HPP

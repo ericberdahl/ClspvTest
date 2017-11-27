@@ -507,7 +507,6 @@ namespace clspv_utils {
 
     void kernel_invocation::addPodArgument(const void* pod, std::size_t sizeofPod) {
         vulkan_utils::buffer scalar_args(mDevice, mMemoryProperties, sizeofPod);
-        mPodBuffers.push_back(scalar_args);
 
         {
             vulkan_utils::memory_map scalar_map(scalar_args);
@@ -515,6 +514,7 @@ namespace clspv_utils {
         }
 
         addBufferArgument(scalar_args.buf);
+        mPodBuffers.push_back(std::move(scalar_args));
     }
 
     void kernel_invocation::updateDescriptorSets(vk::DescriptorSet literalSamplerDescSet,
