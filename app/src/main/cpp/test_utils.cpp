@@ -66,8 +66,9 @@ namespace test_utils {
                                      [&]() {
                                          Results results;
 
-                                         clspv_utils::kernel kernel((VkDevice) *info.device, module,
-                                                                    entryPoint, numWorkgroups);
+                                         clspv_utils::kernel kernel(module,
+                                                                    entryPoint,
+                                                                    numWorkgroups);
                                          results += Results::sKernelLoadSuccess;
 
                                          results += test_kernel_invocation(module,

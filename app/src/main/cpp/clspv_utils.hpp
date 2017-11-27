@@ -100,14 +100,13 @@ namespace clspv_utils {
 
     class kernel {
     public:
-        kernel(VkDevice                     device,
-               const kernel_module&         module,
+        kernel(const kernel_module&         module,
                std::string                  entryPoint,
                const WorkgroupDimensions&   workgroup_sizes);
 
         ~kernel();
 
-        void bindCommand(VkCommandBuffer command) const;
+        void bindCommand(vk::CommandBuffer command) const;
 
         std::string getEntryPoint() const { return mEntryPoint; }
         WorkgroupDimensions getWorkgroupSize() const { return mWorkgroupSizes; }

@@ -427,8 +427,7 @@ namespace clspv_utils {
         return result;
     }
 
-    kernel::kernel(VkDevice                     device,
-                   const kernel_module&         module,
+    kernel::kernel(const kernel_module&         module,
                    std::string                  entryPoint,
                    const WorkgroupDimensions&   workgroup_sizes) :
             mEntryPoint(entryPoint),
@@ -440,16 +439,16 @@ namespace clspv_utils {
     kernel::~kernel() {
     }
 
-    void kernel::bindCommand(VkCommandBuffer command) const {
-        vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_COMPUTE, (VkPipeline) *mPipeline.mPipeline);
+    void kernel::bindCommand(vk::CommandBuffer command) const {
+        command.bindPipeline(vk::PipelineBindPoint::eCompute, *mPipeline.mPipeline);
 
         auto regular = vulkan_utils::extractUniques(mPipeline.mDescriptors);
 
-        vkCmdBindDescriptorSets(command, VK_PIPELINE_BIND_POINT_COMPUTE,
-                                (VkPipelineLayout) *mPipeline.mPipelineLayout,
+        command.bindDescriptorSets(vk::PipelineBindPoint::eCompute,
+                                *mPipeline.mPipelineLayout,
                                 0,
-                                regular.size(), (const VkDescriptorSet*) regular.data(),
-                                0, NULL);
+                                regular,
+                                nullptr);
     }
 
     kernel_invocation::kernel_invocation(vk::Device                                 device,
@@ -653,7 +652,7 @@ namespace clspv_utils {
                                               const WorkgroupDimensions&    num_workgroups) {
         mCommand->begin(vk::CommandBufferBeginInfo());
 
-        inKernel.bindCommand((VkCommandBuffer) *mCommand);
+        inKernel.bindCommand(*mCommand);
 
         mCommand->dispatch(num_workgroups.x, num_workgroups.y, 1);
         mCommand->end();
