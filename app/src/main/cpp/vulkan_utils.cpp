@@ -140,8 +140,8 @@ namespace vulkan_utils {
     }
 
     device_memory::~device_memory() {
-        if (device || mem) {
-            LOGI("device_memory was not reset");
+        if (!device || !mem) {
+            LOGI("device_memory was reset");
         }
     }
 
@@ -164,18 +164,12 @@ namespace vulkan_utils {
                                  const vk::PhysicalDeviceMemoryProperties&  memory_properties) {
         reset();
 
-        auto memory = allocate_device_memory(dev, mem_reqs, memory_properties);
-
+        mem = allocate_device_memory(dev, mem_reqs, memory_properties);
         device = dev;
-        mem = memory.release();
     }
 
     void device_memory::reset() {
-        if (mem) {
-            device.freeMemory(mem);
-            mem = nullptr;
-        }
-
+        mem.reset();
         device = nullptr;
     }
 
@@ -186,8 +180,8 @@ namespace vulkan_utils {
     }
 
     buffer::~buffer() {
-        if (buf) {
-            LOGI("buffer was not reset");
+        if (!buf) {
+            LOGI("buffer was reset");
         }
     }
 
@@ -216,20 +210,16 @@ namespace vulkan_utils {
                 .setSize(inNumBytes)
                 .setSharingMode(vk::SharingMode::eExclusive);
 
-        buf = dev.createBuffer(buf_info);
+        buf = dev.createBufferUnique(buf_info);
 
-        mem.allocate(dev, dev.getBufferMemoryRequirements(buf), memory_properties);
+        mem.allocate(dev, dev.getBufferMemoryRequirements(*buf), memory_properties);
 
         // Bind the memory to the buffer object
-        dev.bindBufferMemory(buf, mem.mem, 0);
+        dev.bindBufferMemory(*buf, *mem.mem, 0);
     }
 
     void buffer::reset() {
-        if (buf) {
-            mem.device.destroyBuffer(buf);
-            buf = nullptr;
-        }
-
+        buf.reset();
         mem.reset();
     }
 
@@ -240,8 +230,8 @@ namespace vulkan_utils {
     }
 
     image::~image() {
-        if (im) {
-            LOGI("image was not reset");
+        if (!im) {
+            LOGI("image was reset");
         }
     }
 
@@ -283,36 +273,29 @@ namespace vulkan_utils {
                 .setSharingMode(vk::SharingMode::eExclusive)
                 .setInitialLayout(vk::ImageLayout::eGeneral);
 
-        im = dev.createImage(imageInfo);
+        im = dev.createImageUnique(imageInfo);
 
         // Find out what we need in order to allocate memory for the image
-        mem.allocate(dev, dev.getImageMemoryRequirements(im), memory_properties);
+        mem.allocate(dev, dev.getImageMemoryRequirements(*im), memory_properties);
 
         // Bind the memory to the image object
-        dev.bindImageMemory(im, mem.mem, 0);
+        dev.bindImageMemory(*im, *mem.mem, 0);
 
         // Allocate the image view
         vk::ImageViewCreateInfo viewInfo;
-        viewInfo.setImage(im)
+        viewInfo.setImage(*im)
                 .setViewType(vk::ImageViewType::e2D)
                 .setFormat(format)
                 .subresourceRange.setAspectMask(vk::ImageAspectFlagBits::eColor)
                                  .setLevelCount(1)
                                  .setLayerCount(1);
 
-        view = dev.createImageView(viewInfo);
+        view = dev.createImageViewUnique(viewInfo);
     }
 
     void image::reset() {
-        if (view) {
-            mem.device.destroyImageView(view);
-            view = nullptr;
-        }
-        if (im) {
-            mem.device.destroyImage(im);
-            im = nullptr;
-        }
-
+        view.reset();
+        im.reset();
         mem.reset();
     }
 

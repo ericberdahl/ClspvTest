@@ -67,7 +67,7 @@ namespace fill_kernel {
                kernel,
                info,
                samplers,
-               dst_buffer.buf, // dst_buffer
+               *dst_buffer.buf, // dst_buffer
                buffer_width,   // pitch
                pixels::traits<PixelType>::device_pixel_format, // device_format
                0, 0, // offset_x, offset_y
@@ -80,8 +80,6 @@ namespace fill_kernel {
                                                                   color,
                                                                   testLabel.c_str(),
                                                                   opts);
-
-        dst_buffer.reset();
 
         return (success ? test_utils::Results::sTestSuccess : test_utils::Results::sTestFailure);
     }

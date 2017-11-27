@@ -281,7 +281,7 @@ std::tuple<int,int,int> invoke_localsize_kernel(const clspv_utils::kernel_module
 
     clspv_utils::kernel_invocation invocation(*info.device, *info.cmd_pool, info.memory_properties);
 
-    invocation.addBufferArgument(outArgs.buf);
+    invocation.addBufferArgument(*outArgs.buf);
 
     invocation.run(info.graphics_queue, kernel, num_workgroups);
 
@@ -291,6 +291,7 @@ std::tuple<int,int,int> invoke_localsize_kernel(const clspv_utils::kernel_module
     const auto result = std::make_tuple(outScalars->outWorkgroupX,
                                         outScalars->outWorkgroupY,
                                         outScalars->outWorkgroupZ);
+
     return result;
 }
 
@@ -364,8 +365,8 @@ test_utils::Results test_copytoimage(const clspv_utils::kernel_module&  module,
     invoke_copybuffertoimage_kernel(module, kernel,
                                     info,
                                     samplers,
-                                    src_buffer.buf,
-                                    dstImage.view,
+                                    *src_buffer.buf,
+                                    *dstImage.view,
                                     0,
                                     buffer_width,
                                     pixels::traits<BufferPixelType>::cl_pixel_order,
@@ -380,9 +381,6 @@ test_utils::Results test_copytoimage(const clspv_utils::kernel_module&  module,
                                                                         buffer_height,
                                                                         testLabel.c_str(),
                                                                         opts);
-
-    dstImage.reset();
-    src_buffer.reset();
 
     return (success ? test_utils::Results::sTestSuccess : test_utils::Results::sTestFailure);
 }
@@ -476,8 +474,8 @@ test_utils::Results test_copyfromimage(const clspv_utils::kernel_module&    modu
     invoke_copyimagetobuffer_kernel(module, kernel,
                                     info,
                                     samplers,
-                                    srcImage.view,
-                                    dst_buffer.buf,
+                                    *srcImage.view,
+                                    *dst_buffer.buf,
                                     0,
                                     buffer_width,
                                     pixels::traits<BufferPixelType>::cl_pixel_order,
@@ -491,9 +489,6 @@ test_utils::Results test_copyfromimage(const clspv_utils::kernel_module&    modu
                                                                         buffer_height,
                                                                         testLabel.c_str(),
                                                                         opts);
-
-    srcImage.reset();
-    dst_buffer.reset();
 
     return (success ? test_utils::Results::sTestSuccess : test_utils::Results::sTestFailure);
 }

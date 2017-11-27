@@ -55,8 +55,8 @@ namespace vulkan_utils {
                          const vk::PhysicalDeviceMemoryProperties&  mem_props);
         void    reset();
 
-        vk::Device        device;
-        vk::DeviceMemory  mem;
+        vk::Device              device;
+        vk::UniqueDeviceMemory  mem;
     };
 
     inline void swap(device_memory& lhs, device_memory& rhs)
@@ -88,8 +88,8 @@ namespace vulkan_utils {
         void    allocate(vk::Device dev, const vk::PhysicalDeviceMemoryProperties& memory_properties, vk::DeviceSize num_bytes);
         void    reset();
 
-        device_memory   mem;
-        vk::Buffer      buf;
+        device_memory       mem;
+        vk::UniqueBuffer    buf;
     };
 
     inline void swap(buffer& lhs, buffer& rhs)
@@ -132,9 +132,9 @@ namespace vulkan_utils {
                          vk::Format                                 format);
         void    reset();
 
-        device_memory   mem;
-        vk::Image       im;
-        vk::ImageView   view;
+        device_memory       mem;
+        vk::UniqueImage     im;
+        vk::UniqueImageView view;
     };
 
     inline void swap(image& lhs, image& rhs)
@@ -148,7 +148,7 @@ namespace vulkan_utils {
 
         memory_map(vk::Device device, vk::DeviceMemory memory);
 
-        memory_map(const device_memory& mem) : memory_map(mem.device, mem.mem) {}
+        memory_map(const device_memory& mem) : memory_map(mem.device, *mem.mem) {}
 
         memory_map(const buffer& buf) : memory_map(buf.mem) {}
 

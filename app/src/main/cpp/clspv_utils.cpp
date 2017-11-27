@@ -462,7 +462,6 @@ namespace clspv_utils {
     }
 
     kernel_invocation::~kernel_invocation() {
-        std::for_each(mPodBuffers.begin(), mPodBuffers.end(), std::mem_fun_ref(&vulkan_utils::buffer::reset));
     }
 
     void kernel_invocation::addLiteralSamplers(vk::ArrayProxy<const vk::Sampler> samplers) {
@@ -513,7 +512,7 @@ namespace clspv_utils {
             memcpy(scalar_map.map(), pod, sizeofPod);
         }
 
-        addBufferArgument(scalar_args.buf);
+        addBufferArgument(*scalar_args.buf);
         mPodBuffers.push_back(std::move(scalar_args));
     }
 
