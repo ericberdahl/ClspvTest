@@ -24,8 +24,6 @@ namespace vulkan_utils {
         return result;
     };
 
-    void throwIfNotSuccess(VkResult result, const std::string& label);
-
     vk::UniqueDeviceMemory allocate_device_memory(vk::Device device,
                                                   const vk::MemoryRequirements&             mem_reqs,
                                                   const vk::PhysicalDeviceMemoryProperties& mem_props);

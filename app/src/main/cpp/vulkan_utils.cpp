@@ -53,12 +53,6 @@ namespace vulkan_utils {
         }
     }
 
-    void throwIfNotSuccess(VkResult result, const std::string& label) {
-        if (VK_SUCCESS != result) {
-            throw vk::SystemError( vk::make_error_code( vk::Result(result) ), label );
-        }
-    }
-
     vk::UniqueDeviceMemory allocate_device_memory(vk::Device device,
                                                   const vk::MemoryRequirements&             mem_reqs,
                                                   const vk::PhysicalDeviceMemoryProperties& mem_props)
