@@ -31,75 +31,75 @@ namespace vulkan_utils {
                                                   const vk::PhysicalDeviceMemoryProperties& mem_props);
 
     struct device_memory {
-        device_memory() : device(VK_NULL_HANDLE), mem(VK_NULL_HANDLE) {}
-        device_memory(VkDevice                                  dev,
-                      const VkMemoryRequirements&               mem_reqs,
-                      const VkPhysicalDeviceMemoryProperties    memoryProperties)
+        device_memory() : device(), mem() {}
+        device_memory(vk::Device                                dev,
+                      const vk::MemoryRequirements&             mem_reqs,
+                      const vk::PhysicalDeviceMemoryProperties  mem_props)
                 : device_memory() {
-            allocate(dev, mem_reqs, memoryProperties);
+            allocate(dev, mem_reqs, mem_props);
         };
 
         ~device_memory();
 
-        void    allocate(VkDevice                                   dev,
-                         const VkMemoryRequirements&                mem_reqs,
-                         const VkPhysicalDeviceMemoryProperties&    memory_properties);
+        void    allocate(vk::Device                                 dev,
+                         const vk::MemoryRequirements&              mem_reqs,
+                         const vk::PhysicalDeviceMemoryProperties&  mem_props);
         void    reset();
 
-        VkDevice        device;
-        VkDeviceMemory  mem;
+        vk::Device        device;
+        vk::DeviceMemory  mem;
     };
 
     struct buffer {
-        buffer() : mem(), buf(VK_NULL_HANDLE) {}
-        buffer(const sample_info &info, VkDeviceSize num_bytes);
+        buffer() : mem(), buf() {}
+        buffer(const sample_info &info, vk::DeviceSize num_bytes);
 
-        buffer(VkDevice dev, const VkPhysicalDeviceMemoryProperties memoryProperties, VkDeviceSize num_bytes) : buffer() {
+        buffer(vk::Device dev, const vk::PhysicalDeviceMemoryProperties memoryProperties, vk::DeviceSize num_bytes) : buffer() {
             allocate(dev, memoryProperties, num_bytes);
         };
 
         ~buffer();
 
-        void    allocate(VkDevice dev, const VkPhysicalDeviceMemoryProperties& memory_properties, VkDeviceSize num_bytes);
+        void    allocate(vk::Device dev, const vk::PhysicalDeviceMemoryProperties& memory_properties, vk::DeviceSize num_bytes);
         void    reset();
 
         device_memory   mem;
-        VkBuffer        buf;
+        vk::Buffer      buf;
     };
 
     struct image {
-        image() : mem(), im(VK_NULL_HANDLE), view(VK_NULL_HANDLE) {}
+        image() : mem(), im(), view() {}
         image(const sample_info&  info,
               uint32_t      width,
               uint32_t      height,
-              VkFormat      format);
+              vk::Format    format);
 
-        image(VkDevice dev,
-              const VkPhysicalDeviceMemoryProperties memoryProperties,
-              uint32_t                                   width,
-              uint32_t                                   height,
-              VkFormat                                   format) : image() {
+        image(vk::Device                                dev,
+              const vk::PhysicalDeviceMemoryProperties  memoryProperties,
+              uint32_t                                  width,
+              uint32_t                                  height,
+              vk::Format                                format) : image() {
             allocate(dev, memoryProperties, width, height, format);
         };
 
         ~image();
 
-        void    allocate(VkDevice                                   dev,
-                         const VkPhysicalDeviceMemoryProperties&    memory_properties,
+        void    allocate(vk::Device                                 dev,
+                         const vk::PhysicalDeviceMemoryProperties&  memory_properties,
                          uint32_t                                   width,
                          uint32_t                                   height,
-                         VkFormat                                   format);
+                         vk::Format                                 format);
         void    reset();
 
         device_memory   mem;
-        VkImage         im;
-        VkImageView     view;
+        vk::Image       im;
+        vk::ImageView   view;
     };
 
     class memory_map {
     public:
         memory_map(vk::Device dev, vk::DeviceMemory mem);
-        memory_map(const device_memory& mem) : memory_map(vk::Device(mem.device), vk::DeviceMemory(mem.mem)) {}
+        memory_map(const device_memory& mem) : memory_map(mem.device, mem.mem) {}
         memory_map(const buffer& buf) : memory_map(buf.mem) {}
         memory_map(const image& im) : memory_map(im.mem) {}
 

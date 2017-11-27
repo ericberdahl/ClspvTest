@@ -337,8 +337,8 @@ namespace clspv_utils {
 
     } // namespace details
 
-    kernel_module::kernel_module(VkDevice           device,
-                                 VkDescriptorPool   pool,
+    kernel_module::kernel_module(vk::Device         device,
+                                 vk::DescriptorPool pool,
                                  const std::string& moduleName) :
             mName(moduleName),
             mDevice(device),
@@ -469,44 +469,44 @@ namespace clspv_utils {
         mLiteralSamplers.insert(mLiteralSamplers.end(), samplers.begin(), samplers.end());
     }
 
-    void kernel_invocation::addBufferArgument(VkBuffer buf) {
+    void kernel_invocation::addBufferArgument(vk::Buffer buf) {
         arg item;
 
         item.type = vk::DescriptorType::eStorageBuffer;
-        item.buffer = vk::Buffer(buf);
+        item.buffer = buf;
 
         mArguments.push_back(item);
     }
 
-    void kernel_invocation::addSamplerArgument(VkSampler samp) {
+    void kernel_invocation::addSamplerArgument(vk::Sampler samp) {
         arg item;
 
         item.type = vk::DescriptorType::eSampler;
-        item.sampler = vk::Sampler(samp);
+        item.sampler = samp;
 
         mArguments.push_back(item);
     }
 
-    void kernel_invocation::addReadOnlyImageArgument(VkImageView im) {
+    void kernel_invocation::addReadOnlyImageArgument(vk::ImageView im) {
         arg item;
 
         item.type = vk::DescriptorType::eSampledImage;
-        item.image = vk::ImageView(im);
+        item.image = im;
 
         mArguments.push_back(item);
     }
 
-    void kernel_invocation::addWriteOnlyImageArgument(VkImageView im) {
+    void kernel_invocation::addWriteOnlyImageArgument(vk::ImageView im) {
         arg item;
 
         item.type = vk::DescriptorType::eStorageImage;
-        item.image = vk::ImageView(im);
+        item.image = im;
 
         mArguments.push_back(item);
     }
 
     void kernel_invocation::addPodArgument(const void* pod, std::size_t sizeofPod) {
-        vulkan_utils::buffer scalar_args((VkDevice) mDevice, mMemoryProperties, sizeofPod);
+        vulkan_utils::buffer scalar_args(mDevice, mMemoryProperties, sizeofPod);
         mPodBuffers.push_back(scalar_args);
 
         {

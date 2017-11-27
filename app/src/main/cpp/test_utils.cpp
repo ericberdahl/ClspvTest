@@ -91,7 +91,7 @@ namespace test_utils {
         return runInExceptionContext(moduleName, "loading module", [&]() {
             Results result;
 
-            clspv_utils::kernel_module module((VkDevice) *info.device, (VkDescriptorPool) *info.desc_pool, moduleName);
+            clspv_utils::kernel_module module(*info.device, *info.desc_pool, moduleName);
             result += Results::sTestSuccess;
 
             std::vector<std::string> entryPoints(module.getEntryPoints());

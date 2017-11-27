@@ -78,8 +78,8 @@ namespace clspv_utils {
 
     class kernel_module {
     public:
-        kernel_module(VkDevice              device,
-                      VkDescriptorPool      pool,
+        kernel_module(vk::Device            device,
+                      vk::DescriptorPool    pool,
                       const std::string&    moduleName);
 
         ~kernel_module();
@@ -130,10 +130,10 @@ namespace clspv_utils {
 
         void    addLiteralSamplers(vk::ArrayProxy<const vk::Sampler> samplers);
 
-        void    addBufferArgument(VkBuffer buf);
-        void    addReadOnlyImageArgument(VkImageView image);
-        void    addWriteOnlyImageArgument(VkImageView image);
-        void    addSamplerArgument(VkSampler samp);
+        void    addBufferArgument(vk::Buffer buf);
+        void    addReadOnlyImageArgument(vk::ImageView image);
+        void    addWriteOnlyImageArgument(vk::ImageView image);
+        void    addSamplerArgument(vk::Sampler samp);
 
         void    addPodArgument(const void* pod, std::size_t sizeofPod);
 

@@ -21,7 +21,7 @@ namespace fill_kernel {
                 const clspv_utils::kernel &kernel,
                 const sample_info &info,
                 vk::ArrayProxy<const vk::Sampler> samplers,
-                VkBuffer dst_buffer,
+                vk::Buffer dst_buffer,
                 int pitch,
                 int device_format,
                 int offset_x,

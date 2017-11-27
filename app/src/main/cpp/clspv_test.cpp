@@ -149,10 +149,10 @@ vk::UniqueSampler create_compatible_sampler(vk::Device device, int opencl_flags)
 
 void invoke_copybuffertoimage_kernel(const clspv_utils::kernel_module&  module,
                                      const clspv_utils::kernel&         kernel,
-                                     const sample_info& info,
+                                     const sample_info&                 info,
                                      vk::ArrayProxy<const vk::Sampler>  samplers,
-                                  VkBuffer  src_buffer,
-                                  VkImageView   dst_image,
+                                     vk::Buffer                         src_buffer,
+                                     vk::ImageView                      dst_image,
                                   int src_offset,
                                   int src_pitch,
                                      cl_channel_order src_channel_order,
@@ -208,10 +208,10 @@ void invoke_copybuffertoimage_kernel(const clspv_utils::kernel_module&  module,
 
 void invoke_copyimagetobuffer_kernel(const clspv_utils::kernel_module&  module,
                                      const clspv_utils::kernel&         kernel,
-                                     const sample_info& info,
+                                     const sample_info&                 info,
                                      vk::ArrayProxy<const vk::Sampler>  samplers,
-                                  VkImageView src_image,
-                                  VkBuffer dst_buffer,
+                                     vk::ImageView                      src_image,
+                                     vk::Buffer                         dst_buffer,
                                   int dst_offset,
                                   int dst_pitch,
                                      cl_channel_order dst_channel_order,
@@ -344,7 +344,7 @@ test_utils::Results test_copytoimage(const clspv_utils::kernel_module&  module,
 
     // allocate buffers and images
     vulkan_utils::buffer  src_buffer(info, buffer_size);
-    vulkan_utils::image   dstImage(info, buffer_width, buffer_height, pixels::traits<ImagePixelType>::vk_pixel_type);
+    vulkan_utils::image   dstImage(info, buffer_width, buffer_height, vk::Format(pixels::traits<ImagePixelType>::vk_pixel_type));
 
     // initialize source and destination buffers
     {
@@ -456,7 +456,7 @@ test_utils::Results test_copyfromimage(const clspv_utils::kernel_module&    modu
 
     // allocate buffers and images
     vulkan_utils::buffer  dst_buffer(info, buffer_size);
-    vulkan_utils::image   srcImage(info, buffer_width, buffer_height, pixels::traits<ImagePixelType>::vk_pixel_type);
+    vulkan_utils::image   srcImage(info, buffer_width, buffer_height, vk::Format(pixels::traits<ImagePixelType>::vk_pixel_type));
 
     // initialize source and destination buffers
     {

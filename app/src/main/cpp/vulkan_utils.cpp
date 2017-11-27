@@ -74,8 +74,8 @@ namespace vulkan_utils {
         return device.allocateMemoryUnique(alloc_info);
     }
 
-    buffer::buffer(const sample_info &info, VkDeviceSize num_bytes) :
-            buffer((VkDevice) *info.device, info.memory_properties, num_bytes)
+    buffer::buffer(const sample_info &info, vk::DeviceSize num_bytes) :
+            buffer(*info.device, info.memory_properties, num_bytes)
     {
 
     }
@@ -83,8 +83,8 @@ namespace vulkan_utils {
     image::image(const sample_info& info,
                  uint32_t           width,
                  uint32_t           height,
-                 VkFormat           format) :
-            image((VkDevice) *info.device, info.memory_properties, width, height, format)
+                 vk::Format         format) :
+            image(*info.device, info.memory_properties, width, height, format)
     {
 
     }
@@ -119,136 +119,122 @@ namespace vulkan_utils {
     }
 
     device_memory::~device_memory() {
-        if (device != VK_NULL_HANDLE || mem != VK_NULL_HANDLE) {
+        if (device || mem) {
             LOGI("device_memory was not reset");
         }
     }
 
-    void device_memory::allocate(VkDevice dev,
-                                 const VkMemoryRequirements &mem_reqs,
-                                 const VkPhysicalDeviceMemoryProperties &memory_properties) {
+    void device_memory::allocate(vk::Device                                 dev,
+                                 const vk::MemoryRequirements&              mem_reqs,
+                                 const vk::PhysicalDeviceMemoryProperties&  memory_properties) {
         reset();
 
-        auto memory = allocate_device_memory(vk::Device(dev), (const vk::MemoryRequirements&) mem_reqs, (const vk::PhysicalDeviceMemoryProperties&) memory_properties);
+        auto memory = allocate_device_memory(dev, mem_reqs, memory_properties);
 
         device = dev;
-        mem = (VkDeviceMemory) memory.release();
+        mem = memory.release();
     }
 
     void device_memory::reset() {
-        if (mem != VK_NULL_HANDLE) {
-            vkFreeMemory(device, mem, NULL);
-            mem = VK_NULL_HANDLE;
+        if (mem) {
+            device.freeMemory(mem);
+            mem = nullptr;
         }
 
-        device = VK_NULL_HANDLE;
+        device = nullptr;
     }
 
     buffer::~buffer() {
-        if (buf != VK_NULL_HANDLE) {
+        if (buf) {
             LOGI("buffer was not reset");
         }
     }
 
-    void buffer::allocate(VkDevice dev,
-                          const VkPhysicalDeviceMemoryProperties &memory_properties,
-                          VkDeviceSize inNumBytes) {
+    void buffer::allocate(vk::Device                                dev,
+                          const vk::PhysicalDeviceMemoryProperties& memory_properties,
+                          vk::DeviceSize                            inNumBytes) {
         reset();
 
         // Allocate the buffer
-        VkBufferCreateInfo buf_info = {};
-        buf_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-        buf_info.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-        buf_info.size = inNumBytes;
-        buf_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        vk::BufferCreateInfo buf_info;
+        buf_info.setUsage(vk::BufferUsageFlagBits::eStorageBuffer)
+                .setSize(inNumBytes)
+                .setSharingMode(vk::SharingMode::eExclusive);
 
-        throwIfNotSuccess(vkCreateBuffer(dev, &buf_info, NULL, &buf),
-                          "vkCreateBuffer");
+        buf = dev.createBuffer(buf_info);
 
-        // Find out what we need in order to allocate memory for the buffer
-        VkMemoryRequirements mem_reqs = {};
-        vkGetBufferMemoryRequirements(dev, buf, &mem_reqs);
-
-        mem.allocate(dev, mem_reqs, memory_properties);
+        mem.allocate(dev, dev.getBufferMemoryRequirements(buf), memory_properties);
 
         // Bind the memory to the buffer object
-        throwIfNotSuccess(vkBindBufferMemory(dev, buf, mem.mem, 0),
-                          "vkBindBufferMemory");
+        dev.bindBufferMemory(buf, mem.mem, 0);
     }
 
     void buffer::reset() {
-        if (buf != VK_NULL_HANDLE) {
-            vkDestroyBuffer(mem.device, buf, NULL);
-            buf = VK_NULL_HANDLE;
+        if (buf) {
+            mem.device.destroyBuffer(buf);
+            buf = nullptr;
         }
 
         mem.reset();
     }
 
     image::~image() {
-        if (im != VK_NULL_HANDLE) {
+        if (im) {
             LOGI("image was not reset");
         }
     }
 
-    void image::allocate(VkDevice dev,
-                         const VkPhysicalDeviceMemoryProperties &memory_properties,
-                         uint32_t width,
-                         uint32_t height,
-                         VkFormat format) {
+    void image::allocate(vk::Device                                 dev,
+                         const vk::PhysicalDeviceMemoryProperties&  memory_properties,
+                         uint32_t                                   width,
+                         uint32_t                                   height,
+                         vk::Format                                 format)
+    {
         reset();
 
-        VkImageCreateInfo imageInfo = {};
-        imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-        imageInfo.imageType = VK_IMAGE_TYPE_2D;
-        imageInfo.format = format;
-        imageInfo.extent.width = width;
-        imageInfo.extent.height = height;
-        imageInfo.extent.depth = 1;
-        imageInfo.mipLevels = 1;
-        imageInfo.arrayLayers = 1;
-        imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-        imageInfo.tiling = VK_IMAGE_TILING_LINEAR;
-        imageInfo.usage = VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT |
-                          VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-        imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-        imageInfo.initialLayout = VK_IMAGE_LAYOUT_GENERAL;
+        vk::ImageCreateInfo imageInfo;
+        imageInfo.setImageType(vk::ImageType::e2D)
+                .setFormat(format)
+                .setExtent(vk::Extent3D(width, height, 1))
+                .setMipLevels(1)
+                .setArrayLayers(1)
+                .setSamples(vk::SampleCountFlagBits::e1)
+                .setTiling(vk::ImageTiling::eLinear)
+                .setUsage(vk::ImageUsageFlagBits::eStorage |
+                                  vk::ImageUsageFlagBits::eSampled |
+                                  vk::ImageUsageFlagBits::eTransferDst |
+                                  vk::ImageUsageFlagBits::eTransferSrc)
+                .setSharingMode(vk::SharingMode::eExclusive)
+                .setInitialLayout(vk::ImageLayout::eGeneral);
 
-        throwIfNotSuccess(vkCreateImage(dev, &imageInfo, nullptr, &im),
-                          "vkCreateImage");
+        im = dev.createImage(imageInfo);
 
         // Find out what we need in order to allocate memory for the image
-        VkMemoryRequirements mem_reqs = {};
-        vkGetImageMemoryRequirements(dev, im, &mem_reqs);
-
-        mem.allocate(dev, mem_reqs, memory_properties);
+        mem.allocate(dev, dev.getImageMemoryRequirements(im), memory_properties);
 
         // Bind the memory to the image object
-        throwIfNotSuccess(vkBindImageMemory(dev, im, mem.mem, 0),
-                          "vkBindImageMemory");
+        dev.bindImageMemory(im, mem.mem, 0);
 
         // Allocate the image view
-        VkImageViewCreateInfo viewInfo = {};
-        viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        viewInfo.image = im;
-        viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-        viewInfo.format = format;
-        viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        viewInfo.subresourceRange.levelCount = 1;
-        viewInfo.subresourceRange.layerCount = 1;
+        vk::ImageViewCreateInfo viewInfo;
+        viewInfo.setImage(im)
+                .setViewType(vk::ImageViewType::e2D)
+                .setFormat(format)
+                .subresourceRange.setAspectMask(vk::ImageAspectFlagBits::eColor)
+                                 .setLevelCount(1)
+                                 .setLayerCount(1);
 
-        throwIfNotSuccess(vkCreateImageView(dev, &viewInfo, nullptr, &view),
-                          "vkCreateImageView");
+        view = dev.createImageView(viewInfo);
     }
 
     void image::reset() {
-        if (view != VK_NULL_HANDLE) {
-            vkDestroyImageView(mem.device, view, NULL);
-            view = VK_NULL_HANDLE;
+        if (view) {
+            mem.device.destroyImageView(view);
+            view = nullptr;
         }
-        if (im != VK_NULL_HANDLE) {
-            vkDestroyImage(mem.device, im, NULL);
-            im = VK_NULL_HANDLE;
+        if (im) {
+            mem.device.destroyImage(im);
+            im = nullptr;
         }
 
         mem.reset();
