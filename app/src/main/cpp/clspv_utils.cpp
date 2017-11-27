@@ -421,8 +421,7 @@ namespace clspv_utils {
                 .setPName(entryPoint.c_str())
                 .setPSpecializationInfo(&specializationInfo);
 
-        auto pipelines = mDevice.createComputePipelinesUnique(vk::PipelineCache(), createInfo);
-        result.mPipeline = std::move(pipelines[0]);
+        result.mPipeline = mDevice.createComputePipelineUnique(vk::PipelineCache(), createInfo);
 
         return result;
     }
