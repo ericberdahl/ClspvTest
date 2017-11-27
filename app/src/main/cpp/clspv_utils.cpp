@@ -96,9 +96,10 @@ namespace clspv_utils {
         }
 
         std::vector<vk::UniqueDescriptorSet> allocate_descriptor_sets(
-                vk::Device                                          device,
-                vk::DescriptorPool                                  pool,
-                const std::vector<vk::UniqueDescriptorSetLayout>&   layouts) {
+                vk::Device                                      device,
+                vk::DescriptorPool                              pool,
+                vk::ArrayProxy<vk::UniqueDescriptorSetLayout>   layouts)
+        {
             std::vector<vk::DescriptorSetLayout> rawLayouts = vulkan_utils::extractUniques(layouts);
 
             vk::DescriptorSetAllocateInfo createInfo;
@@ -110,8 +111,9 @@ namespace clspv_utils {
         }
 
         vk::UniqueDescriptorSetLayout create_descriptor_set_layout(
-                vk::Device                              device,
-                const std::vector<vk::DescriptorType>&  descriptorTypes) {
+                vk::Device                          device,
+                vk::ArrayProxy<vk::DescriptorType>  descriptorTypes)
+        {
             std::vector<vk::DescriptorSetLayoutBinding> bindingSet;
 
             vk::DescriptorSetLayoutBinding binding;
@@ -195,8 +197,8 @@ namespace clspv_utils {
             return result;
         }
 
-        vk::UniquePipelineLayout create_pipeline_layout(vk::Device                                          device,
-                                                        const std::vector<vk::UniqueDescriptorSetLayout>&   descriptors) {
+        vk::UniquePipelineLayout create_pipeline_layout(vk::Device                                      device,
+                                                        vk::ArrayProxy<vk::UniqueDescriptorSetLayout>   descriptors) {
             std::vector<vk::DescriptorSetLayout> rawLayouts = vulkan_utils::extractUniques(descriptors);
 
             vk::PipelineLayoutCreateInfo createInfo;

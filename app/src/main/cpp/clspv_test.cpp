@@ -704,7 +704,6 @@ int sample_main(int argc, char *argv[]) {
                    std::back_inserter(samplers),
                    std::bind(create_compatible_sampler, *info.device, std::placeholders::_1));
 
-
     const auto rawSamplers = vulkan_utils::extractUniques(samplers);
     const auto test_results = run_all_tests(info, rawSamplers);
 
