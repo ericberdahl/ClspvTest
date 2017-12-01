@@ -13,8 +13,6 @@
 
 #include <vulkan/vulkan.h>
 
-#include <vector>
-
 namespace fill_kernel {
 
     void invoke(const clspv_utils::kernel_module &module,

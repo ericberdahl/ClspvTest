@@ -34,6 +34,8 @@ set(CMAKE_SHARED_LINKER_FLAGS
     "${CMAKE_SHARED_LINKER_FLAGS} -u ANativeActivity_onCreate")
 
 add_library(native-activity SHARED
+    copyimagetobuffer_kernel.cpp
+    copybuffertoimage_kernel.cpp
     fill_kernel.cpp
     readlocalsize_kernel.cpp
     clspv_test.cpp
