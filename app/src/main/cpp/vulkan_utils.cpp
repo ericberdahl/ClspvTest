@@ -141,7 +141,7 @@ namespace vulkan_utils {
 
     device_memory::~device_memory() {
         if (!device || !mem) {
-            LOGI("device_memory was reset");
+            // LOGI("device_memory was reset");
         }
     }
 
@@ -181,7 +181,7 @@ namespace vulkan_utils {
 
     buffer::~buffer() {
         if (!buf) {
-            LOGI("buffer was reset");
+            // LOGI("buffer was reset");
         }
     }
 
@@ -231,7 +231,7 @@ namespace vulkan_utils {
 
     image::~image() {
         if (!im) {
-            LOGI("image was reset");
+            // LOGI("image was reset");
         }
     }
 
