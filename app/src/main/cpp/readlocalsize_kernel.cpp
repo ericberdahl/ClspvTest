@@ -27,6 +27,7 @@ namespace readlocalsize_kernel {
         clspv_utils::kernel_invocation invocation(*info.device, *info.cmd_pool,
                                                   info.memory_properties);
 
+        invocation.addLiteralSamplers(samplers);
         invocation.addBufferArgument(*outArgs.buf);
 
         invocation.run(info.graphics_queue, kernel, num_workgroups);

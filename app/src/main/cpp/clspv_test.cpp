@@ -152,7 +152,7 @@ vk::UniqueSampler create_compatible_sampler(vk::Device device, int opencl_flags)
 
 const test_utils::module_test_bundle module_tests[] = {
         {
-                "clspv_tests/localsize",
+                "shaders_cl/localsize",
                 {
                         {"ReadLocalSize", readlocalsize_kernel::test }
                 },

@@ -8,3 +8,4 @@ local.properties
 .externalNativeBuild
 other_tests/
 loadmodules.txt
+shaders_cl/
