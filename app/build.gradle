@@ -16,7 +16,6 @@ if(!ndkDir || ndkDir.empty) {
 
 android {
     compileSdkVersion = 24
-    buildToolsVersion = '26.0.2'
 
     defaultConfig {
         applicationId = 'com.example.native_activity'
@@ -47,8 +46,9 @@ android {
 
     sourceSets.main.jniLibs.srcDirs file(ndkDir).absolutePath +
             '/sources/third_party/vulkan/src/build-android/jniLibs'
+    buildToolsVersion '27.0.3'
 }
 
 dependencies {
-    compile fileTree(dir: 'libs', include: ['*.jar'])
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
 }
