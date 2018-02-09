@@ -164,7 +164,7 @@ const test_utils::module_test_bundle module_tests[] = {
                 }
         },
         {
-                "clspv_tests/Memory",
+                "shaders_cl/Memory",
                 {
                         { "CopyBufferToImageKernel", copybuffertoimage_kernel::test_matrix, { 32, 32 } },
                         { "CopyImageToBufferKernel", copyimagetobuffer_kernel::test_matrix, { 32, 32 } }

@@ -79,6 +79,7 @@ set(SPRIV_OPT_FLAGS ${SPRIV_OPT_FLAGS} --inline-entry-points-exhaustive)
 
 set(OPENCL_KERNELS
     Fills
+    Memory
     localsize)
 
 set(kernel_binaries)
