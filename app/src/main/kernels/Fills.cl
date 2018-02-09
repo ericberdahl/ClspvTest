@@ -1,6 +1,11 @@
-uint2 KernelXYUnsigned()
+int KernelX()
 {
-    return (uint2)(get_global_id(0), get_global_id(1));
+    return get_global_id(0);
+}
+
+int KernelY()
+{
+    return get_global_id(1);
 }
 
 void WriteFloat4(
@@ -36,10 +41,10 @@ void WritePixel(
     int                 inX,
     int                 inY)
 {
-    WritePixelIndex(inPixel, outImage, is16Bit, mul24((inY), (inPitch)) + inX);
+    WritePixelIndex(inPixel, outImage, is16Bit, mul24(inY, inPitch) + inX);
 }
 
-void FillWithColorKernel_Delegate(
+__kernel void FillWithColorKernel(
     __global float4*    outImage,
     int                 inPitch,
     int                 inDeviceFormat,
@@ -47,25 +52,14 @@ void FillWithColorKernel_Delegate(
     int                 inOffsetY,
     int                 inWidth,
     int                 inHeight,
-    float4              inColor,
-    uint2               inXY )
+    float4              inColor)
 {
-    if ((int)inXY.x < inWidth && (int)inXY.y < inHeight)
-    {
-        WritePixel(inColor, outImage, inPitch, inDeviceFormat == 0, inXY.x + inOffsetX, inXY.y + inOffsetY);
-    }
-}
+    int x = KernelX();
+    int y = KernelY();
 
-__kernel void FillWithColorKernel(
-    __global float4* outImage,
-    int inPitch,
-    int inDeviceFormat,
-    int inOffsetX,
-    int inOffsetY,
-    int inWidth,
-    int inHeight,
-    float4 inColor)
-{
-    FillWithColorKernel_Delegate( outImage, inPitch, inDeviceFormat, inOffsetX, inOffsetY, inWidth, inHeight, inColor, KernelXYUnsigned() );
+    if (x < inWidth && y < inHeight)
+    {
+        WritePixel(inColor, outImage, inPitch, inDeviceFormat == 0, x + inOffsetX, y + inOffsetY);
+    }
 }
 
