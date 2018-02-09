@@ -78,6 +78,7 @@ set(SPRIV_OPT_FLAGS ${SPRIV_OPT_FLAGS} --set-spec-const-default-value "0:2 1:2 2
 set(SPRIV_OPT_FLAGS ${SPRIV_OPT_FLAGS} --inline-entry-points-exhaustive)
 
 set(OPENCL_KERNELS
+    Fills
     localsize)
 
 set(kernel_binaries)

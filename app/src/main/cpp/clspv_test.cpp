@@ -158,7 +158,7 @@ const test_utils::module_test_bundle module_tests[] = {
                 },
         },
         {
-                "clspv_tests/Fills",
+                "shaders_cl/Fills",
                 {
                         { "FillWithColorKernel", fill_kernel::test_series, { 32, 32 } }
                 }
