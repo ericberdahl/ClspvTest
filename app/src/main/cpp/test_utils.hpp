@@ -231,7 +231,7 @@ namespace test_utils {
             }
         }
 
-        if (opts.logVerbose) {
+        if (0 < num_incorrect_pixels || 0 == num_correct_pixels) {
             LOGE("%s: Correct pixels=%d; Incorrect pixels=%d",
                  label, num_correct_pixels, num_incorrect_pixels);
         }
@@ -264,7 +264,7 @@ namespace test_utils {
             }
         }
 
-        if (opts.logVerbose) {
+        if (0 < num_incorrect_pixels || 0 == num_correct_pixels) {
             LOGE("%s: Correct pixels=%d; Incorrect pixels=%d", label, num_correct_pixels,
                  num_incorrect_pixels);
         }
