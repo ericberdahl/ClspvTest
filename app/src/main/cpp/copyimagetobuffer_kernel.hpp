@@ -11,6 +11,8 @@
 #include "util.hpp"
 #include "vulkan_utils.hpp"
 
+#include <cmath>
+#include <random>
 #include <vulkan/vulkan.hpp>
 
 namespace copyimagetobuffer_kernel {
@@ -52,26 +54,23 @@ namespace copyimagetobuffer_kernel {
         const int buffer_height = 64;
         const int buffer_width = 64;
 
-        const std::size_t buffer_size = buffer_width * buffer_height * sizeof(BufferPixelType);
+        const std::size_t buffer_length = buffer_width * buffer_height;
+        const std::size_t buffer_size = buffer_length * sizeof(BufferPixelType);
 
         // allocate buffers and images
         vulkan_utils::buffer  dst_buffer(info, buffer_size);
         vulkan_utils::image   srcImage(info, buffer_width, buffer_height, vk::Format(pixels::traits<ImagePixelType>::vk_pixel_type));
 
-        // initialize source and destination buffers
-        {
-            auto src_value = pixels::traits<ImagePixelType>::translate((gpu_types::float4){ 0.2f, 0.4f, 0.8f, 1.0f });
-            vulkan_utils::memory_map src_map(srcImage);
-            auto src_data = static_cast<decltype(src_value)*>(src_map.map());
-            std::fill(src_data, src_data + (buffer_width * buffer_height), src_value);
-        }
+        // create a buffer of random data. use float4 as the widest value we might need. we'll
+        // narrow from there to initialize the source and destination buffers
+        const std::vector<gpu_types::float4> randomSource = test_utils::create_random_float4_buffer(buffer_length);
 
-        {
-            auto dst_value = pixels::traits<BufferPixelType>::translate((gpu_types::float4){ 0.1f, 0.3f, 0.5f, 0.7f });
-            vulkan_utils::memory_map dst_map(dst_buffer);
-            auto dst_data = static_cast<decltype(dst_value)*>(dst_map.map());
-            std::fill(dst_data, dst_data + (buffer_width * buffer_height), dst_value);
-        }
+        // initialize source memory
+        test_utils::copy_pixel_buffer<gpu_types::float4, ImagePixelType>(randomSource.begin(), randomSource.end(), srcImage.mem);
+
+        // initialize destination memory (copy source and invert, thereby forcing the kernel to make the change back to the source value)
+        test_utils::copy_pixel_buffer<ImagePixelType, BufferPixelType>(srcImage.mem, dst_buffer.mem, buffer_length);
+        test_utils::invert_pixel_buffer<BufferPixelType>(dst_buffer.mem, buffer_length);
 
         invoke(module, kernel,
                info,
