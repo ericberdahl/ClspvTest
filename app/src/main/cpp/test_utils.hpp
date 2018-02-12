@@ -37,7 +37,7 @@ namespace test_utils {
             static constexpr const bool smaller_is_floating = std::is_floating_point<smaller_comp_type>::value;
             typedef typename std::conditional<smaller_is_floating, smaller_comp_type, larger_comp_type>::type comp_type;
 
-            typedef typename pixels::vector<comp_type, vec_size>::type promotion_type;
+            typedef typename pixels::vector<smaller_comp_type, vec_size>::type promotion_type;
         };
 
         template<typename T>
@@ -151,28 +151,57 @@ namespace test_utils {
         return details::pixel_comparator<T>::is_equal(l, r);
     }
 
-    template <typename DstPixelType, typename Float4Iterator, typename DstIterator>
-    void copy_pixel_buffer(Float4Iterator first, Float4Iterator last, DstIterator dst, bool invert = false) {
-        auto transformFn = invert ?
-                           [](const gpu_types::float4& p) {
-                               const gpu_types::float4 p_different(std::fmod(p.x + 0.3f, 1.0f),
-                                                                   std::fmod(p.y + 0.3f, 1.0f),
-                                                                   std::fmod(p.z + 0.3f, 1.0f),
-                                                                   std::fmod(p.w + 0.3f, 1.0f));
-                               return pixels::traits<DstPixelType>::translate(p_different);
-                           }
-                                  : [](const gpu_types::float4& p) {
-                    return pixels::traits<DstPixelType>::translate(p);
-                };
+    template <typename PixelType, typename Iterator>
+    void invert_pixel_buffer(Iterator first, Iterator last) {
+        std::transform(first, last, first, [](const PixelType& p) {
+            gpu_types::float4 p_inverted = pixels::traits<gpu_types::float4>::translate(p);
 
-        std::transform(first, last, dst, transformFn);
+            p_inverted.x = std::fmod(p_inverted.x + 0.3f, 1.0f);
+            p_inverted.y = std::fmod(p_inverted.y + 0.3f, 1.0f);
+            p_inverted.z = std::fmod(p_inverted.z + 0.3f, 1.0f);
+            p_inverted.w = std::fmod(p_inverted.w + 0.3f, 1.0f);
+
+            return pixels::traits<PixelType>::translate(p_inverted);
+        });
     }
 
-    template <typename DstPixelType, typename Float4Iterator>
-    void copy_pixel_buffer(Float4Iterator first, Float4Iterator last, const vulkan_utils::device_memory& dstMem, bool invert = false) {
+    template <typename PixelType>
+    void invert_pixel_buffer(const vulkan_utils::device_memory& dstMem, std::size_t bufferSize) {
+        vulkan_utils::memory_map dstMap(dstMem);
+        auto dst_data = static_cast<typename pixels::traits<PixelType>::pixel_t*>(dstMap.map());
+        invert_pixel_buffer<PixelType>(dst_data, dst_data + bufferSize);
+    }
+
+    template <typename SrcPixelType, typename DstPixelType, typename SrcIterator, typename DstIterator>
+    void copy_pixel_buffer(SrcIterator first, SrcIterator last, DstIterator dst) {
+        std::transform(first, last, dst, [](const SrcPixelType& p) {
+            return pixels::traits<DstPixelType>::translate(p);
+        });
+    }
+
+    template <typename SrcPixelType, typename DstPixelType, typename SrcIterator>
+    void copy_pixel_buffer(SrcIterator first, SrcIterator last, const vulkan_utils::device_memory& dstMem) {
         vulkan_utils::memory_map dstMap(dstMem);
         auto dst_data = static_cast<typename pixels::traits<DstPixelType>::pixel_t*>(dstMap.map());
-        copy_pixel_buffer<DstPixelType>(first, last, dst_data, invert);
+        copy_pixel_buffer<SrcPixelType, DstPixelType>(first, last, dst_data);
+    }
+
+    template <typename SrcPixelType, typename DstPixelType, typename DstIterator>
+    void copy_pixel_buffer(const vulkan_utils::device_memory& srcMem, std::size_t bufferSize, DstIterator dst) {
+        vulkan_utils::memory_map srcMap(srcMem);
+        auto src_data = static_cast<typename pixels::traits<SrcPixelType>::pixel_t*>(srcMap.map());
+        copy_pixel_buffer<SrcPixelType, DstPixelType>(src_data, src_data + bufferSize, dst);
+    }
+
+    template <typename SrcPixelType, typename DstPixelType>
+    void copy_pixel_buffer(const vulkan_utils::device_memory& srcMem, const vulkan_utils::device_memory& dstMem, std::size_t bufferSize) {
+        vulkan_utils::memory_map srcMap(srcMem);
+        auto src_data = static_cast<typename pixels::traits<SrcPixelType>::pixel_t*>(srcMap.map());
+
+        vulkan_utils::memory_map dstMap(dstMem);
+        auto dst_data = static_cast<typename pixels::traits<DstPixelType>::pixel_t*>(dstMap.map());
+
+        copy_pixel_buffer<SrcPixelType, DstPixelType>(src_data, src_data + bufferSize, dst_data);
     }
 
     template<typename ExpectedPixelType, typename ObservedPixelType>
@@ -187,22 +216,22 @@ namespace test_utils {
         auto expected = pixels::traits<promotion_type>::translate(expected_pixel);
         auto observed = pixels::traits<promotion_type>::translate(observed_pixel);
 
-        auto t_expected = pixels::traits<gpu_types::float4>::translate(expected);
-        auto t_observed = pixels::traits<gpu_types::float4>::translate(observed);
-
         const bool pixel_is_correct = pixel_compare(observed, expected);
         if (opts.logVerbose &&
             ((pixel_is_correct && opts.logCorrect) || (!pixel_is_correct && opts.logIncorrect))) {
-            const gpu_types::float4 log_expected = pixels::traits<gpu_types::float4>::translate(
-                    expected_pixel);
-            const gpu_types::float4 log_observed = pixels::traits<gpu_types::float4>::translate(
-                    observed_pixel);
+            const std::string expectedString = pixels::traits<decltype(expected_pixel)>::toString(expected_pixel);
+            const std::string observedString = pixels::traits<decltype(observed_pixel)>::toString(observed_pixel);
 
-            LOGE("%s: %s pixel{row:%d, col%d} expected{x=%f, y=%f, z=%f, w=%f} observed{x=%f, y=%f, z=%f, w=%f}",
-                 pixel_is_correct ? "CORRECT" : "INCORRECT",
+            const std::string expectedPromotionString = pixels::traits<decltype(expected)>::toString(expected);
+            const std::string observedPromotionString = pixels::traits<decltype(observed)>::toString(observed);
+
+            LOGE("%s: %s pixel{row:%d, col%d} expected:%s observed:%s expectedPromotion:%s observedPromotion:%s",
+                 pixel_is_correct ? "CORRECT  " : "INCORRECT",
                  label, row, column,
-                 log_expected.x, log_expected.y, log_expected.z, log_expected.w,
-                 log_observed.x, log_observed.y, log_observed.z, log_observed.w);
+                 expectedString.c_str(),
+                 observedString.c_str(),
+                 expectedPromotionString.c_str(),
+                 observedPromotionString.c_str());
         }
 
         return pixel_is_correct;
@@ -286,6 +315,20 @@ namespace test_utils {
         auto dst_pixels = static_cast<const ObservedPixelType *>(dst_map.map());
 
         return check_results(src_pixels, dst_pixels, width, height, pitch, label, opts);
+    }
+
+    template<typename ExpectedPixelType, typename ObservedPixelType>
+    bool check_results(const ExpectedPixelType              *expected_pixels,
+                       const vulkan_utils::device_memory    &observed,
+                       int width,
+                       int height,
+                       int pitch,
+                       const char *label,
+                       const options &opts) {
+        vulkan_utils::memory_map dst_map(observed);
+        auto dst_pixels = static_cast<const ObservedPixelType *>(dst_map.map());
+
+        return check_results(expected_pixels, dst_pixels, width, height, pitch, label, opts);
     }
 
     template<typename Fn>
