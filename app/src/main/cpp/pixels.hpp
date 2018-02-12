@@ -10,7 +10,9 @@
 
 #include <vulkan/vulkan.h>
 
+#include <iomanip>
 #include <limits>
+#include <sstream>
 
 namespace pixels {
     template<typename ComponentType, int N>
@@ -69,6 +71,12 @@ namespace pixels {
         static pixel_t translate(const gpu_types::vec4<T> &pixel) {
             return translate(pixel.x);
         }
+
+        static std::string toString(pixel_t pixel) {
+            std::ostringstream stream;
+            stream << "{ " << pixel << " }";
+            return stream.str();
+        }
     };
 
     template<>
@@ -102,6 +110,12 @@ namespace pixels {
                     traits<component_t>::translate(pixel),
                     component_t(0)
             };
+        }
+
+        static std::string toString(pixel_t pixel) {
+            std::ostringstream stream;
+            stream << "{ " << pixel.x << ", " << pixel.y << " }";
+            return stream.str();
         }
     };
 
@@ -147,6 +161,12 @@ namespace pixels {
                     component_t(0)
             };
         }
+
+        static std::string toString(pixel_t pixel) {
+            std::ostringstream stream;
+            stream << "{ " << pixel.x << ", " << pixel.y << ", " << pixel.z << ", " << pixel.w << " }";
+            return stream.str();
+        }
     };
 
     template<>
@@ -177,6 +197,12 @@ namespace pixels {
         template<typename T>
         static pixel_t translate(const gpu_types::vec4<T> &pixel) {
             return translate(pixel.x);
+        }
+
+        static std::string toString(pixel_t pixel) {
+            std::ostringstream stream;
+            stream << "{ " << pixel << " }";
+            return stream.str();
         }
     };
 
@@ -211,6 +237,12 @@ namespace pixels {
                     traits<component_t>::translate(pixel),
                     component_t(0)
             };
+        }
+
+        static std::string toString(pixel_t pixel) {
+            std::ostringstream stream;
+            stream << "{ " << pixel.x << ", " << pixel.y << " }";
+            return stream.str();
         }
     };
 
@@ -255,6 +287,12 @@ namespace pixels {
                     component_t(0),
                     component_t(0)
             };
+        }
+
+        static std::string toString(pixel_t pixel) {
+            std::ostringstream stream;
+            stream << "{ " << pixel.x << ", " << pixel.y << ", " << pixel.z << ", " << pixel.w << " }";
+            return stream.str();
         }
     };
 
@@ -395,6 +433,12 @@ namespace pixels {
         static pixel_t translate(const gpu_types::vec4<T> &pixel) {
             return translate(pixel.x);
         }
+
+        static std::string toString(pixel_t pixel) {
+            std::ostringstream stream;
+            stream << std::showbase << std::hex << std::setw(2) << "{ " << (unsigned int)pixel << " }";
+            return stream.str();
+        }
     };
 
     template<>
@@ -428,6 +472,12 @@ namespace pixels {
                     traits<component_t>::translate(pixel),
                     0
             };
+        }
+
+        static std::string toString(pixel_t pixel) {
+            std::ostringstream stream;
+            stream << std::showbase << std::hex << std::setw(2) << "{ " << (unsigned int)pixel.x << ", " << (unsigned int)pixel.y << ", " << " }";
+            return stream.str();
         }
     };
 
@@ -471,6 +521,12 @@ namespace pixels {
                     0,
                     0
             };
+        }
+
+        static std::string toString(pixel_t pixel) {
+            std::ostringstream stream;
+            stream << std::showbase << std::hex << std::setw(2) << "{ " << (unsigned int)pixel.x << ", " << (unsigned int)pixel.y << ", " << (unsigned int)pixel.z << ", " << (unsigned int)pixel.w << " }";
+            return stream.str();
         }
     };
 }
