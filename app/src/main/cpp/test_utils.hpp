@@ -151,6 +151,30 @@ namespace test_utils {
         return details::pixel_comparator<T>::is_equal(l, r);
     }
 
+    template <typename DstPixelType, typename Float4Iterator, typename DstIterator>
+    void copy_pixel_buffer(Float4Iterator first, Float4Iterator last, DstIterator dst, bool invert = false) {
+        auto transformFn = invert ?
+                           [](const gpu_types::float4& p) {
+                               const gpu_types::float4 p_different(std::fmod(p.x + 0.3f, 1.0f),
+                                                                   std::fmod(p.y + 0.3f, 1.0f),
+                                                                   std::fmod(p.z + 0.3f, 1.0f),
+                                                                   std::fmod(p.w + 0.3f, 1.0f));
+                               return pixels::traits<DstPixelType>::translate(p_different);
+                           }
+                                  : [](const gpu_types::float4& p) {
+                    return pixels::traits<DstPixelType>::translate(p);
+                };
+
+        std::transform(first, last, dst, transformFn);
+    }
+
+    template <typename DstPixelType, typename Float4Iterator>
+    void copy_pixel_buffer(Float4Iterator first, Float4Iterator last, const vulkan_utils::device_memory& dstMem, bool invert = false) {
+        vulkan_utils::memory_map dstMap(dstMem);
+        auto dst_data = static_cast<typename pixels::traits<DstPixelType>::pixel_t*>(dstMap.map());
+        copy_pixel_buffer<DstPixelType>(first, last, dst_data, invert);
+    }
+
     template<typename ExpectedPixelType, typename ObservedPixelType>
     bool check_result(ExpectedPixelType expected_pixel,
                       ObservedPixelType observed_pixel,
@@ -341,6 +365,8 @@ namespace test_utils {
                         const sample_info&                  info,
                         vk::ArrayProxy<const vk::Sampler>   samplers,
                         const options&                      opts);
+
+    std::vector<gpu_types::float4> create_random_float4_buffer(std::size_t numElements);
 
 }
 

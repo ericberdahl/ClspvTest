@@ -4,6 +4,9 @@
 
 #include "test_utils.hpp"
 
+#include <cmath>
+#include <random>
+
 namespace test_utils {
     const Results Results::sTestSuccess(1, 0, 0, 0, 0);
     const Results Results::sTestFailure(0, 1, 0, 0, 0);
@@ -130,6 +133,21 @@ namespace test_utils {
 
             return result;
         });
+    }
+
+    std::vector<gpu_types::float4> create_random_float4_buffer(std::size_t numElements) {
+        std::vector<gpu_types::float4> result;
+        result.resize(numElements);
+
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_real_distribution<float> dis(0.0f, nextafterf(1.0f, std::numeric_limits<float>::max()));
+
+        std::generate(result.begin(), result.end(), [&dis,&gen]() {
+            return (gpu_types::float4){ dis(gen), dis(gen), dis(gen), dis(gen) };
+        });
+
+        return result;
     }
 
 } // namespace test_utils
