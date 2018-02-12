@@ -415,11 +415,11 @@ namespace pixels {
         static const VkFormat vk_pixel_type = VK_FORMAT_R8_UNORM;
 
         static pixel_t translate(float pixel) {
-            return (pixel_t) (pixel * std::numeric_limits<component_t>::max());
+            return (pixel_t) round(pixel * std::numeric_limits<component_t>::max());
         }
 
         static pixel_t translate(gpu_types::half pixel) {
-            return (pixel_t) (pixel * std::numeric_limits<component_t>::max());
+            return (pixel_t) round(pixel * std::numeric_limits<component_t>::max());
         }
 
         static pixel_t translate(component_t pixel) { return pixel; }
