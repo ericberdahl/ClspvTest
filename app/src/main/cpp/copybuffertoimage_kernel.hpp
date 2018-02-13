@@ -47,31 +47,24 @@ namespace copybuffertoimage_kernel {
         const int buffer_height = 64;
         const int buffer_width = 64;
 
-        const std::size_t buffer_size = buffer_width * buffer_height * sizeof(BufferPixelType);
+        const std::size_t buffer_length = buffer_width * buffer_height;
+        const std::size_t buffer_size = buffer_length * sizeof(BufferPixelType);
 
         // allocate buffers and images
-        vulkan_utils::buffer  src_buffer(info, buffer_size);
+        vulkan_utils::buffer  srcBuffer(info, buffer_size);
         vulkan_utils::image   dstImage(info, buffer_width, buffer_height, vk::Format(pixels::traits<ImagePixelType>::vk_pixel_type));
 
-        // initialize source and destination buffers
-        {
-            auto src_value = pixels::traits<BufferPixelType>::translate((gpu_types::float4){ 0.2f, 0.4f, 0.8f, 1.0f });
-            vulkan_utils::memory_map src_map(src_buffer);
-            auto src_data = static_cast<decltype(src_value)*>(src_map.map());
-            std::fill(src_data, src_data + (buffer_width * buffer_height), src_value);
-        }
+        // initialize source memory with random data
+        test_utils::fill_random_pixels<BufferPixelType>(srcBuffer.mem, buffer_length);
 
-        {
-            auto dst_value = pixels::traits<ImagePixelType>::translate((gpu_types::float4){ 0.1f, 0.3f, 0.5f, 0.7f });
-            vulkan_utils::memory_map dst_map(dstImage);
-            auto dst_data = static_cast<decltype(dst_value)*>(dst_map.map());
-            std::fill(dst_data, dst_data + (buffer_width * buffer_height), dst_value);
-        }
+        // initialize destination memory (copy source and invert, thereby forcing the kernel to make the change back to the source value)
+        test_utils::copy_pixel_buffer<BufferPixelType, ImagePixelType>(srcBuffer.mem, dstImage.mem, buffer_length);
+        test_utils::invert_pixel_buffer<ImagePixelType>(dstImage.mem, buffer_length);
 
         invoke(module, kernel,
                info,
                samplers,
-               *src_buffer.buf,
+               *srcBuffer.buf,
                *dstImage.view,
                0,
                buffer_width,
@@ -82,7 +75,7 @@ namespace copybuffertoimage_kernel {
                buffer_width,
                buffer_height);
 
-        const bool success = test_utils::check_results<BufferPixelType, ImagePixelType>(src_buffer.mem, dstImage.mem,
+        const bool success = test_utils::check_results<BufferPixelType, ImagePixelType>(srcBuffer.mem, dstImage.mem,
                                                                                         buffer_width, buffer_height,
                                                                                         buffer_height,
                                                                                         testLabel.c_str(),
