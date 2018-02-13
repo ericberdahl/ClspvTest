@@ -11,6 +11,8 @@
 #include "pixels.hpp"
 #include "util.hpp"
 
+#include <cmath>
+#include <random>
 #include <sstream>
 #include <string>
 #include <type_traits>
@@ -202,6 +204,24 @@ namespace test_utils {
         auto dst_data = static_cast<typename pixels::traits<DstPixelType>::pixel_t*>(dstMap.map());
 
         copy_pixel_buffer<SrcPixelType, DstPixelType>(src_data, src_data + bufferSize, dst_data);
+    }
+
+    template <typename PixelType, typename OutputIterator>
+    void fill_random_pixels(OutputIterator first, OutputIterator last) {
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_real_distribution<float> dis(0.0f, nextafterf(1.0f, std::numeric_limits<float>::max()));
+
+        std::generate(first, last, [&dis,&gen]() {
+            return pixels::traits<PixelType>::translate((gpu_types::float4){ dis(gen), dis(gen), dis(gen), dis(gen) });
+        });
+    }
+
+    template <typename PixelType>
+    void fill_random_pixels(const vulkan_utils::device_memory& mem, std::size_t bufferSize) {
+        vulkan_utils::memory_map memMap(mem);
+        auto data = static_cast<typename pixels::traits<PixelType>::pixel_t*>(memMap.map());
+        fill_random_pixels<PixelType>(data, data + bufferSize);
     }
 
     template<typename ExpectedPixelType, typename ObservedPixelType>
@@ -408,9 +428,7 @@ namespace test_utils {
                         const sample_info&                  info,
                         vk::ArrayProxy<const vk::Sampler>   samplers,
                         const options&                      opts);
-
-    std::vector<gpu_types::float4> create_random_float4_buffer(std::size_t numElements);
-
+    
 }
 
 #endif //CLSPVTEST_TEST_UTILS_HPP

@@ -11,8 +11,6 @@
 #include "util.hpp"
 #include "vulkan_utils.hpp"
 
-#include <cmath>
-#include <random>
 #include <vulkan/vulkan.hpp>
 
 namespace copyimagetobuffer_kernel {
@@ -61,12 +59,8 @@ namespace copyimagetobuffer_kernel {
         vulkan_utils::buffer  dst_buffer(info, buffer_size);
         vulkan_utils::image   srcImage(info, buffer_width, buffer_height, vk::Format(pixels::traits<ImagePixelType>::vk_pixel_type));
 
-        // create a buffer of random data. use float4 as the widest value we might need. we'll
-        // narrow from there to initialize the source and destination buffers
-        const std::vector<gpu_types::float4> randomSource = test_utils::create_random_float4_buffer(buffer_length);
-
-        // initialize source memory
-        test_utils::copy_pixel_buffer<gpu_types::float4, ImagePixelType>(randomSource.begin(), randomSource.end(), srcImage.mem);
+        // initialize source memory with random data
+        test_utils::fill_random_pixels<ImagePixelType>(srcImage.mem, buffer_length);
 
         // initialize destination memory (copy source and invert, thereby forcing the kernel to make the change back to the source value)
         test_utils::copy_pixel_buffer<ImagePixelType, BufferPixelType>(srcImage.mem, dst_buffer.mem, buffer_length);
