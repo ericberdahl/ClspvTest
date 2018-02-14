@@ -28,6 +28,7 @@
 #include "pixels.hpp"
 #include "readconstantdata_kernel.hpp"
 #include "readlocalsize_kernel.hpp"
+#include "testgreaterthanorequalto_kernel.hpp"
 #include "test_utils.hpp"
 #include "util_init.hpp"
 #include "vulkan_utils.hpp"
@@ -175,6 +176,12 @@ const test_utils::module_test_bundle module_tests[] = {
                 "shaders_cl/ReadConstantData",
                 {
                         {"ReadConstantData", readconstantdata_kernel::test_all, { 32, 1 } }
+                },
+        },
+        {
+                "shaders_cl/TestComparisons",
+                {
+                        {"TestGreaterThanOrEqualTo", testgreaterthanorequalto_kernel::test_all, { 32, 32 } }
                 },
         },
 };

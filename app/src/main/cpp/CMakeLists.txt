@@ -39,6 +39,7 @@ add_library(native-activity SHARED
     fill_kernel.cpp
     readconstantdata_kernel.cpp
     readlocalsize_kernel.cpp
+    testgreaterthanorequalto_kernel.cpp
     clspv_test.cpp
     clspv_utils.cpp
     gpu_types.cpp
@@ -83,6 +84,7 @@ set(OPENCL_KERNELS
     localsize
     Memory
     ReadConstantData
+    TestComparisons
     )
 
 set(kernel_binaries)

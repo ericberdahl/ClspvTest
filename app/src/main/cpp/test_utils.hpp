@@ -206,6 +206,13 @@ namespace test_utils {
         copy_pixel_buffer<SrcPixelType, DstPixelType>(src_data, src_data + bufferSize, dst_data);
     }
 
+    template <typename T>
+    void fill_buffer(const vulkan_utils::device_memory& mem, std::size_t bufferSize, T value) {
+        vulkan_utils::memory_map memMap(mem);
+        auto data = static_cast<T*>(memMap.map());
+        std::fill(data, data + bufferSize, value);
+    }
+
     template <typename PixelType, typename OutputIterator>
     void fill_random_pixels(OutputIterator first, OutputIterator last) {
         std::random_device rd;
