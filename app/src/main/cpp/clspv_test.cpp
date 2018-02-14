@@ -26,6 +26,7 @@
 #include "half.hpp"
 #include "opencl_types.hpp"
 #include "pixels.hpp"
+#include "readconstantdata_kernel.hpp"
 #include "readlocalsize_kernel.hpp"
 #include "test_utils.hpp"
 #include "util_init.hpp"
@@ -169,6 +170,12 @@ const test_utils::module_test_bundle module_tests[] = {
                         { "CopyBufferToImageKernel", copybuffertoimage_kernel::test_matrix, { 32, 32 } },
                         { "CopyImageToBufferKernel", copyimagetobuffer_kernel::test_matrix, { 32, 32 } }
                 }
+        },
+        {
+                "shaders_cl/ReadConstantData",
+                {
+                        {"ReadConstantData", readconstantdata_kernel::test_all, { 32, 1 } }
+                },
         },
 };
 

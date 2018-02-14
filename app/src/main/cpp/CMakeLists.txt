@@ -37,6 +37,7 @@ add_library(native-activity SHARED
     copyimagetobuffer_kernel.cpp
     copybuffertoimage_kernel.cpp
     fill_kernel.cpp
+    readconstantdata_kernel.cpp
     readlocalsize_kernel.cpp
     clspv_test.cpp
     clspv_utils.cpp
@@ -79,8 +80,10 @@ set(SPRIV_OPT_FLAGS ${SPRIV_OPT_FLAGS} --inline-entry-points-exhaustive)
 
 set(OPENCL_KERNELS
     Fills
+    localsize
     Memory
-    localsize)
+    ReadConstantData
+    )
 
 set(kernel_binaries)
 foreach (kernel ${OPENCL_KERNELS})

@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <chrono>
 #include <cstdio>
 #include <fstream>
 #include <iostream>
@@ -673,9 +674,14 @@ namespace clspv_utils {
                                 const WorkgroupDimensions&  num_workgroups) {
         updateDescriptorSets(kern.getLiteralSamplerDescSet(), kern.getArgumentDescSet());
         fillCommandBuffer(kern, num_workgroups);
-        submitCommand(queue);
 
+        auto start = std::chrono::high_resolution_clock::now();
+        submitCommand(queue);
         queue.waitIdle();
+        auto end = std::chrono::high_resolution_clock::now();
+
+        std::chrono::duration<double> elapsed_time = end - start;
+        LOGI("Kernel executed in %lfs", elapsed_time.count());
     }
 
 } // namespace clspv_utils
