@@ -25,7 +25,9 @@ samples utility functions
 
 #include <stdio.h>
 #include <assert.h>
+#include <cerrno>
 #include <cstdlib>
+#include <cstdio>
 #include <iomanip>
 #include <fstream>
 #include <iostream>
@@ -38,8 +40,6 @@ samples utility functions
 #include <android_native_app_glue.h>
 // Static variable that keeps ANativeWindow and asset manager instances.
 static android_app *Android_application = nullptr;
-
-using namespace std;
 
 //
 // Android specific helper functions.
@@ -68,7 +68,7 @@ class AndroidBuffer : public std::streambuf {
         int32_t rc = 0;
         if (this->pbase() != this->pptr()) {
             char writebuf[kBufferSize + 1];
-            memcpy(writebuf, this->pbase(), this->pptr() - this->pbase());
+            std::memcpy(writebuf, this->pbase(), this->pptr() - this->pbase());
             writebuf[this->pptr() - this->pbase()] = '\0';
 
             rc = __android_log_write(priority_, "std", writebuf) > 0;

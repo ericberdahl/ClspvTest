@@ -6,6 +6,7 @@
 #include <cassert>
 #include <chrono>
 #include <cstdio>
+#include <cstring>
 #include <fstream>
 #include <iostream>
 #include <limits>
@@ -512,7 +513,7 @@ namespace clspv_utils {
 
         {
             vulkan_utils::memory_map scalar_map(scalar_args);
-            memcpy(scalar_map.map(), pod, sizeofPod);
+            std::memcpy(scalar_map.map(), pod, sizeofPod);
         }
 
         addBufferArgument(*scalar_args.buf);
