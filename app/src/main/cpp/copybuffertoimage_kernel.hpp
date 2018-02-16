@@ -78,7 +78,7 @@ namespace copybuffertoimage_kernel {
                                                                    buffer_height,
                                                                    invocationResult);
 
-        resultSet.push_back(invocationResult);
+        resultSet.push_back(std::move(invocationResult));
     }
 
     void test_matrix(const clspv_utils::kernel_module&  module,

@@ -68,6 +68,6 @@ namespace readlocalsize_kernel {
             invocationResult.mPixelErrors.push_back(os.str());
         }
 
-        resultSet.push_back(invocationResult);
+        resultSet.push_back(std::move(invocationResult));
     };
 }

@@ -63,7 +63,7 @@ namespace test_utils {
 
                     KernelResult kernelResult;
                     kernelResult.mEntryName = ep;
-                    moduleResult.mKernels.push_back(kernelResult);
+                    moduleResult.mKernels.push_back(std::move(kernelResult));
                 } else {
                     moduleResult.mKernels.push_back(test_kernel(module,
                                                                 ep,

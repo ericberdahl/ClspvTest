@@ -76,7 +76,7 @@ namespace fill_kernel {
                                              color,
                                              invocationResult);
 
-        resultSet.push_back(invocationResult);
+        resultSet.push_back(std::move(invocationResult));
     }
 }
 

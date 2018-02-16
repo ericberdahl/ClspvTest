@@ -88,6 +88,6 @@ namespace testgreaterthanorequalto_kernel {
                                                 buffer_height,
                                                 invocationResult);
 
-        resultSet.push_back(invocationResult);
+        resultSet.push_back(std::move(invocationResult));
     }
 }
