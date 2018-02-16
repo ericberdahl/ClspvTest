@@ -6,13 +6,14 @@
 
 namespace testgreaterthanorequalto_kernel {
 
-    void invoke(const clspv_utils::kernel_module&   module,
-                const clspv_utils::kernel&          kernel,
-                const sample_info&                  info,
-                vk::ArrayProxy<const vk::Sampler>   samplers,
-                vk::Buffer                          dst_buffer,
-                int                                 width,
-                int                                 height)
+    clspv_utils::kernel_invocation::execution_time_t
+    invoke(const clspv_utils::kernel_module&   module,
+           const clspv_utils::kernel&          kernel,
+           const sample_info&                  info,
+           vk::ArrayProxy<const vk::Sampler>   samplers,
+           vk::Buffer                          dst_buffer,
+           int                                 width,
+           int                                 height)
     {
         struct scalar_args {
             int inWidth;            // offset 0
@@ -38,7 +39,7 @@ namespace testgreaterthanorequalto_kernel {
         invocation.addBufferArgument(dst_buffer);
         invocation.addPodArgument(scalars);
 
-        invocation.run(info.graphics_queue, kernel, num_workgroups);
+        return invocation.run(info.graphics_queue, kernel, num_workgroups);
     }
 
     void test_all(const clspv_utils::kernel_module&    module,
@@ -76,12 +77,12 @@ namespace testgreaterthanorequalto_kernel {
             return (x >= 0 && y >= 0 && x < buffer_width && y < buffer_height ? 1.0f : 0.0f);
         });
 
-        invoke(module, kernel,
-               info,
-               samplers,
-               *dstBuffer.buf,
-               buffer_width,
-               buffer_height);
+        invocationResult.mExecutionTime = invoke(module, kernel,
+                                                 info,
+                                                 samplers,
+                                                 *dstBuffer.buf,
+                                                 buffer_width,
+                                                 buffer_height);
 
         test_utils::check_results<float, float>(expectedResults.data(), dstBuffer.mem,
                                                 buffer_width, buffer_height,

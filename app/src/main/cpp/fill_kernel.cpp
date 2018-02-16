@@ -6,18 +6,19 @@
 
 namespace fill_kernel {
 
-    void invoke(const clspv_utils::kernel_module&   module,
-                const clspv_utils::kernel&          kernel,
-                const sample_info&                  info,
-                vk::ArrayProxy<const vk::Sampler>   samplers,
-                vk::Buffer dst_buffer,
-                int pitch,
-                int device_format,
-                int offset_x,
-                int offset_y,
-                int width,
-                int height,
-                const gpu_types::float4 &color) {
+    clspv_utils::kernel_invocation::execution_time_t
+    invoke(const clspv_utils::kernel_module&   module,
+           const clspv_utils::kernel&          kernel,
+           const sample_info&                  info,
+           vk::ArrayProxy<const vk::Sampler>   samplers,
+           vk::Buffer dst_buffer,
+           int pitch,
+           int device_format,
+           int offset_x,
+           int offset_y,
+           int width,
+           int height,
+           const gpu_types::float4 &color) {
         struct scalar_args {
             int inPitch;        // offset 0
             int inDeviceFormat; // DevicePixelFormat offset 4
@@ -57,7 +58,7 @@ namespace fill_kernel {
         invocation.addLiteralSamplers(samplers);
         invocation.addBufferArgument(dst_buffer);
         invocation.addPodArgument(scalars);
-        invocation.run(info.graphics_queue, kernel, num_workgroups);
+        return invocation.run(info.graphics_queue, kernel, num_workgroups);
     }
 
     void test_series(const clspv_utils::kernel_module&   module,

@@ -15,12 +15,13 @@
 
 namespace readconstantdata_kernel {
 
-    void invoke(const clspv_utils::kernel_module&   module,
-                const clspv_utils::kernel&          kernel,
-                const sample_info&                  info,
-                vk::ArrayProxy<const vk::Sampler>   samplers,
-                vk::Buffer                          dst_buffer,
-                int                                 width);
+    clspv_utils::kernel_invocation::execution_time_t
+    invoke(const clspv_utils::kernel_module&   module,
+           const clspv_utils::kernel&          kernel,
+           const sample_info&                  info,
+           vk::ArrayProxy<const vk::Sampler>   samplers,
+           vk::Buffer                          dst_buffer,
+           int                                 width);
 
     void test_all(const clspv_utils::kernel_module&    module,
                   const clspv_utils::kernel&           kernel,

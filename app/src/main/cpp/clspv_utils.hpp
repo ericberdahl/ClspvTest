@@ -5,6 +5,7 @@
 #ifndef CLSPV_UTILS_HPP
 #define CLSPV_UTILS_HPP
 
+#include <chrono>
 #include <string>
 #include <vector>
 
@@ -140,9 +141,11 @@ namespace clspv_utils {
         template <typename T>
         void    addPodArgument(const T& pod);
 
-        void    run(vk::Queue                   queue,
-                    const kernel&               kern,
-                    const WorkgroupDimensions&  num_workgroups);
+        typedef std::chrono::duration<double> execution_time_t;
+
+        execution_time_t    run(vk::Queue                   queue,
+                                const kernel&               kern,
+                                const WorkgroupDimensions&  num_workgroups);
 
     private:
         void        fillCommandBuffer(const kernel&                 kern,

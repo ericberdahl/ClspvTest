@@ -6,19 +6,20 @@
 
 namespace copyimagetobuffer_kernel {
 
-    void invoke(const clspv_utils::kernel_module&   module,
-                const clspv_utils::kernel&          kernel,
-                const sample_info&                  info,
-                vk::ArrayProxy<const vk::Sampler>   samplers,
-                vk::ImageView                       src_image,
-                vk::Buffer                          dst_buffer,
-                int                                 dst_offset,
-                int                                 dst_pitch,
-                cl_channel_order                    dst_channel_order,
-                cl_channel_type                     dst_channel_type,
-                bool                                swap_components,
-                int                                 width,
-                int                                 height)
+    clspv_utils::kernel_invocation::execution_time_t
+    invoke(const clspv_utils::kernel_module&   module,
+           const clspv_utils::kernel&          kernel,
+           const sample_info&                  info,
+           vk::ArrayProxy<const vk::Sampler>   samplers,
+           vk::ImageView                       src_image,
+           vk::Buffer                          dst_buffer,
+           int                                 dst_offset,
+           int                                 dst_pitch,
+           cl_channel_order                    dst_channel_order,
+           cl_channel_type                     dst_channel_type,
+           bool                                swap_components,
+           int                                 width,
+           int                                 height)
     {
         struct scalar_args {
             int inDestOffset;       // offset 0
@@ -63,7 +64,7 @@ namespace copyimagetobuffer_kernel {
         invocation.addBufferArgument(dst_buffer);
         invocation.addPodArgument(scalars);
 
-        invocation.run(info.graphics_queue, kernel, num_workgroups);
+        return invocation.run(info.graphics_queue, kernel, num_workgroups);
     }
 
     void test_matrix(const clspv_utils::kernel_module&     module,

@@ -13,10 +13,12 @@
 
 namespace readlocalsize_kernel {
 
-    std::tuple<int, int, int> invoke(const clspv_utils::kernel_module&  module,
-                                     const clspv_utils::kernel&         kernel,
-                                     const sample_info&                 info,
-                                     vk::ArrayProxy<const vk::Sampler>  samplers);
+    clspv_utils::kernel_invocation::execution_time_t
+    invoke(const clspv_utils::kernel_module&    module,
+           const clspv_utils::kernel&           kernel,
+           const sample_info&                   info,
+           vk::ArrayProxy<const vk::Sampler>    samplers,
+           std::tuple<int, int, int>&           outLocalSizes);
 
 
     void test(const clspv_utils::kernel_module& module,

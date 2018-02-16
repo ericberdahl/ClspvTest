@@ -4,7 +4,6 @@
 
 #include <algorithm>
 #include <cassert>
-#include <chrono>
 #include <cstdio>
 #include <cstring>
 #include <fstream>
@@ -670,9 +669,9 @@ namespace clspv_utils {
 
     }
 
-    void kernel_invocation::run(vk::Queue                   queue,
-                                const kernel&               kern,
-                                const WorkgroupDimensions&  num_workgroups) {
+    kernel_invocation::execution_time_t kernel_invocation::run(vk::Queue                   queue,
+                                                               const kernel&               kern,
+                                                               const WorkgroupDimensions&  num_workgroups) {
         updateDescriptorSets(kern.getLiteralSamplerDescSet(), kern.getArgumentDescSet());
         fillCommandBuffer(kern, num_workgroups);
 
@@ -681,8 +680,7 @@ namespace clspv_utils {
         queue.waitIdle();
         auto end = std::chrono::high_resolution_clock::now();
 
-        std::chrono::duration<double> elapsed_time = end - start;
-        LOGI("Kernel %s executed in %lfms", kern.getEntryPoint().c_str(), elapsed_time.count() * 1000.0);
+        return end - start;
     }
 
 } // namespace clspv_utils

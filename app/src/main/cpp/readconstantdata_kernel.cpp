@@ -6,12 +6,13 @@
 
 namespace readconstantdata_kernel {
 
-    void invoke(const clspv_utils::kernel_module&   module,
-                const clspv_utils::kernel&          kernel,
-                const sample_info&                  info,
-                vk::ArrayProxy<const vk::Sampler>   samplers,
-                vk::Buffer                          dst_buffer,
-                int                                 width)
+    clspv_utils::kernel_invocation::execution_time_t
+    invoke(const clspv_utils::kernel_module&   module,
+           const clspv_utils::kernel&          kernel,
+           const sample_info&                  info,
+           vk::ArrayProxy<const vk::Sampler>   samplers,
+           vk::Buffer                          dst_buffer,
+           int                                 width)
     {
         struct scalar_args {
             int inWidth;            // offset 0
@@ -33,7 +34,7 @@ namespace readconstantdata_kernel {
         invocation.addBufferArgument(dst_buffer);
         invocation.addPodArgument(scalars);
 
-        invocation.run(info.graphics_queue, kernel, num_workgroups);
+        return invocation.run(info.graphics_queue, kernel, num_workgroups);
     }
 
     void test_all(const clspv_utils::kernel_module&    module,
@@ -73,11 +74,11 @@ namespace readconstantdata_kernel {
             return result;
         });
 
-        invoke(module, kernel,
-               info,
-               samplers,
-               *dstBuffer.buf,
-               buffer_width);
+        invocationResult.mExecutionTime = invoke(module, kernel,
+                                                 info,
+                                                 samplers,
+                                                 *dstBuffer.buf,
+                                                 buffer_width);
 
         test_utils::check_results<float, float>(expectedResults.data(), dstBuffer.mem,
                                                 buffer_width, buffer_height,

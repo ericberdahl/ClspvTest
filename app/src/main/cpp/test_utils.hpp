@@ -90,9 +90,10 @@ namespace test_utils {
     }
 
     struct InvocationResult {
-        std::string                 mVariation;
-        unsigned int                mNumCorrectPixels   = 0;
-        std::vector<std::string>    mPixelErrors;
+        std::string                                         mVariation;
+        unsigned int                                        mNumCorrectPixels   = 0;
+        std::vector<std::string>                            mPixelErrors;
+        clspv_utils::kernel_invocation::execution_time_t    mExecutionTime;
     };
 
     typedef std::vector<InvocationResult> InvocationResultSet;

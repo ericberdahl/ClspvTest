@@ -15,19 +15,20 @@
 
 namespace copyimagetobuffer_kernel {
 
-    void invoke(const clspv_utils::kernel_module&   module,
-                const clspv_utils::kernel&          kernel,
-                const sample_info&                  info,
-                vk::ArrayProxy<const vk::Sampler>   samplers,
-                vk::ImageView                       src_image,
-                vk::Buffer                          dst_buffer,
-                int                                 dst_offset,
-                int                                 dst_pitch,
-                cl_channel_order                    dst_channel_order,
-                cl_channel_type                     dst_channel_type,
-                bool                                swap_components,
-                int                                 width,
-                int                                 height);
+    clspv_utils::kernel_invocation::execution_time_t
+    invoke(const clspv_utils::kernel_module&   module,
+           const clspv_utils::kernel&          kernel,
+           const sample_info&                  info,
+           vk::ArrayProxy<const vk::Sampler>   samplers,
+           vk::ImageView                       src_image,
+           vk::Buffer                          dst_buffer,
+           int                                 dst_offset,
+           int                                 dst_pitch,
+           cl_channel_order                    dst_channel_order,
+           cl_channel_type                     dst_channel_type,
+           bool                                swap_components,
+           int                                 width,
+           int                                 height);
 
     void test_matrix(const clspv_utils::kernel_module&  module,
                      const clspv_utils::kernel&         kernel,
@@ -64,18 +65,18 @@ namespace copyimagetobuffer_kernel {
         test_utils::copy_pixel_buffer<ImagePixelType, BufferPixelType>(srcImage.mem, dst_buffer.mem, buffer_length);
         test_utils::invert_pixel_buffer<BufferPixelType>(dst_buffer.mem, buffer_length);
 
-        invoke(module, kernel,
-               info,
-               samplers,
-               *srcImage.view,
-               *dst_buffer.buf,
-               0,
-               buffer_width,
-               pixels::traits<BufferPixelType>::cl_pixel_order,
-               pixels::traits<BufferPixelType>::cl_pixel_type,
-               false,
-               buffer_width,
-               buffer_height);
+        invocationResult.mExecutionTime = invoke(module, kernel,
+                                                 info,
+                                                 samplers,
+                                                 *srcImage.view,
+                                                 *dst_buffer.buf,
+                                                 0,
+                                                 buffer_width,
+                                                 pixels::traits<BufferPixelType>::cl_pixel_order,
+                                                 pixels::traits<BufferPixelType>::cl_pixel_type,
+                                                 false,
+                                                 buffer_width,
+                                                 buffer_height);
 
         test_utils::check_results<ImagePixelType, BufferPixelType>(srcImage.mem, dst_buffer.mem,
                                                                    buffer_width, buffer_height,

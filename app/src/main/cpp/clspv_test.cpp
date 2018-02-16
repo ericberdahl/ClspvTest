@@ -260,6 +260,34 @@ void run_all_tests(const sample_info&                   info,
     }
 }
 
+clspv_utils::kernel_invocation::execution_time_t totalExecutionTime(const test_utils::InvocationResult& ir) {
+    return ir.mExecutionTime;
+}
+
+clspv_utils::kernel_invocation::execution_time_t totalExecutionTime(const test_utils::KernelResult& kr) {
+    return std::accumulate(kr.mInvocations.begin(), kr.mInvocations.end(),
+                           clspv_utils::kernel_invocation::execution_time_t(),
+                           [](clspv_utils::kernel_invocation::execution_time_t t, const test_utils::InvocationResult& ir) {
+                               return t + totalExecutionTime(ir);
+                           });
+}
+
+clspv_utils::kernel_invocation::execution_time_t totalExecutionTime(const test_utils::ModuleResult& mr) {
+    return std::accumulate(mr.mKernels.begin(), mr.mKernels.end(),
+                           clspv_utils::kernel_invocation::execution_time_t(),
+                           [](clspv_utils::kernel_invocation::execution_time_t t, const test_utils::KernelResult& kr) {
+                               return t + totalExecutionTime(kr);
+                           });
+}
+
+clspv_utils::kernel_invocation::execution_time_t totalExecutionTime(const test_utils::ModuleResultSet& moduleResultSet) {
+    return std::accumulate(moduleResultSet.begin(), moduleResultSet.end(),
+                           clspv_utils::kernel_invocation::execution_time_t(),
+                           [](clspv_utils::kernel_invocation::execution_time_t t, const test_utils::ModuleResult& mr) {
+                               return t + totalExecutionTime(mr);
+                           });
+}
+
 std::pair<unsigned int, unsigned int> countResults(const test_utils::InvocationResult& ir) {
     // an invocation passes if it generates at least one correct value and no incorrect values
     return (ir.mNumCorrectPixels > 0 && ir.mPixelErrors.empty() ? std::make_pair(1, 0) : std::make_pair(0, 1));
@@ -303,10 +331,13 @@ std::pair<unsigned int, unsigned int> countResults(const test_utils::ModuleResul
 
 void logResults(const test_utils::InvocationResult& ir) {
     std::ostringstream os;
+    os << (ir.mNumCorrectPixels > 0 && ir.mPixelErrors.empty() ? "PASS" : "FAIL")
+       << " executionTime:" << totalExecutionTime(ir).count() * 1000.0 << "ms";
+
     if (!ir.mVariation.empty()) {
-        os << "(" << ir.mVariation << ") ";
+        os << " variation:" << ir.mVariation << "";
     }
-    os << (ir.mNumCorrectPixels > 0 && ir.mPixelErrors.empty() ? "PASS" : "FAIL");
+
     os << " correctValues:" << ir.mNumCorrectPixels
        << " incorrectValues:" << ir.mPixelErrors.size();
 
@@ -348,7 +379,9 @@ void logResults(const test_utils::ModuleResultSet& moduleResultSet) {
     auto results = countResults(moduleResultSet);
 
     std::ostringstream os;
-    os << "Overall Summary pass:" << results.first << " fail:" << results.second;
+    os << "Overall Summary"
+       << " executionTime:" << totalExecutionTime(moduleResultSet).count() << "s"
+       << " pass:" << results.first << " fail:" << results.second;
     LOGI("%s", os.str().c_str());
 }
 

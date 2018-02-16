@@ -6,10 +6,12 @@
 
 namespace readlocalsize_kernel {
 
-    std::tuple<int, int, int> invoke(const clspv_utils::kernel_module&  module,
-                                     const clspv_utils::kernel&         kernel,
-                                     const sample_info&                 info,
-                                     vk::ArrayProxy<const vk::Sampler>  samplers) {
+    clspv_utils::kernel_invocation::execution_time_t
+    invoke(const clspv_utils::kernel_module&   module,
+           const clspv_utils::kernel&          kernel,
+           const sample_info&                  info,
+           vk::ArrayProxy<const vk::Sampler>   samplers,
+           std::tuple<int, int, int>&          outLocalSizes) {
         struct scalar_args {
             int outWorkgroupX;  // offset 0
             int outWorkgroupY;  // offset 4
@@ -25,19 +27,18 @@ namespace readlocalsize_kernel {
         const clspv_utils::WorkgroupDimensions num_workgroups(1, 1);
 
         clspv_utils::kernel_invocation invocation(*info.device, *info.cmd_pool,
-                                                  info.memory_properties);
+                                              info.memory_properties);
 
         invocation.addLiteralSamplers(samplers);
         invocation.addBufferArgument(*outArgs.buf);
 
-        invocation.run(info.graphics_queue, kernel, num_workgroups);
+        auto result = invocation.run(info.graphics_queue, kernel, num_workgroups);
 
         vulkan_utils::memory_map argMap(outArgs);
         auto outScalars = static_cast<const scalar_args *>(argMap.map());
-
-        const auto result = std::make_tuple(outScalars->outWorkgroupX,
-                                            outScalars->outWorkgroupY,
-                                            outScalars->outWorkgroupZ);
+        outLocalSizes = std::make_tuple(outScalars->outWorkgroupX,
+                                        outScalars->outWorkgroupY,
+                                        outScalars->outWorkgroupZ);
 
         return result;
     }
@@ -52,7 +53,8 @@ namespace readlocalsize_kernel {
 
         const clspv_utils::WorkgroupDimensions expected = kernel.getWorkgroupSize();
 
-        const auto observed = invoke(module, kernel, info, samplers);
+        std::tuple<int, int, int> observed;
+        invocationResult.mExecutionTime = invoke(module, kernel, info, samplers, observed);
 
         const bool success = (expected.x == std::get<0>(observed) &&
                               expected.y == std::get<1>(observed) &&
