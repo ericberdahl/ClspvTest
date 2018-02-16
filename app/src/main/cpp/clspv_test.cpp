@@ -260,13 +260,55 @@ void run_all_tests(const sample_info&                   info,
     }
 }
 
+std::pair<unsigned int, unsigned int> countResults(const test_utils::InvocationResult& ir) {
+    // an invocation passes if it generates at least one correct value and no incorrect values
+    return (ir.mNumCorrectPixels > 0 && ir.mPixelErrors.empty() ? std::make_pair(1, 0) : std::make_pair(0, 1));
+};
+
+std::pair<unsigned int, unsigned int> countResults(const test_utils::KernelResult& kr) {
+    // a kernel's results are the aggregate sum of its invocations
+    return std::accumulate(kr.mInvocations.begin(), kr.mInvocations.end(),
+                           std::make_pair(0, 0),
+                           [](std::pair<unsigned int, unsigned int> r, const test_utils::InvocationResult& ir) {
+                               auto addend = countResults(ir);
+                               r.first += addend.first;
+                               r.second += addend.second;
+                               return r;
+                           });
+};
+
+std::pair<unsigned int, unsigned int> countResults(const test_utils::ModuleResult& mr) {
+    // a module's results are the aggregate sum of its kernels, combined with the result of its own
+    // loading (i.e. whether it loaded correctly or not)
+    return std::accumulate(mr.mKernels.begin(), mr.mKernels.end(),
+                           mr.mLoadedCorrectly ? std::make_pair(1, 0) : std::make_pair(0, 1),
+                           [](std::pair<unsigned int, unsigned int> r, const test_utils::KernelResult& kr) {
+                               auto addend = countResults(kr);
+                               r.first += addend.first;
+                               r.second += addend.second;
+                               return r;
+                           });
+};
+
+std::pair<unsigned int, unsigned int> countResults(const test_utils::ModuleResultSet& moduleResultSet) {
+    return std::accumulate(moduleResultSet.begin(), moduleResultSet.end(),
+                           std::make_pair(0, 0),
+                           [](std::pair<unsigned int, unsigned int> r, const test_utils::ModuleResult& mr) {
+                               auto addend = countResults(mr);
+                               r.first += addend.first;
+                               r.second += addend.second;
+                               return r;
+                           });
+};
+
 void logResults(const test_utils::InvocationResult& ir) {
     std::ostringstream os;
     if (!ir.mVariation.empty()) {
         os << "(" << ir.mVariation << ") ";
     }
-    os << "correctPixels:" << ir.mNumCorrectPixels
-       << " incorrectPixels:" << ir.mPixelErrors.size();
+    os << (ir.mNumCorrectPixels > 0 && ir.mPixelErrors.empty() ? "PASS" : "FAIL");
+    os << " correctValues:" << ir.mNumCorrectPixels
+       << " incorrectValues:" << ir.mPixelErrors.size();
 
     LOGI("      %s", os.str().c_str());
 }
@@ -302,6 +344,12 @@ void logResults(const test_utils::ModuleResultSet& moduleResultSet) {
     for (auto mr : moduleResultSet) {
         logResults(mr);
     }
+
+    auto results = countResults(moduleResultSet);
+
+    std::ostringstream os;
+    os << "Overall Summary pass:" << results.first << " fail:" << results.second;
+    LOGI("%s", os.str().c_str());
 }
 
 /* ============================================================================================== */
