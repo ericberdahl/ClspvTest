@@ -682,7 +682,7 @@ namespace clspv_utils {
         auto end = std::chrono::high_resolution_clock::now();
 
         std::chrono::duration<double> elapsed_time = end - start;
-        LOGI("Kernel executed in %lfs", elapsed_time.count());
+        LOGI("Kernel %s executed in %lfms", kern.getEntryPoint().c_str(), elapsed_time.count() * 1000.0);
     }
 
 } // namespace clspv_utils

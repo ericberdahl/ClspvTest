@@ -22,11 +22,11 @@ namespace readconstantdata_kernel {
                 vk::Buffer                          dst_buffer,
                 int                                 width);
 
-    test_utils::Results test_all(const clspv_utils::kernel_module&    module,
-                                 const clspv_utils::kernel&           kernel,
-                                 const sample_info&                   info,
-                                 vk::ArrayProxy<const vk::Sampler>    samplers,
-                                 const test_utils::options&           opts);
+    void test_all(const clspv_utils::kernel_module&    module,
+                  const clspv_utils::kernel&           kernel,
+                  const sample_info&                   info,
+                  vk::ArrayProxy<const vk::Sampler>    samplers,
+                  test_utils::InvocationResultSet&     resultSet);
 
 }
 

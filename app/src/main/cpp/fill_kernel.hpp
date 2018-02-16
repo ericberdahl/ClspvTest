@@ -28,22 +28,20 @@ namespace fill_kernel {
                 int height,
                 const gpu_types::float4 &color);
 
-    test_utils::Results test_series(const clspv_utils::kernel_module&   module,
-                                    const clspv_utils::kernel&          kernel,
-                                    const sample_info&                  info,
-                                    vk::ArrayProxy<const vk::Sampler>   samplers,
-                                    const test_utils::options&          opts);
+    void test_series(const clspv_utils::kernel_module&   module,
+                     const clspv_utils::kernel&          kernel,
+                     const sample_info&                  info,
+                     vk::ArrayProxy<const vk::Sampler>   samplers,
+                     test_utils::InvocationResultSet&    resultSet);
 
-        template <typename PixelType>
-    test_utils::Results test(const clspv_utils::kernel_module&      module,
-                             const clspv_utils::kernel&             kernel,
-                             const sample_info&                     info,
-                             vk::ArrayProxy<const vk::Sampler>      samplers,
-                             const test_utils::options&             opts) {
-        const std::string typeLabel = pixels::traits<PixelType>::type_name;
-
-        std::string testLabel = "fills.spv/FillWithColorKernel/";
-        testLabel += typeLabel;
+    template <typename PixelType>
+    void test(const clspv_utils::kernel_module&      module,
+              const clspv_utils::kernel&             kernel,
+              const sample_info&                     info,
+              vk::ArrayProxy<const vk::Sampler>      samplers,
+              test_utils::InvocationResultSet&       resultSet) {
+        test_utils::InvocationResult invocationResult;
+        invocationResult.mVariation = pixels::traits<PixelType>::type_name;
 
         const int buffer_height = 64;
         const int buffer_width = 64;
@@ -72,14 +70,13 @@ namespace fill_kernel {
                buffer_width, buffer_height, // width, height
                color); // color
 
-        const bool success = test_utils::check_results<PixelType>(dst_buffer.mem,
-                                                                  buffer_width, buffer_height,
-                                                                  buffer_width,
-                                                                  color,
-                                                                  testLabel.c_str(),
-                                                                  opts);
+        test_utils::check_results<PixelType>(dst_buffer.mem,
+                                             buffer_width, buffer_height,
+                                             buffer_width,
+                                             color,
+                                             invocationResult);
 
-        return (success ? test_utils::Results::sTestSuccess : test_utils::Results::sTestFailure);
+        resultSet.push_back(invocationResult);
     }
 }
 

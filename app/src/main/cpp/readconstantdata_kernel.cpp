@@ -36,13 +36,13 @@ namespace readconstantdata_kernel {
         invocation.run(info.graphics_queue, kernel, num_workgroups);
     }
 
-    test_utils::Results test_all(const clspv_utils::kernel_module&    module,
-                                 const clspv_utils::kernel&           kernel,
-                                 const sample_info&                   info,
-                                 vk::ArrayProxy<const vk::Sampler>    samplers,
-                                 const test_utils::options&           opts)
+    void test_all(const clspv_utils::kernel_module&    module,
+                  const clspv_utils::kernel&           kernel,
+                  const sample_info&                   info,
+                  vk::ArrayProxy<const vk::Sampler>    samplers,
+                  test_utils::InvocationResultSet&     resultSet)
     {
-        const std::string testLabel = "readconstantdata.spv/ReadConstantData";
+        test_utils::InvocationResult invocationResult;
 
         const int buffer_height = 1;
         const int buffer_width = 64;
@@ -79,12 +79,11 @@ namespace readconstantdata_kernel {
                *dstBuffer.buf,
                buffer_width);
 
-        const bool success = test_utils::check_results<float, float>(expectedResults.data(), dstBuffer.mem,
-                                                                     buffer_width, buffer_height,
-                                                                     buffer_height,
-                                                                     testLabel.c_str(),
-                                                                     opts);
+        test_utils::check_results<float, float>(expectedResults.data(), dstBuffer.mem,
+                                                buffer_width, buffer_height,
+                                                buffer_height,
+                                                invocationResult);
 
-        return (success ? test_utils::Results::sTestSuccess : test_utils::Results::sTestFailure);
+        resultSet.push_back(invocationResult);
     }
 }

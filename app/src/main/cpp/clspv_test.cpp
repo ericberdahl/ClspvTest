@@ -247,25 +247,61 @@ std::vector<test_utils::module_test_bundle> read_loadmodule_file() {
     return result;
 }
 
-test_utils::Results run_all_tests(const sample_info& info, vk::ArrayProxy<const vk::Sampler> samplers) {
-    const test_utils::options opts = {
-            false,  // logVerbose
-            true,   // logIncorrect
-            false   // logCorrect
-    };
-
-    test_utils::Results test_results;
-
+void run_all_tests(const sample_info&                   info,
+                   vk::ArrayProxy<const vk::Sampler>    samplers,
+                   test_utils::ModuleResultSet&         resultSet) {
     for (auto m : module_tests) {
-        test_results += test_utils::test_module(m.name, m.kernelTests, info, samplers, opts);
+        resultSet.push_back(test_utils::test_module(m.name, m.kernelTests, info, samplers));
     }
 
     auto loadmodule_tests = read_loadmodule_file();
     for (auto m : loadmodule_tests) {
-        test_results += test_utils::test_module(m.name, m.kernelTests, info, samplers, opts);
+        resultSet.push_back(test_utils::test_module(m.name, m.kernelTests, info, samplers));
     }
+}
 
-    return test_results;
+void logResults(const test_utils::InvocationResult& ir) {
+    std::ostringstream os;
+    if (!ir.mVariation.empty()) {
+        os << "(" << ir.mVariation << ") ";
+    }
+    os << "correctPixels:" << ir.mNumCorrectPixels
+       << " incorrectPixels:" << ir.mPixelErrors.size();
+
+    LOGI("      %s", os.str().c_str());
+}
+
+void logResults(const test_utils::KernelResult& kr) {
+    std::ostringstream os;
+
+    os << "Kernel:" << kr.mEntryName;
+    if (kr.mInvocations.empty()) {
+        os << " SKIPPED";
+    }
+    LOGI("   %s", os.str().c_str());
+
+    for (auto ir : kr.mInvocations) {
+        logResults(ir);
+    }
+}
+
+void logResults(const test_utils::ModuleResult& mr) {
+    std::ostringstream os;
+    os << "Module:" << mr.mModuleName;
+    if (!mr.mExceptionString.empty()) {
+        os << " loadException:" << mr.mExceptionString;
+    }
+    LOGI("%s", os.str().c_str());
+
+    for (auto kr : mr.mKernels) {
+        logResults(kr);
+    }
+}
+
+void logResults(const test_utils::ModuleResultSet& moduleResultSet) {
+    for (auto mr : moduleResultSet) {
+        logResults(mr);
+    }
 }
 
 /* ============================================================================================== */
@@ -326,7 +362,9 @@ int sample_main(int argc, char *argv[]) {
                    std::bind(create_compatible_sampler, *info.device, std::placeholders::_1));
 
     const auto rawSamplers = vulkan_utils::extractUniques(samplers);
-    const auto test_results = run_all_tests(info, rawSamplers);
+
+    test_utils::ModuleResultSet moduleResultSet;
+    run_all_tests(info, rawSamplers, moduleResultSet);
 
     //
     // Clean up
@@ -338,12 +376,8 @@ int sample_main(int argc, char *argv[]) {
     info.device->waitIdle();
     info.device.reset();
 
-    LOGI("Complete! %d tests passed. %d tests failed. %d kernels loaded, %d kernels skipped, %d kernels failed",
-         test_results.mNumTestSuccess,
-         test_results.mNumTestFail,
-         test_results.mNumKernelLoadSuccess,
-         test_results.mNumKernelLoadSkip,
-         test_results.mNumKernelLoadFail);
+    logResults(moduleResultSet);
+    LOGI("ClspvTest complete!!");
 
     return 0;
 }

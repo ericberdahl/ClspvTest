@@ -89,63 +89,45 @@ namespace test_utils {
         };
     }
 
-    struct Results {
-        Results(unsigned int testSuccess,
-                unsigned int testFailure,
-                unsigned int loadSuccess,
-                unsigned int loadSkip,
-                unsigned int loadFail) : mNumTestSuccess(testSuccess),
-                                         mNumTestFail(testFailure),
-                                         mNumKernelLoadSuccess(loadSuccess),
-                                         mNumKernelLoadSkip(loadSkip),
-                                         mNumKernelLoadFail(loadFail) {}
-
-        Results() : Results(0, 0, 0, 0, 0) {}
-
-        static const Results sTestSuccess;
-        static const Results sTestFailure;
-        static const Results sKernelLoadSuccess;
-        static const Results sKernelLoadSkip;
-        static const Results sKernelLoadFail;
-
-        Results &operator+=(const Results &other) {
-            mNumTestSuccess += other.mNumTestSuccess;
-            mNumTestFail += other.mNumTestFail;
-            mNumKernelLoadSuccess += other.mNumKernelLoadSuccess;
-            mNumKernelLoadSkip += other.mNumKernelLoadSkip;
-            mNumKernelLoadFail += other.mNumKernelLoadFail;
-            return *this;
-        }
-
-        unsigned int mNumTestSuccess;
-        unsigned int mNumTestFail;
-
-        unsigned int mNumKernelLoadSuccess;
-        unsigned int mNumKernelLoadSkip;
-        unsigned int mNumKernelLoadFail;
-    };
-    
-    struct options {
-        bool logVerbose;
-        bool logIncorrect;
-        bool logCorrect;
+    struct InvocationResult {
+        std::string                 mVariation;
+        unsigned int                mNumCorrectPixels   = 0;
+        std::vector<std::string>    mPixelErrors;
     };
 
-    typedef Results (*test_kernel_fn)(const clspv_utils::kernel_module& module,
-                                      const clspv_utils::kernel&        kernel,
-                                      const sample_info&                info,
-                                      vk::ArrayProxy<const vk::Sampler> samplers,
-                                      const options&                    opts);
+    typedef std::vector<InvocationResult> InvocationResultSet;
+
+    struct KernelResult {
+        std::string         mEntryName;
+        InvocationResultSet mInvocations;
+    };
+
+    typedef std::vector<KernelResult> KernelResultSet;
+
+    struct ModuleResult {
+        std::string     mModuleName;
+        std::string     mExceptionString;
+        bool            mLoadedCorrectly    = false;
+        KernelResultSet mKernels;
+    };
+
+    typedef std::vector<ModuleResult> ModuleResultSet;
+
+    typedef void (*test_kernel_fn)(const clspv_utils::kernel_module&    module,
+                                   const clspv_utils::kernel&           kernel,
+                                   const sample_info&                   info,
+                                   vk::ArrayProxy<const vk::Sampler>    samplers,
+                                   InvocationResultSet&                 resultSet);
 
     struct kernel_test_map {
-        std::string entry;
-        test_kernel_fn test;
-        clspv_utils::WorkgroupDimensions workgroupSize;
+        std::string                         entry;
+        test_kernel_fn                      test;
+        clspv_utils::WorkgroupDimensions    workgroupSize;
     };
 
     struct module_test_bundle {
-        std::string name;
-        std::vector<kernel_test_map> kernelTests;
+        std::string                     name;
+        std::vector<kernel_test_map>    kernelTests;
     };
 
     template<typename T>
@@ -232,209 +214,129 @@ namespace test_utils {
     }
 
     template<typename ExpectedPixelType, typename ObservedPixelType>
-    bool check_result(ExpectedPixelType expected_pixel,
+    void check_result(ExpectedPixelType expected_pixel,
                       ObservedPixelType observed_pixel,
-                      const char *label,
-                      int row,
-                      int column,
-                      const options &opts) {
+                      int               row,
+                      int               column,
+                      InvocationResult& result) {
         typedef typename details::pixel_promotion<ExpectedPixelType, ObservedPixelType>::promotion_type promotion_type;
 
         auto expected = pixels::traits<promotion_type>::translate(expected_pixel);
         auto observed = pixels::traits<promotion_type>::translate(observed_pixel);
 
         const bool pixel_is_correct = pixel_compare(observed, expected);
-        if (opts.logVerbose &&
-            ((pixel_is_correct && opts.logCorrect) || (!pixel_is_correct && opts.logIncorrect))) {
+        if (pixel_is_correct) {
+            ++result.mNumCorrectPixels;
+        }
+        else {
             const std::string expectedString = pixels::traits<decltype(expected_pixel)>::toString(expected_pixel);
             const std::string observedString = pixels::traits<decltype(observed_pixel)>::toString(observed_pixel);
 
             const std::string expectedPromotionString = pixels::traits<decltype(expected)>::toString(expected);
             const std::string observedPromotionString = pixels::traits<decltype(observed)>::toString(observed);
 
-            LOGE("%s: %s pixel{row:%d, col%d} expected:%s observed:%s expectedPromotion:%s observedPromotion:%s",
-                 pixel_is_correct ? "CORRECT  " : "INCORRECT",
-                 label, row, column,
-                 expectedString.c_str(),
-                 observedString.c_str(),
-                 expectedPromotionString.c_str(),
-                 observedPromotionString.c_str());
+            std::ostringstream os;
+            os << (pixel_is_correct ? "CORRECT  " : "INCORRECT")
+               << ": pixel{row:" << row << ", col:" << column<< "}"
+               << " expected:" << expectedString << " observed:" << observedString
+               << " expectedPromotion:" << expectedPromotionString << " observedPromotion:" << observedPromotionString;
+            result.mPixelErrors.push_back(os.str());
         }
-
-        return pixel_is_correct;
     }
 
     template<typename ObservedPixelType, typename ExpectedPixelType>
-    bool check_results(const ObservedPixelType *observed_pixels,
-                       int width,
-                       int height,
-                       int pitch,
-                       ExpectedPixelType expected,
-                       const char *label,
-                       const options &opts) {
-        unsigned int num_correct_pixels = 0;
-        unsigned int num_incorrect_pixels = 0;
-
+    void check_results(const ObservedPixelType* observed_pixels,
+                       int                      width,
+                       int                      height,
+                       int                      pitch,
+                       ExpectedPixelType        expected,
+                       InvocationResult&        result) {
         auto row = observed_pixels;
         for (int r = 0; r < height; ++r, row += pitch) {
             auto p = row;
             for (int c = 0; c < width; ++c, ++p) {
-                if (check_result(expected, *p, label, r, c, opts)) {
-                    ++num_correct_pixels;
-                } else {
-                    ++num_incorrect_pixels;
-                }
+                check_result(expected, *p, r, c, result);
             }
         }
-
-        if (0 < num_incorrect_pixels || 0 == num_correct_pixels) {
-            LOGE("%s: Correct pixels=%d; Incorrect pixels=%d",
-                 label, num_correct_pixels, num_incorrect_pixels);
-        }
-
-        return (0 == num_incorrect_pixels && 0 < num_correct_pixels);
     }
 
     template<typename ExpectedPixelType, typename ObservedPixelType>
-    bool check_results(const ExpectedPixelType *expected_pixels,
-                       const ObservedPixelType *observed_pixels,
-                       int width,
-                       int height,
-                       int pitch,
-                       const char *label,
-                       const options &opts) {
-        unsigned int num_correct_pixels = 0;
-        unsigned int num_incorrect_pixels = 0;
-
+    void check_results(const ExpectedPixelType* expected_pixels,
+                       const ObservedPixelType* observed_pixels,
+                       int                      width,
+                       int                      height,
+                       int                      pitch,
+                       InvocationResult&        result) {
         auto expected_row = expected_pixels;
         auto observed_row = observed_pixels;
         for (int r = 0; r < height; ++r, expected_row += pitch, observed_row += pitch) {
             auto expected_p = expected_row;
             auto observed_p = observed_row;
             for (int c = 0; c < width; ++c, ++expected_p, ++observed_p) {
-                if (check_result(*expected_p, *observed_p, label, r, c, opts)) {
-                    ++num_correct_pixels;
-                } else {
-                    ++num_incorrect_pixels;
-                }
+                check_result(*expected_p, *observed_p, r, c, result);
             }
         }
-
-        if (0 < num_incorrect_pixels || 0 == num_correct_pixels) {
-            LOGE("%s: Correct pixels=%d; Incorrect pixels=%d", label, num_correct_pixels,
-                 num_incorrect_pixels);
-        }
-
-        return (0 == num_incorrect_pixels && 0 < num_correct_pixels);
     }
 
     template<typename ExpectedPixelType, typename ObservedPixelType>
-    bool check_results(const vulkan_utils::device_memory &expected,
-                       const vulkan_utils::device_memory &observed,
-                       int width,
-                       int height,
-                       int pitch,
-                       const char *label,
-                       const options &opts) {
+    void check_results(const vulkan_utils::device_memory&   expected,
+                       const vulkan_utils::device_memory&   observed,
+                       int                                  width,
+                       int                                  height,
+                       int                                  pitch,
+                       InvocationResult&                    result) {
         vulkan_utils::memory_map src_map(expected);
         vulkan_utils::memory_map dst_map(observed);
         auto src_pixels = static_cast<const ExpectedPixelType *>(src_map.map());
         auto dst_pixels = static_cast<const ObservedPixelType *>(dst_map.map());
 
-        return check_results(src_pixels, dst_pixels, width, height, pitch, label, opts);
+        check_results(src_pixels, dst_pixels, width, height, pitch, result);
     }
 
     template<typename ExpectedPixelType, typename ObservedPixelType>
-    bool check_results(const ExpectedPixelType              *expected_pixels,
-                       const vulkan_utils::device_memory    &observed,
-                       int width,
-                       int height,
-                       int pitch,
-                       const char *label,
-                       const options &opts) {
+    void check_results(const ExpectedPixelType*             expected_pixels,
+                       const vulkan_utils::device_memory&   observed,
+                       int                                  width,
+                       int                                  height,
+                       int                                  pitch,
+                       InvocationResult&                    result) {
         vulkan_utils::memory_map dst_map(observed);
         auto dst_pixels = static_cast<const ObservedPixelType *>(dst_map.map());
 
-        return check_results(expected_pixels, dst_pixels, width, height, pitch, label, opts);
-    }
-
-    template<typename Fn>
-    Results runInExceptionContext(const std::string &label,
-                                  const std::string &stage,
-                                  Fn f,
-                                  Results failureResult = Results::sTestFailure) {
-        Results result = failureResult;
-
-        try {
-            result = f();
-        }
-        catch (const vk::SystemError &e) {
-            std::ostringstream os;
-            os << label << '/' << stage << ": vk::SystemError : " << e.code() << " ("
-               << e.code().message() << ')';
-            LOGE("%s", os.str().c_str());
-        }
-        catch (const std::system_error &e) {
-            std::ostringstream os;
-            os << label << '/' << stage << ": std::system_error : " << e.code() << " ("
-               << e.code().message() << ')';
-            LOGE("%s", os.str().c_str());
-        }
-        catch (const std::exception &e) {
-            std::ostringstream os;
-            os << label << '/' << stage << ": std::exception : " << e.what();
-            LOGE("%s", os.str().c_str());
-        }
-        catch (...) {
-            std::ostringstream os;
-            os << label << '/' << stage << ": unknonwn error";
-            LOGE("%s", os.str().c_str());
-        }
-
-        return result;
+        check_results(expected_pixels, dst_pixels, width, height, pitch, result);
     }
 
     template<typename ObservedPixelType>
-    bool check_results(const vulkan_utils::device_memory &observed,
-                       int width,
-                       int height,
-                       int pitch,
-                       const gpu_types::float4 &expected,
-                       const char *label,
-                       const options &opts) {
+    void check_results(const vulkan_utils::device_memory&   observed,
+                       int                                  width,
+                       int                                  height,
+                       int                                  pitch,
+                       const gpu_types::float4&             expected,
+                       InvocationResult&                    result) {
         vulkan_utils::memory_map map(observed);
         auto pixels = static_cast<const ObservedPixelType *>(map.map());
-        return check_results(pixels, width, height, pitch, expected, label, opts);
+        check_results(pixels, width, height, pitch, expected, result);
     }
 
-    Results test_kernel_invocation(const clspv_utils::kernel_module&    module,
-                                   const clspv_utils::kernel&           kernel,
-                                   test_kernel_fn                       testFn,
-                                   const sample_info&                   info,
-                                   vk::ArrayProxy<const vk::Sampler>    samplers,
-                                   const options&                       opts);
+    void test_kernel_invocations(const clspv_utils::kernel_module&  module,
+                                 const clspv_utils::kernel&         kernel,
+                                 const test_kernel_fn*              first,
+                                 const test_kernel_fn*              last,
+                                 const sample_info&                 info,
+                                 vk::ArrayProxy<const vk::Sampler>  samplers,
+                                 InvocationResultSet&               resultSet);
 
-    Results test_kernel_invocation(const clspv_utils::kernel_module&    module,
-                                   const clspv_utils::kernel&           kernel,
-                                   const test_kernel_fn*                first,
-                                   const test_kernel_fn*                last,
-                                   const sample_info&                   info,
-                                   vk::ArrayProxy<const vk::Sampler>    samplers,
-                                   const options&                       opts);
+    KernelResult test_kernel(const clspv_utils::kernel_module&          module,
+                             const std::string&                         entryPoint,
+                             test_kernel_fn                             testFn,
+                             const clspv_utils::WorkgroupDimensions&    numWorkgroups,
+                             const sample_info&                         info,
+                             vk::ArrayProxy<const vk::Sampler>          samplers);
 
-    Results test_kernel(const clspv_utils::kernel_module&       module,
-                        const std::string&                      entryPoint,
-                        test_kernel_fn                          testFn,
-                        const clspv_utils::WorkgroupDimensions& numWorkgroups,
-                        const sample_info&                      info,
-                        vk::ArrayProxy<const vk::Sampler>       samplers,
-                        const options&                          opts);
-
-    Results test_module(const std::string&                  moduleName,
-                        const std::vector<kernel_test_map>& kernelTests,
-                        const sample_info&                  info,
-                        vk::ArrayProxy<const vk::Sampler>   samplers,
-                        const options&                      opts);
+    ModuleResult test_module(const std::string&                     moduleName,
+                             const std::vector<kernel_test_map>&    kernelTests,
+                             const sample_info&                     info,
+                             vk::ArrayProxy<const vk::Sampler>      samplers);
     
 }
 

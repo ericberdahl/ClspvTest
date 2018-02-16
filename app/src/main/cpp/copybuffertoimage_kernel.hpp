@@ -31,18 +31,16 @@ namespace copybuffertoimage_kernel {
                 int                                 height);
 
     template <typename BufferPixelType, typename ImagePixelType>
-    test_utils::Results test(const clspv_utils::kernel_module&  module,
-                             const clspv_utils::kernel&         kernel,
-                             const sample_info&                 info,
-                             vk::ArrayProxy<const vk::Sampler>  samplers,
-                             const test_utils::options&         opts)
+    void test(const clspv_utils::kernel_module& module,
+              const clspv_utils::kernel&        kernel,
+              const sample_info&                info,
+              vk::ArrayProxy<const vk::Sampler> samplers,
+              test_utils::InvocationResultSet&  resultSet)
     {
-        std::string typeLabel = pixels::traits<BufferPixelType>::type_name;
-        typeLabel += '-';
-        typeLabel += pixels::traits<ImagePixelType>::type_name;
-
-        std::string testLabel = "memory.spv/CopyBufferToImageKernel/";
-        testLabel += typeLabel;
+        test_utils::InvocationResult invocationResult;
+        invocationResult.mVariation = pixels::traits<BufferPixelType>::type_name;
+        invocationResult.mVariation += '-';
+        invocationResult.mVariation += pixels::traits<ImagePixelType>::type_name;
 
         const int buffer_height = 64;
         const int buffer_width = 64;
@@ -75,27 +73,26 @@ namespace copybuffertoimage_kernel {
                buffer_width,
                buffer_height);
 
-        const bool success = test_utils::check_results<BufferPixelType, ImagePixelType>(srcBuffer.mem, dstImage.mem,
-                                                                                        buffer_width, buffer_height,
-                                                                                        buffer_height,
-                                                                                        testLabel.c_str(),
-                                                                                        opts);
+        test_utils::check_results<BufferPixelType, ImagePixelType>(srcBuffer.mem, dstImage.mem,
+                                                                   buffer_width, buffer_height,
+                                                                   buffer_height,
+                                                                   invocationResult);
 
-        return (success ? test_utils::Results::sTestSuccess : test_utils::Results::sTestFailure);
+        resultSet.push_back(invocationResult);
     }
 
-    test_utils::Results test_matrix(const clspv_utils::kernel_module&   module,
-                                    const clspv_utils::kernel&          kernel,
-                                    const sample_info&                  info,
-                                    vk::ArrayProxy<const vk::Sampler>   samplers,
-                                    const test_utils::options&          opts);
+    void test_matrix(const clspv_utils::kernel_module&  module,
+                     const clspv_utils::kernel&         kernel,
+                     const sample_info&                 info,
+                     vk::ArrayProxy<const vk::Sampler>  samplers,
+                     test_utils::InvocationResultSet&   resultSet);
 
     template <typename ImagePixelType>
-    test_utils::Results test_series(const clspv_utils::kernel_module&   module,
-                                    const clspv_utils::kernel&          kernel,
-                                    const sample_info&                  info,
-                                    vk::ArrayProxy<const vk::Sampler>   samplers,
-                                    const test_utils::options&          opts)
+    void test_series(const clspv_utils::kernel_module&   module,
+                     const clspv_utils::kernel&          kernel,
+                     const sample_info&                  info,
+                     vk::ArrayProxy<const vk::Sampler>   samplers,
+                     test_utils::InvocationResultSet&    resultSet)
     {
         const test_utils::test_kernel_fn tests[] = {
                 test<gpu_types::uchar, ImagePixelType>,
@@ -107,11 +104,11 @@ namespace copybuffertoimage_kernel {
                 test<gpu_types::float4, ImagePixelType>,
         };
 
-        return test_utils::test_kernel_invocation(module, kernel,
-                                                  std::begin(tests), std::end(tests),
-                                                  info,
-                                                  samplers,
-                                                  opts);
+        test_utils::test_kernel_invocations(module, kernel,
+                                            std::begin(tests), std::end(tests),
+                                            info,
+                                            samplers,
+                                            resultSet);
     }
 
 }

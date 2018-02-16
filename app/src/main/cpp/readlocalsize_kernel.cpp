@@ -42,12 +42,14 @@ namespace readlocalsize_kernel {
         return result;
     }
 
-    test_utils::Results test(const clspv_utils::kernel_module&  module,
-                             const clspv_utils::kernel&         kernel,
-                             const sample_info&                 info,
-                             vk::ArrayProxy<const vk::Sampler>  samplers,
-                             const test_utils::options&         opts)
+    void test(const clspv_utils::kernel_module&  module,
+              const clspv_utils::kernel&         kernel,
+              const sample_info&                 info,
+              vk::ArrayProxy<const vk::Sampler>  samplers,
+              test_utils::InvocationResultSet&   resultSet)
     {
+        test_utils::InvocationResult    invocationResult;
+
         const clspv_utils::WorkgroupDimensions expected = kernel.getWorkgroupSize();
 
         const auto observed = invoke(module, kernel, info, samplers);
@@ -56,15 +58,16 @@ namespace readlocalsize_kernel {
                               expected.y == std::get<1>(observed) &&
                               1 == std::get<2>(observed));
 
-        if (opts.logVerbose && ((success && opts.logCorrect) || (!success && opts.logIncorrect))) {
-            const std::string label = module.getName() + "/" + kernel.getEntryPoint();
-            LOGE("%s: %s workgroup_size expected{x=%d, y=%d, z=1} observed{x=%d, y=%d, z=%d}",
-                 success ? "CORRECT" : "INCORRECT",
-                 label.c_str(),
-                 expected.x, expected.y,
-                 std::get<0>(observed), std::get<1>(observed), std::get<2>(observed));
+        if (success) {
+            ++invocationResult.mNumCorrectPixels;
+        } else {
+            std::ostringstream os;
+            os << (success ? "CORRECT" : "INCORRECT")
+               << ": workgroup_size expected{x=" << expected.x << ", y=" << expected.y << ", z=1}"
+               << " observed{x=" << std::get<0>(observed) << ", y=" << std::get<1>(observed) <<", z=" << std::get<2>(observed) << "}";
+            invocationResult.mPixelErrors.push_back(os.str());
         }
 
-        return (success ? test_utils::Results::sTestSuccess : test_utils::Results::sTestFailure);
+        resultSet.push_back(invocationResult);
     };
 }
