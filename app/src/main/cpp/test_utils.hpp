@@ -65,8 +65,9 @@ namespace test_utils {
         template<>
         struct pixel_comparator<gpu_types::uchar> {
             static bool is_equal(gpu_types::uchar l, gpu_types::uchar r) {
-                return pixel_comparator<float>::is_equal(pixels::traits<float>::translate(l),
-                                                         pixels::traits<float>::translate(r));
+                // because rounding modes in Vulkan are undefined, unknowable, and unsettable, we
+                // need to tolerate off-by-one differences in integral components
+                return std::abs(static_cast<int>(l) - static_cast<int>(r)) <= 1;
             }
         };
 
