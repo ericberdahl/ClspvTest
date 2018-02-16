@@ -342,6 +342,11 @@ void logResults(const test_utils::InvocationResult& ir) {
        << " incorrectValues:" << ir.mPixelErrors.size();
 
     LOGI("      %s", os.str().c_str());
+
+    for (auto err : ir.mPixelErrors) {
+        LOGD("         %s", err.c_str());
+    }
+
 }
 
 void logResults(const test_utils::KernelResult& kr) {
