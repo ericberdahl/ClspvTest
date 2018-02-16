@@ -39,9 +39,11 @@ namespace copybuffertoimage_kernel {
               test_utils::InvocationResultSet&  resultSet)
     {
         test_utils::InvocationResult invocationResult;
-        invocationResult.mVariation = pixels::traits<BufferPixelType>::type_name;
-        invocationResult.mVariation += '-';
+        invocationResult.mVariation = "<src:";
+        invocationResult.mVariation += pixels::traits<BufferPixelType>::type_name;
+        invocationResult.mVariation += " dst:";
         invocationResult.mVariation += pixels::traits<ImagePixelType>::type_name;
+        invocationResult.mVariation += ">";
 
         const int buffer_height = 64;
         const int buffer_width = 64;
