@@ -175,7 +175,8 @@ const test_utils::module_test_bundle module_tests[] = {
         {
                 "shaders_cl/ReadConstantData",
                 {
-                        {"ReadConstantData", readconstantdata_kernel::test_all, { 32, 1 } }
+                        {"ReadConstantArray", readconstantdata_kernel::test_all, { 32, 1 } },
+                        {"ReadConstantStruct", readconstantdata_kernel::test_all, { 32, 1 } }
                 },
         },
         {
