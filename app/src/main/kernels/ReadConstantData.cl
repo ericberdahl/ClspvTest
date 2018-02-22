@@ -1,3 +1,5 @@
+#define OUT_OF_BOUNDS_VALUE (-1.0f)
+
 int KernelX()
 {
     return get_global_id(0);
@@ -45,50 +47,67 @@ __constant struct Float10 kTwoPowX_struct = {
 };
 
 inline float GetArrayValue(int index) {
+    float result = OUT_OF_BOUNDS_VALUE;
+
     if (0 <= index && index < (sizeof(kTwoPowX) / sizeof(kTwoPowX[0]))) {
-        return kTwoPowX[index];
+        result = kTwoPowX[index];
     }
 
-    return -1.0f;
+    return result;
 }
 
 inline float GetStructValue(int index) {
+    float result = OUT_OF_BOUNDS_VALUE;
+
     switch (index) {
         case 0:
-            return kTwoPowX_struct.m0;
+            result = kTwoPowX_struct.m0;
+            break;
         case 1:
-            return kTwoPowX_struct.m1;
+            result = kTwoPowX_struct.m1;
+            break;
         case 2:
-            return kTwoPowX_struct.m2;
+            result = kTwoPowX_struct.m2;
+            break;
         case 3:
-            return kTwoPowX_struct.m3;
+            result = kTwoPowX_struct.m3;
+            break;
         case 4:
-            return kTwoPowX_struct.m4;
+            result = kTwoPowX_struct.m4;
+            break;
         case 5:
-            return kTwoPowX_struct.m5;
+            result = kTwoPowX_struct.m5;
+            break;
         case 6:
-            return kTwoPowX_struct.m6;
+            result = kTwoPowX_struct.m6;
+            break;
         case 7:
-            return kTwoPowX_struct.m7;
+            result = kTwoPowX_struct.m7;
+            break;
         case 8:
-            return kTwoPowX_struct.m8;
+            result = kTwoPowX_struct.m8;
+            break;
         case 9:
-            return kTwoPowX_struct.m9;
-        default:
-            return -1.0f;
+            result = kTwoPowX_struct.m9;
+            break;
     }
+
+    return result;
 }
 
 __kernel void ReadConstantArray(__global float* outDest, int inWidth)
 {
     int index = KernelX();
-    outDest[index] = GetArrayValue(index);
+    if (index < inWidth) {
+        outDest[index] = GetArrayValue(index);
+    }
 }
-
 
 __kernel void ReadConstantStruct(__global float* outDest, int inWidth)
 {
     int index = KernelX();
-    outDest[index] = GetStructValue(index);
+    if (index < inWidth) {
+        outDest[index] = GetStructValue(index);
+    }
 }
 
