@@ -85,6 +85,27 @@ VKAPI_ATTR VkBool32 VKAPI_CALL dbgFunc(VkDebugReportFlagsEXT        msgFlags,
 
 /* ============================================================================================== */
 
+std::string read_asset_file(const std::string& fileName) {
+    std::string result;
+
+    std::unique_ptr<std::FILE, decltype(&std::fclose)> assetFile(AndroidFopen(fileName.c_str(), "r"),
+                                                                 &std::fclose);
+    if (assetFile) {
+        std::fseek(assetFile.get(), 0, SEEK_END);
+        result.resize(std::ftell(assetFile.get()), ' ');
+
+        std::fseek(assetFile.get(), 0, SEEK_SET);
+        std::fread(&result.front(), 1, result.length(), assetFile.get());
+    }
+    else {
+        LOGI("Asset file '%s' not found", fileName.c_str());
+    }
+
+    return result;
+}
+
+/* ============================================================================================== */
+
 void init_compute_queue_family_index(struct sample_info &info) {
     /* This routine simply finds a compute queue for a later vkCreateDevice.
      */
@@ -152,111 +173,126 @@ vk::UniqueSampler create_compatible_sampler(vk::Device device, int opencl_flags)
 
 /* ============================================================================================== */
 
-const test_utils::module_test_bundle module_tests[] = {
-        {
-                "shaders_cl/localsize",
-                {
-                        {"ReadLocalSize", readlocalsize_kernel::test }
-                },
-        },
-        {
-                "shaders_cl/Fills",
-                {
-                        { "FillWithColorKernel", fill_kernel::test_series, { 32, 32 } }
-                }
-        },
-        {
-                "shaders_cl/Memory",
-                {
-                        { "CopyBufferToImageKernel", copybuffertoimage_kernel::test_matrix, { 32, 32 } },
-                        { "CopyImageToBufferKernel", copyimagetobuffer_kernel::test_matrix, { 32, 32 } }
-                }
-        },
-        {
-                "shaders_cl/ReadConstantData",
-                {
-                        {"ReadConstantArray", readconstantdata_kernel::test_all, { 32, 1 } },
-                        {"ReadConstantStruct", readconstantdata_kernel::test_all, { 32, 1 } }
-                },
-        },
-        {
-                "shaders_cl/TestComparisons",
-                {
-                        {"TestGreaterThanOrEqualTo", testgreaterthanorequalto_kernel::test_all, { 32, 32 } }
-                },
-        },
-};
+test_utils::test_kernel_fn lookup_test_fn(const std::string& testName) {
+    test_utils::test_kernel_fn result = nullptr;
 
-std::vector<test_utils::module_test_bundle> read_loadmodule_file() {
+    if (testName == "readLocalSize") {
+        result = readlocalsize_kernel::test;
+    }
+    else if (testName == "fill") {
+        result = fill_kernel::test_series;
+    }
+    else if (testName == "copyImageToBuffer") {
+        result = copyimagetobuffer_kernel::test_matrix;
+    }
+    else if (testName == "copyBufferToImage") {
+        result = copybuffertoimage_kernel::test_matrix;
+    }
+    else if (testName == "readConstantData") {
+        result = readconstantdata_kernel::test_all;
+    }
+    else if (testName == "testGtEq") {
+        result = testgreaterthanorequalto_kernel::test_all;
+    }
+
+    return result;
+}
+
+std::vector<test_utils::module_test_bundle> read_module_manifest(std::istream& in) {
     std::vector<test_utils::module_test_bundle> result;
 
-    std::unique_ptr<std::FILE, decltype(&std::fclose)> spvmap_file(AndroidFopen("loadmodules.txt", "r"),
-                                                                   &std::fclose);
-    if (spvmap_file) {
-        std::fseek(spvmap_file.get(), 0, SEEK_END);
-        std::string buffer(std::ftell(spvmap_file.get()), ' ');
-        std::fseek(spvmap_file.get(), 0, SEEK_SET);
-        std::fread(&buffer.front(), 1, buffer.length(), spvmap_file.get());
-        spvmap_file.reset();
+    test_utils::module_test_bundle* currentModule = NULL;
+    while (!in.eof()) {
+        std::string line;
+        std::getline(in, line);
 
-        std::istringstream in(buffer);
-        while (!in.eof()) {
-            std::string line;
-            std::getline(in, line);
+        std::istringstream in_line(line);
 
-            std::istringstream in_line(line);
+        std::string op;
+        in_line >> op;
+        if (op.empty() || op[0] == '#') {
+            // line is either blank or a comment, skip it
+        }
+        else if (op == "module") {
+            // add module to list of modules to load
+            std::string moduleName;
+            in_line >> moduleName;
 
-            std::string op;
-            in_line >> op;
-            if (op.empty() || op[0] == '#') {
-                // line is either blank or a comment, skip it
-            }
-            else if (op == "+") {
-                // add module to list of modules to load
-                std::string moduleName;
-                in_line >> moduleName;
-                result.push_back({ moduleName });
-            }
-            else if (op == "-") {
-                // skip kernel in module
-                std::string moduleName;
-                in_line >> moduleName;
+            result.push_back({ moduleName });
+            currentModule = &result.back();
+        }
+        else if (op == "test") {
+            // test kernel in module
+            if (currentModule) {
+                std::string entryPoint;
+                std::string testName;
+                int workgroup_x;
+                int workgroup_y;
 
-                auto mod_map = std::find_if(result.begin(),
-                                            result.end(),
-                                            [&moduleName](const test_utils::module_test_bundle& mb) {
-                                                return mb.name == moduleName;
-                                            });
-                if (mod_map != result.end()) {
-                    std::string entryPoint;
-                    in_line >> entryPoint;
+                in_line >> entryPoint
+                        >> testName
+                        >> workgroup_x
+                        >> workgroup_y;
 
-                    mod_map->kernelTests.push_back({ entryPoint, nullptr, clspv_utils::WorkgroupDimensions(0, 0) });
-                }
-                else {
-                    LOGE("read_loadmodule_file: cannot find module '%s' from command '%s'",
-                         moduleName.c_str(),
+                auto testFn = lookup_test_fn(testName);
+
+                bool lineIsGood = true;
+
+                if (!testFn) {
+                    LOGE("read_loadmodule_file: cannot find test '%s' from command '%s'",
+                         testName.c_str(),
                          line.c_str());
+                    lineIsGood = false;
+                }
+                if (1 > workgroup_x || 1 > workgroup_y) {
+                    LOGE("read_loadmodule_file: bad workgroup dimensions {%d,%d} from command '%s'",
+                         workgroup_x,
+                         workgroup_y,
+                         line.c_str());
+                    lineIsGood = false;
+                }
+
+                if (lineIsGood) {
+                    currentModule->kernelTests.push_back({entryPoint, testFn,
+                                                          clspv_utils::WorkgroupDimensions(
+                                                                  workgroup_x, workgroup_y)});
                 }
             }
             else {
-                LOGE("read_loadmodule_file: ignoring ill-formed line '%s'", line.c_str());
+                LOGE("read_loadmodule_file: no module for test '%s'", line.c_str());
             }
+        }
+        else if (op == "skip") {
+            // skip kernel in module
+            if (currentModule) {
+                std::string entryPoint;
+                in_line >> entryPoint;
+
+                currentModule->kernelTests.push_back(
+                        {entryPoint, nullptr, clspv_utils::WorkgroupDimensions(0, 0)});
+            }
+            else {
+                LOGE("read_loadmodule_file: no module for skip '%s'", line.c_str());
+            }
+        }
+        else {
+            LOGE("read_loadmodule_file: ignoring ill-formed line '%s'", line.c_str());
         }
     }
 
     return result;
 }
 
+std::vector<test_utils::module_test_bundle> read_module_manifest(const std::string& inManifest) {
+    std::istringstream is(inManifest);
+    return read_module_manifest(is);
+}
+
 void run_all_tests(const sample_info&                   info,
                    vk::ArrayProxy<const vk::Sampler>    samplers,
                    test_utils::ModuleResultSet&         resultSet) {
-    for (auto m : module_tests) {
-        resultSet.push_back(test_utils::test_module(m.name, m.kernelTests, info, samplers));
-    }
-
-    auto loadmodule_tests = read_loadmodule_file();
-    for (auto m : loadmodule_tests) {
+    auto all_tests = read_module_manifest(read_asset_file("test_manifest.txt"));
+    for (auto m : all_tests) {
         resultSet.push_back(test_utils::test_module(m.name, m.kernelTests, info, samplers));
     }
 }
