@@ -13,6 +13,12 @@ int KernelY()
     return get_global_id(1);
 }
 
+float2 GFPrepareCoord_GF_DOMAIN_NATURAL(
+    __read_only image2d_t   inImage,
+    float2                  inPos)
+{
+    return (inPos / (float2)(get_image_width(inImage), get_image_height(inImage)));
+}
 
 unsigned int ReadUCharIndex(
     __global const int* inSource,
@@ -118,7 +124,12 @@ __kernel void CopyBufferToImageKernel(
     }
 }
 
-const sampler_t copyImageToBufferSampler = CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_NONE | CLK_FILTER_NEAREST;
+const sampler_t copyImageToBufferSampler = CLK_NORMALIZED_COORDS_TRUE | CLK_ADDRESS_NONE | CLK_FILTER_NEAREST;
+
+float2 GFPrepareCoord_copyImageToBufferSampler(__read_only image2d_t inImage, float2 inPos)
+{
+    return GFPrepareCoord_GF_DOMAIN_NATURAL(inImage, inPos);
+}
 
 __kernel void CopyImageToBufferKernel(
     __read_only image2d_t   inImage,
@@ -136,7 +147,7 @@ __kernel void CopyImageToBufferKernel(
 
     if (x < inWidth && y < inHeight)
     {
-        float4 pixel = read_imagef(inImage, copyImageToBufferSampler, (int2)(x, y));
+        float4 pixel = read_imagef(inImage, copyImageToBufferSampler, GFPrepareCoord_copyImageToBufferSampler(inImage, (float2)(x, y)));
         int dstIndex = mul24(y, inDestPitch) + x;
 
         if (inSwapComponents)

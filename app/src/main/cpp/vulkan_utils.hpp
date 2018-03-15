@@ -191,4 +191,7 @@ namespace vulkan_utils {
     }
 }
 
+std::ostream& operator<<(std::ostream& os, vk::MemoryPropertyFlags vkFlags);
+std::ostream& operator<<(std::ostream& os, const vk::MemoryType& memoryType);
+
 #endif //VULKAN_UTILS_HPP

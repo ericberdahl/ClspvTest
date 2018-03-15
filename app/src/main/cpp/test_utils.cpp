@@ -29,7 +29,9 @@ namespace test_utils {
 
         clspv_utils::kernel kernel(module, entryPoint, numWorkgroups);
 
-        testFn(module, kernel, info, samplers, kernelResult.mInvocations);
+        if (testFn) {
+            testFn(module, kernel, info, samplers, kernelResult.mInvocations);
+        }
 
         return kernelResult;
     }

@@ -380,10 +380,11 @@ void logResults(const test_utils::InvocationResult& ir) {
 
     LOGI("      %s", os.str().c_str());
 
-    for (auto err : ir.mPixelErrors) {
-        LOGD("         %s", err.c_str());
+    if (false) {
+        for (auto err : ir.mPixelErrors) {
+            LOGD("         %s", err.c_str());
+        }
     }
-
 }
 
 void logResults(const test_utils::KernelResult& kr) {
@@ -470,6 +471,14 @@ int sample_main(int argc, char *argv[]) {
     init_command_pool(info);
     my_init_descriptor_pool(info);
 
+    {
+        for (int i = 0; i < info.memory_properties.memoryTypeCount; ++i) {
+            std::ostringstream os;
+            os << info.memory_properties.memoryTypes[i];
+            LOGI("memoryType: %d properties:{%s}", i, os.str().c_str());
+        }
+    }
+
     // This sample presumes that all OpenCL C kernels were compiled with the same samplermap file,
     // whose contents and order are statically known to the application. Thus, the app can create
     // a set of compatible samplers thusly.
@@ -477,7 +486,10 @@ int sample_main(int argc, char *argv[]) {
             CLK_ADDRESS_CLAMP_TO_EDGE   | CLK_FILTER_LINEAR     | CLK_NORMALIZED_COORDS_FALSE,
             CLK_ADDRESS_CLAMP_TO_EDGE   | CLK_FILTER_NEAREST    | CLK_NORMALIZED_COORDS_FALSE,
             CLK_ADDRESS_NONE            | CLK_FILTER_NEAREST    | CLK_NORMALIZED_COORDS_FALSE,
-            CLK_ADDRESS_CLAMP_TO_EDGE   | CLK_FILTER_LINEAR     | CLK_NORMALIZED_COORDS_TRUE
+            CLK_ADDRESS_CLAMP_TO_EDGE   | CLK_FILTER_LINEAR     | CLK_NORMALIZED_COORDS_TRUE,
+            CLK_ADDRESS_CLAMP_TO_EDGE   | CLK_FILTER_LINEAR     | CLK_NORMALIZED_COORDS_TRUE,
+            CLK_ADDRESS_CLAMP_TO_EDGE   | CLK_FILTER_NEAREST    | CLK_NORMALIZED_COORDS_TRUE,
+            CLK_ADDRESS_NONE            | CLK_FILTER_NEAREST    | CLK_NORMALIZED_COORDS_TRUE
     };
     std::vector<vk::UniqueSampler> samplers;
     std::transform(std::begin(sampler_flags), std::end(sampler_flags),
