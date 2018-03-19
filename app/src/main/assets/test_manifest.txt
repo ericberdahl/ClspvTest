@@ -5,12 +5,12 @@ module shaders_cl/Fills
 test FillWithColorKernel fill 32 32
 #
 module shaders_cl/Memory
-#test CopyBufferToImageKernel copyBufferToImage 32 32
+test CopyBufferToImageKernel copyBufferToImage 32 32
 test CopyImageToBufferKernel copyImageToBuffer 32 32
 #
-#module shaders_cl/ReadConstantData
-#test ReadConstantArray readConstantData 32 1
-#test ReadConstantStruct readConstantData 32 1
+module shaders_cl/ReadConstantData
+test ReadConstantArray readConstantData 32 1
+test ReadConstantStruct readConstantData 32 1
 #
-#module shaders_cl/TestComparisons
-#test TestGreaterThanOrEqualTo testGtEq 32 32
+module shaders_cl/TestComparisons
+test TestGreaterThanOrEqualTo testGtEq 32 32
