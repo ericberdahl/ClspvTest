@@ -46,7 +46,8 @@ add_library(native-activity SHARED
     test_utils.cpp
     vulkan_utils.cpp
     util.cpp
-    util_init.cpp)
+    util_init.cpp
+    )
 
 target_include_directories(native-activity PRIVATE
     ${PROJECT_SOURCE_DIR}
@@ -107,3 +108,35 @@ add_custom_command(TARGET build-cl-shaders
                    COMMAND ${CMAKE_COMMAND} -E make_directory ${CLSHADER_OUTPUT_DIR})
 
 add_dependencies(native-activity build-cl-shaders)
+
+# build GLSL kernels
+set(GLSL_SOURCE_DIR ${PROJECT_SOURCE_DIR}/kernels)
+set(GLSL_OUTPUT_DIR ${PROJECT_SOURCE_DIR}/assets/shaders)
+
+set(GLSLANG_COMMAND /usr/local/bin/glslangValidator)
+
+set(GLSLANG_FLAGS)
+set(GLSLANG_FLAGS ${GLSLANG_FLAGS} -V)
+
+set(GLSL_KERNELS
+    GL_Fills_reduced
+    )
+
+set(gl_kernel_binaries)
+foreach (kernel ${GLSL_KERNELS})
+    add_custom_command(
+        OUTPUT ${GLSL_OUTPUT_DIR}/${kernel}.spv ${GLSL_OUTPUT_DIR}/${kernel}.spvmap
+        COMMAND ${GLSLANG_COMMAND} ${GLSL_SOURCE_DIR}/${kernel}.comp -o ${GLSL_OUTPUT_DIR}/${kernel}.spv ${GLSLANG_FLAGS}
+        DEPENDS ${GLSL_SOURCE_DIR}/${kernel}.comp ${GLSL_SOURCE_DIR}/${kernel}.spvmap
+        VERBATIM
+        )
+    list(APPEND gl_kernel_binaries ${GLSL_OUTPUT_DIR}/${kernel}.spv)
+endforeach (kernel ${GLSL_KERNELS})
+
+add_custom_target(build-gl-shaders
+                  DEPENDS ${gl_kernel_binaries})
+add_custom_command(TARGET build-gl-shaders
+                   PRE_BUILD
+                   COMMAND ${CMAKE_COMMAND} -E make_directory ${GLSL_OUTPUT_DIR})
+
+add_dependencies(native-activity build-gl-shaders)
