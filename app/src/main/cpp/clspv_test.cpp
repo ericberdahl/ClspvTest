@@ -391,8 +391,14 @@ void logResults(const test_utils::KernelResult& kr) {
     std::ostringstream os;
 
     os << "Kernel:" << kr.mEntryName;
-    if (kr.mInvocations.empty()) {
+    if (kr.mSkipped) {
         os << " SKIPPED";
+    }
+    else if (!kr.mCompiledCorrectly) {
+        os << " COMPILE-FAILURE";
+    }
+    if (!kr.mExceptionString.empty()) {
+    	os << " " << kr.mExceptionString;
     }
     LOGI("   %s", os.str().c_str());
 

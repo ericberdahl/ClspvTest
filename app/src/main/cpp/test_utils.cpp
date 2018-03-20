@@ -26,11 +26,33 @@ namespace test_utils {
                              vk::ArrayProxy<const vk::Sampler>       samplers) {
         KernelResult kernelResult;
         kernelResult.mEntryName = entryPoint;
+        kernelResult.mSkipped = false;
 
-        clspv_utils::kernel kernel(module, entryPoint, numWorkgroups);
+		try {
+	        clspv_utils::kernel kernel(module, entryPoint, numWorkgroups);
+	        kernelResult.mCompiledCorrectly = true;
 
-        if (testFn) {
-            testFn(module, kernel, info, samplers, kernelResult.mInvocations);
+			if (testFn) {
+				testFn(module, kernel, info, samplers, kernelResult.mInvocations);
+			}
+		}
+        catch (const vk::SystemError &e) {
+            std::ostringstream os;
+            os << "vk::SystemError : " << e.code() << " (" << e.code().message() << ')';
+            kernelResult.mExceptionString = os.str();
+        }
+        catch (const std::system_error &e) {
+            std::ostringstream os;
+            os << "std::system_error : " << e.code() << " (" << e.code().message() << ')';
+            kernelResult.mExceptionString = os.str();
+        }
+        catch (const std::exception &e) {
+            std::ostringstream os;
+            os << "std::exception : " << e.what();
+            kernelResult.mExceptionString = os.str();
+        }
+        catch (...) {
+            kernelResult.mExceptionString = "unknonwn exception";
         }
 
         return kernelResult;

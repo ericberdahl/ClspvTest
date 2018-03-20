@@ -101,6 +101,9 @@ namespace test_utils {
 
     struct KernelResult {
         std::string         mEntryName;
+        bool				mSkipped			= true;
+        bool				mCompiledCorrectly	= false;
+        std::string     	mExceptionString;
         InvocationResultSet mInvocations;
     };
 
