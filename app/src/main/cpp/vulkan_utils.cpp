@@ -207,7 +207,7 @@ namespace vulkan_utils {
 
         // Allocate the buffer
         vk::BufferCreateInfo buf_info;
-        buf_info.setUsage(vk::BufferUsageFlagBits::eStorageBuffer)
+        buf_info.setUsage(vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eUniformBuffer)
                 .setSize(inNumBytes)
                 .setSharingMode(vk::SharingMode::eExclusive);
 
