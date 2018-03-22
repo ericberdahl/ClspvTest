@@ -169,6 +169,9 @@ namespace clspv_utils {
 
                     switch (ka.kind) {
                         case details::spv_map::arg::kind_pod:
+                            argType = vk::DescriptorType::eUniformBuffer;
+                            break;
+
                         case details::spv_map::arg::kind_buffer:
                             argType = vk::DescriptorType::eStorageBuffer;
                             break;
@@ -515,7 +518,13 @@ namespace clspv_utils {
             std::memcpy(scalar_map.map(), pod, sizeofPod);
         }
 
-        addBufferArgument(*scalar_args.buf);
+        arg item;
+
+        item.type = vk::DescriptorType::eUniformBuffer;
+        item.buffer = *scalar_args.buf;
+
+        mArguments.push_back(item);
+
         mPodBuffers.push_back(std::move(scalar_args));
     }
 
@@ -549,7 +558,8 @@ namespace clspv_utils {
                     break;
                 }
 
-                case vk::DescriptorType::eStorageBuffer: {
+                case vk::DescriptorType::eStorageBuffer:
+                case vk::DescriptorType::eUniformBuffer: {
                     vk::DescriptorBufferInfo bufferInfo;
                     bufferInfo.setRange(VK_WHOLE_SIZE)
                             .setBuffer(a.buffer);
@@ -622,8 +632,9 @@ namespace clspv_utils {
                     ++nextImage;
                     break;
 
+                case vk::DescriptorType::eUniformBuffer:
                 case vk::DescriptorType::eStorageBuffer:
-                    argSet.setDescriptorType(vk::DescriptorType::eStorageBuffer)
+                    argSet.setDescriptorType(a.type)
                             .setPBufferInfo(&(*nextBuffer));
                     ++nextBuffer;
                     break;
