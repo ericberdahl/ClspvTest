@@ -57,39 +57,51 @@ inline float GetArrayValue(int index) {
 }
 
 inline float GetStructValue(int index) {
-    float result = OUT_OF_BOUNDS_VALUE;
+    if (index < 0)
+        return OUT_OF_BOUNDS_VALUE;
 
-    switch (index) {
-        case 0:
-            result = kTwoPowX_struct.m0;
-            break;
-        case 1:
-            result = kTwoPowX_struct.m1;
-            break;
-        case 2:
-            result = kTwoPowX_struct.m2;
-            break;
-        case 3:
-            result = kTwoPowX_struct.m3;
-            break;
-        case 4:
-            result = kTwoPowX_struct.m4;
-            break;
-        case 5:
-            result = kTwoPowX_struct.m5;
-            break;
-        case 6:
-            result = kTwoPowX_struct.m6;
-            break;
-        case 7:
-            result = kTwoPowX_struct.m7;
-            break;
-        case 8:
-            result = kTwoPowX_struct.m8;
-            break;
-        case 9:
-            result = kTwoPowX_struct.m9;
-            break;
+    // This ugly way to turn an index into a member reference is necessary both because of a problem
+    // initializing constant arrays in some devices, and bugs comparing against zero in those same
+    // devices.
+    float result = kTwoPowX_struct.m0;
+    if (index > 0) {
+        result = kTwoPowX_struct.m1;
+        --index;
+    }I'm '
+    if (index > 0) {
+        result = kTwoPowX_struct.m2;
+        --index;
+    }
+    if (index > 0) {
+        result = kTwoPowX_struct.m3;
+        --index;
+    }
+    if (index > 0) {
+        result = kTwoPowX_struct.m4;
+        --index;
+    }
+    if (index > 0) {
+        result = kTwoPowX_struct.m5;
+        --index;
+    }
+    if (index > 0) {
+        result = kTwoPowX_struct.m6;
+        --index;
+    }
+    if (index > 0) {
+        result = kTwoPowX_struct.m7;
+        --index;
+    }
+    if (index > 0) {
+        result = kTwoPowX_struct.m8;
+        --index;
+    }
+    if (index > 0) {
+        result = kTwoPowX_struct.m9;
+        --index;
+    }
+    if (index > 0) {
+        return OUT_OF_BOUNDS_VALUE;
     }
 
     return result;
