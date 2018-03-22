@@ -14,3 +14,20 @@ test ReadConstantStruct readConstantData 32 1
 #
 module shaders_cl/TestComparisons
 test TestGreaterThanOrEqualTo testGtEq 32 32
+#
+#module shaders_small_cl/localsize
+#test ReadLocalSize readLocalSize 1 1
+#
+module shaders_small_cl/Fills
+test FillWithColorKernel fill 32 32
+#
+module shaders_small_cl/Memory
+test CopyBufferToImageKernel copyBufferToImage 32 32
+skip CopyImageToBufferKernel copyImageToBuffer 32 32   # crashes Adreno driver
+#
+module shaders_small_cl/ReadConstantData
+test ReadConstantArray readConstantData 32 1
+test ReadConstantStruct readConstantData 32 1
+#
+module shaders_small_cl/TestComparisons
+test TestGreaterThanOrEqualTo testGtEq 32 32

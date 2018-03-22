@@ -62,6 +62,7 @@ target_link_libraries(native-activity
 # build OpenCL C kernels
 set(CLSHADER_SOURCE_DIR ${PROJECT_SOURCE_DIR}/kernels)
 set(CLSHADER_OUTPUT_DIR ${PROJECT_SOURCE_DIR}/assets/shaders_cl)
+set(CLSHADER_NOINLINE_DIR ${PROJECT_SOURCE_DIR}/assets/shaders_small_cl)
 
 set(CLSPV_COMMAND /usr/local/bin/clspv)
 set(SPRIV_OPT_COMMAND /usr/local/bin/spirv-opt)
@@ -77,7 +78,7 @@ set(CLSPV_FLAGS ${CLSPV_FLAGS} -hack-inserts)
 
 set(SPRIV_OPT_FLAGS)
 set(SPRIV_OPT_FLAGS ${SPRIV_OPT_FLAGS} --set-spec-const-default-value "0:2 1:2 2:2")
-set(SPRIV_OPT_FLAGS ${SPRIV_OPT_FLAGS} --inline-entry-points-exhaustive)
+set(SPRIV_OPT_INLINE_FLAGS --inline-entry-points-exhaustive)
 
 set(OPENCL_KERNELS
     Fills
@@ -90,9 +91,11 @@ set(OPENCL_KERNELS
 set(kernel_binaries)
 foreach (kernel ${OPENCL_KERNELS})
     add_custom_command(
-        OUTPUT ${CLSHADER_OUTPUT_DIR}/${kernel}.spv ${CLSHADER_OUTPUT_DIR}/${kernel}.spvmap
+        OUTPUT ${CLSHADER_OUTPUT_DIR}/${kernel}.spv ${CLSHADER_OUTPUT_DIR}/${kernel}.spvmap ${CLSHADER_NOINLINE_DIR}/${kernel}.spv ${CLSHADER_NOINLINE_DIR}/${kernel}.spvmap
         COMMAND ${CLSPV_COMMAND} ${CLSHADER_SOURCE_DIR}/${kernel}.cl -o=${CLSHADER_OUTPUT_DIR}/${kernel}.spvx -descriptormap=${CLSHADER_OUTPUT_DIR}/${kernel}.spvmap ${CLSPV_FLAGS}
-        COMMAND ${SPRIV_OPT_COMMAND} ${CLSHADER_OUTPUT_DIR}/${kernel}.spvx -o ${CLSHADER_OUTPUT_DIR}/${kernel}.spv ${SPRIV_OPT_FLAGS}
+        COMMAND ${SPRIV_OPT_COMMAND} ${CLSHADER_OUTPUT_DIR}/${kernel}.spvx -o ${CLSHADER_NOINLINE_DIR}/${kernel}.spv ${SPRIV_OPT_FLAGS}
+        COMMAND ${SPRIV_OPT_COMMAND} ${CLSHADER_NOINLINE_DIR}/${kernel}.spv -o ${CLSHADER_OUTPUT_DIR}/${kernel}.spv ${SPRIV_OPT_INLINE_FLAGS}
+        COMMAND ${CMAKE_COMMAND} -E copy ${CLSHADER_OUTPUT_DIR}/${kernel}.spvmap ${CLSHADER_NOINLINE_DIR}/${kernel}.spvmap
         COMMAND ${CMAKE_COMMAND} -E remove ${CLSHADER_OUTPUT_DIR}/${kernel}.spvx
         DEPENDS ${CLSHADER_SOURCE_DIR}/${kernel}.cl ${CLSHADER_SOURCE_DIR}/sampler_map
         VERBATIM
@@ -104,6 +107,10 @@ add_custom_target(build-cl-shaders
                   DEPENDS ${CLSPV_SAMPLERMAP} ${kernel_binaries})
 add_custom_command(TARGET build-cl-shaders
                    PRE_BUILD
-                   COMMAND ${CMAKE_COMMAND} -E make_directory ${CLSHADER_OUTPUT_DIR})
+                   COMMAND ${CMAKE_COMMAND} -E make_directory ${CLSHADER_OUTPUT_DIR}
+                   COMMAND ${CMAKE_COMMAND} -E make_directory ${CLSHADER_NOINLINE_DIR}
+                   )
 
 add_dependencies(native-activity build-cl-shaders)
+
+# build one OpenCL C kernel without aggressive inlining (to test that case)

@@ -9,3 +9,4 @@ local.properties
 other_tests/
 loadmodules.txt
 shaders_cl/
+shaders_small_cl/
