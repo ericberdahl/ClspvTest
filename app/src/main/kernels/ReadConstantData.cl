@@ -67,7 +67,7 @@ inline float GetStructValue(int index) {
     if (index > 0) {
         result = kTwoPowX_struct.m1;
         --index;
-    }I'm '
+    }
     if (index > 0) {
         result = kTwoPowX_struct.m2;
         --index;
