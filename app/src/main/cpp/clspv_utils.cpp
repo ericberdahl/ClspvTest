@@ -168,10 +168,11 @@ namespace clspv_utils {
                     vk::DescriptorType argType;
 
                     switch (ka.kind) {
-                        case details::spv_map::arg::kind_pod:
+                        case details::spv_map::arg::kind_pod_ubo:
                             argType = vk::DescriptorType::eUniformBuffer;
                             break;
 
+                        case details::spv_map::arg::kind_pod:
                         case details::spv_map::arg::kind_buffer:
                             argType = vk::DescriptorType::eStorageBuffer;
                             break;
@@ -221,6 +222,8 @@ namespace clspv_utils {
 
             if (argType == "pod") {
                 result = arg::kind_pod;
+            } else if (argType == "pod_ubo") {
+                    result = arg::kind_pod_ubo;
             } else if (argType == "buffer") {
                 result = arg::kind_buffer;
             } else if (argType == "ro_image") {
@@ -511,7 +514,7 @@ namespace clspv_utils {
     }
 
     void kernel_invocation::addPodArgument(const void* pod, std::size_t sizeofPod) {
-        vulkan_utils::buffer scalar_args(mDevice, mMemoryProperties, sizeofPod);
+        vulkan_utils::buffer scalar_args(mDevice, mMemoryProperties, sizeofPod, true);
 
         {
             vulkan_utils::memory_map scalar_map(scalar_args);

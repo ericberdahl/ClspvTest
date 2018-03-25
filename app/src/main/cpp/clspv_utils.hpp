@@ -26,7 +26,7 @@ namespace clspv_utils {
 
             struct arg {
                 enum kind_t {
-                    kind_unknown, kind_pod, kind_buffer, kind_ro_image, kind_wo_image, kind_sampler
+                    kind_unknown, kind_pod, kind_pod_ubo, kind_buffer, kind_ro_image, kind_wo_image, kind_sampler
                 };
 
                 arg() : kind(kind_unknown), binding(-1), offset(0) {};
