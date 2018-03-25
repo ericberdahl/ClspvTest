@@ -69,8 +69,8 @@ namespace vulkan_utils {
         return device.allocateMemoryUnique(alloc_info);
     }
 
-    buffer::buffer(const sample_info &info, vk::DeviceSize num_bytes) :
-            buffer(*info.device, info.memory_properties, num_bytes)
+    buffer::buffer(const sample_info &info, vk::DeviceSize num_bytes, bool isUBO) :
+            buffer(*info.device, info.memory_properties, num_bytes, isUBO)
     {
 
     }
@@ -202,12 +202,13 @@ namespace vulkan_utils {
 
     void buffer::allocate(vk::Device                                dev,
                           const vk::PhysicalDeviceMemoryProperties& memory_properties,
-                          vk::DeviceSize                            inNumBytes) {
+                          vk::DeviceSize                            inNumBytes,
+                          bool                                      isUBO) {
         reset();
 
         // Allocate the buffer
         vk::BufferCreateInfo buf_info;
-        buf_info.setUsage(vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eUniformBuffer)
+        buf_info.setUsage(isUBO ? vk::BufferUsageFlagBits::eUniformBuffer : vk::BufferUsageFlagBits::eStorageBuffer)
                 .setSize(inNumBytes)
                 .setSharingMode(vk::SharingMode::eExclusive);
 

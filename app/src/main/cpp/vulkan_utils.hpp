@@ -77,10 +77,10 @@ namespace vulkan_utils {
     struct buffer {
         buffer() {}
 
-        buffer(const sample_info &info, vk::DeviceSize num_bytes);
+        buffer(const sample_info &info, vk::DeviceSize num_bytes, bool isUBO = false);
 
-        buffer(vk::Device dev, const vk::PhysicalDeviceMemoryProperties memoryProperties, vk::DeviceSize num_bytes) : buffer() {
-            allocate(dev, memoryProperties, num_bytes);
+        buffer(vk::Device dev, const vk::PhysicalDeviceMemoryProperties memoryProperties, vk::DeviceSize num_bytes, bool isUBO= false) : buffer() {
+            allocate(dev, memoryProperties, num_bytes, isUBO);
         };
 
         buffer(const buffer& other) = delete;
@@ -95,7 +95,7 @@ namespace vulkan_utils {
 
         void    swap(buffer& other);
 
-        void    allocate(vk::Device dev, const vk::PhysicalDeviceMemoryProperties& memory_properties, vk::DeviceSize num_bytes);
+        void    allocate(vk::Device dev, const vk::PhysicalDeviceMemoryProperties& memory_properties, vk::DeviceSize num_bytes, bool isUBO = false);
         void    reset();
 
         device_memory       mem;
