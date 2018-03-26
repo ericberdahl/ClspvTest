@@ -78,54 +78,18 @@ namespace vulkan_utils {
 
     }
 
-    memory_map::memory_map(vk::Device device, vk::DeviceMemory memory) :
-            dev(device),
-            mem(memory),
-            data(nullptr)
+    void copyFromDeviceMemory(void* dst, const device_memory& src, std::size_t numBytes)
     {
-        map();
+        withMap(src, [dst, numBytes](void* src_ptr) {
+            std::memcpy(dst, src_ptr, numBytes);
+        });
     }
 
-    memory_map::memory_map(memory_map&& other) :
-            memory_map()
+    void copyToDeviceMemory(const device_memory& dst, const void* src, std::size_t numBytes)
     {
-        swap(other);
-    }
-
-    memory_map::~memory_map()
-    {
-        unmap();
-    }
-
-    memory_map& memory_map::operator=(memory_map&& other)
-    {
-        swap(other);
-        return *this;
-    }
-
-    void memory_map::swap(memory_map& other)
-    {
-        using std::swap;
-
-        swap(dev, other.dev);
-        swap(mem, other.mem);
-        swap(data, other.data);
-    }
-
-    void* memory_map::map()
-    {
-        if (!data) {
-            data = dev.mapMemory(mem, 0, VK_WHOLE_SIZE, vk::MemoryMapFlags());
-        }
-        return data;
-    }
-
-    void memory_map::unmap()
-    {
-        if (data) {
-            dev.unmapMemory(mem);
-            data = nullptr;
-        }
+        withMap(dst, [src, numBytes](void* dest_ptr) {
+            std::memcpy(dest_ptr, src, numBytes);
+        });
     }
 
     device_memory::device_memory(device_memory&& other) :

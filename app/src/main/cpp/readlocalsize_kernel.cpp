@@ -34,11 +34,11 @@ namespace readlocalsize_kernel {
 
         auto result = invocation.run(info.graphics_queue, kernel, num_workgroups);
 
-        vulkan_utils::memory_map argMap(outArgs);
-        auto outScalars = static_cast<const scalar_args *>(argMap.map());
-        outLocalSizes = std::make_tuple(outScalars->outWorkgroupX,
-                                        outScalars->outWorkgroupY,
-                                        outScalars->outWorkgroupZ);
+        scalar_args outScalars;
+        vulkan_utils::copyFromDeviceMemory(&outScalars, outArgs.mem, sizeof(outScalars));
+        outLocalSizes = std::make_tuple(outScalars.outWorkgroupX,
+                                        outScalars.outWorkgroupY,
+                                        outScalars.outWorkgroupZ);
 
         return result;
     }
