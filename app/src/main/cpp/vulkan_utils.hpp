@@ -76,30 +76,21 @@ namespace vulkan_utils {
 
     template <typename Fn>
     void withMap(const device_memory& mem, Fn f) {
+        auto unmapper = [&mem](void* ptr) { mem.device.unmapMemory(*mem.mem); };
+
         void* memMap = mem.device.mapMemory(*mem.mem, 0, VK_WHOLE_SIZE, vk::MemoryMapFlags());
-        try {
-            f(memMap);
-            mem.device.unmapMemory(*mem.mem);
-        }
-        catch(...){
-            mem.device.unmapMemory(*mem.mem);
-            throw;
-        }
+        std::unique_ptr<void, decltype(unmapper)> unmapper_ptr(memMap, unmapper);
+
+        f(memMap);
     }
 
     template <typename Fn>
     void withMap(const device_memory& memA, const device_memory& memB, Fn f) {
-        void* memMapA = memA.device.mapMemory(*memA.mem, 0, VK_WHOLE_SIZE, vk::MemoryMapFlags());
-        try {
-            withMap(memB, [memMapA, f](void* memMapB) {
-                f(memMapA, memMapB);
+        withMap(memA, [&memB, f](void* memMapA) {
+            withMap(memB, [f, memMapA](void* memMapB) {
+               f(memMapA, memMapB);
             });
-            memA.device.unmapMemory(*memA.mem);
-        }
-        catch(...){
-            memA.device.unmapMemory(*memA.mem);
-            throw;
-        }
+        });
     }
 
     void copyToDeviceMemory(const device_memory& dst, const void* src, std::size_t numBytes);
