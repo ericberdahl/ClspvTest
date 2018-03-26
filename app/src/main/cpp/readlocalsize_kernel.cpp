@@ -21,7 +21,7 @@ namespace readlocalsize_kernel {
         static_assert(4 == offsetof(scalar_args, outWorkgroupY), "outWorkgroupY offset incorrect");
         static_assert(8 == offsetof(scalar_args, outWorkgroupZ), "outWorkgroupZ offset incorrect");
 
-        vulkan_utils::buffer outArgs(info, sizeof(scalar_args));
+        vulkan_utils::storage_buffer outArgs(info, sizeof(scalar_args));
 
         // The localsize kernel needs only a single workgroup with a single workitem
         const clspv_utils::WorkgroupDimensions num_workgroups(1, 1);

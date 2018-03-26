@@ -52,8 +52,8 @@ namespace copybuffertoimage_kernel {
         const std::size_t buffer_size = buffer_length * sizeof(BufferPixelType);
 
         // allocate buffers and images
-        vulkan_utils::buffer  srcBuffer(info, buffer_size);
-        vulkan_utils::image   dstImage(info, buffer_width, buffer_height, vk::Format(pixels::traits<ImagePixelType>::vk_pixel_type));
+        vulkan_utils::storage_buffer    srcBuffer(info, buffer_size);
+        vulkan_utils::image             dstImage(info, buffer_width, buffer_height, vk::Format(pixels::traits<ImagePixelType>::vk_pixel_type));
 
         // initialize source memory with random data
         test_utils::fill_random_pixels<BufferPixelType>(srcBuffer.mem, buffer_length);

@@ -59,7 +59,7 @@ namespace testgreaterthanorequalto_kernel {
         const std::size_t buffer_size = buffer_length * sizeof(float);
 
         // allocate buffers and images
-        vulkan_utils::buffer  dstBuffer(info, buffer_size);
+        vulkan_utils::storage_buffer  dstBuffer(info, buffer_size);
 
         // initialize destination memory with unexpected value. the kernel should write either 0 or
         // 1. so, initialize thedestination with 2.

@@ -55,7 +55,7 @@ namespace readconstantdata_kernel {
         const std::size_t constant_data_length = 10;
 
         // allocate buffers and images
-        vulkan_utils::buffer  dstBuffer(info, buffer_size);
+        vulkan_utils::storage_buffer  dstBuffer(info, buffer_size);
 
         // initialize destination memory with random data
         test_utils::fill_random_pixels<float>(dstBuffer.mem, buffer_length);

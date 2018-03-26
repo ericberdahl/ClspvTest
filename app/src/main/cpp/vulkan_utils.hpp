@@ -74,35 +74,58 @@ namespace vulkan_utils {
         lhs.swap(rhs);
     }
 
-    struct buffer {
-        buffer() {}
+    struct uniform_buffer {
+        uniform_buffer () {}
 
-        buffer(const sample_info &info, vk::DeviceSize num_bytes, bool isUBO = false);
+        uniform_buffer (const sample_info &info, vk::DeviceSize num_bytes);
 
-        buffer(vk::Device dev, const vk::PhysicalDeviceMemoryProperties memoryProperties, vk::DeviceSize num_bytes, bool isUBO= false) : buffer() {
-            allocate(dev, memoryProperties, num_bytes, isUBO);
-        };
+        uniform_buffer (vk::Device dev, const vk::PhysicalDeviceMemoryProperties memoryProperties, vk::DeviceSize num_bytes);
 
-        buffer(const buffer& other) = delete;
+        uniform_buffer (const uniform_buffer& other) = delete;
 
-        buffer(buffer&& other);
+        uniform_buffer (uniform_buffer&& other);
 
-        ~buffer();
+        ~uniform_buffer();
 
-        buffer& operator=(const buffer& other) = delete;
+        uniform_buffer& operator=(const uniform_buffer& other) = delete;
 
-        buffer& operator=(buffer&& other);
+        uniform_buffer& operator=(uniform_buffer&& other);
 
-        void    swap(buffer& other);
-
-        void    allocate(vk::Device dev, const vk::PhysicalDeviceMemoryProperties& memory_properties, vk::DeviceSize num_bytes, bool isUBO = false);
-        void    reset();
+        void    swap(uniform_buffer& other);
 
         device_memory       mem;
         vk::UniqueBuffer    buf;
     };
 
-    inline void swap(buffer& lhs, buffer& rhs)
+    inline void swap(uniform_buffer& lhs, uniform_buffer& rhs)
+    {
+        lhs.swap(rhs);
+    }
+
+    struct storage_buffer {
+        storage_buffer () {}
+
+        storage_buffer (const sample_info &info, vk::DeviceSize num_bytes);
+
+        storage_buffer (vk::Device dev, const vk::PhysicalDeviceMemoryProperties memoryProperties, vk::DeviceSize num_bytes);
+
+        storage_buffer (const storage_buffer & other) = delete;
+
+        storage_buffer (storage_buffer && other);
+
+        ~storage_buffer ();
+
+        storage_buffer & operator=(const storage_buffer & other) = delete;
+
+        storage_buffer & operator=(storage_buffer && other);
+
+        void    swap(storage_buffer & other);
+
+        device_memory       mem;
+        vk::UniqueBuffer    buf;
+    };
+
+    inline void swap(storage_buffer & lhs, storage_buffer & rhs)
     {
         lhs.swap(rhs);
     }
@@ -160,7 +183,7 @@ namespace vulkan_utils {
 
         memory_map(const device_memory& mem) : memory_map(mem.device, *mem.mem) {}
 
-        memory_map(const buffer& buf) : memory_map(buf.mem) {}
+        memory_map(const storage_buffer & buf) : memory_map(buf.mem) {}
 
         memory_map(const image& im) : memory_map(im.mem) {}
 

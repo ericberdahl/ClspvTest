@@ -514,10 +514,10 @@ namespace clspv_utils {
     }
 
     void kernel_invocation::addPodArgument(const void* pod, std::size_t sizeofPod) {
-        vulkan_utils::buffer scalar_args(mDevice, mMemoryProperties, sizeofPod, true);
+        vulkan_utils::uniform_buffer scalar_args(mDevice, mMemoryProperties, sizeofPod);
 
         {
-            vulkan_utils::memory_map scalar_map(scalar_args);
+            vulkan_utils::memory_map scalar_map(scalar_args.mem);
             std::memcpy(scalar_map.map(), pod, sizeofPod);
         }
 

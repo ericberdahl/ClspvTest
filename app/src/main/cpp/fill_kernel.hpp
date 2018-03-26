@@ -50,7 +50,7 @@ namespace fill_kernel {
 
         // allocate image buffer
         const std::size_t buffer_size = buffer_width * buffer_height * sizeof(PixelType);
-        vulkan_utils::buffer dst_buffer(info, buffer_size);
+        vulkan_utils::storage_buffer dst_buffer(info, buffer_size);
 
         {
             const PixelType src_value = pixels::traits<PixelType>::translate((gpu_types::float4){ 0.0f, 0.0f, 0.0f, 0.0f });

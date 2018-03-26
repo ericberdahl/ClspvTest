@@ -163,13 +163,13 @@ namespace clspv_utils {
         };
 
     private:
-        vk::Device                          mDevice;
-        vk::UniqueCommandBuffer             mCommand;
-        vk::PhysicalDeviceMemoryProperties  mMemoryProperties;
+        vk::Device                                  mDevice;
+        vk::UniqueCommandBuffer                     mCommand;
+        vk::PhysicalDeviceMemoryProperties          mMemoryProperties;
 
-        std::vector<vk::Sampler>            mLiteralSamplers;
-        std::vector<arg>                    mArguments;
-        std::vector<vulkan_utils::buffer>   mPodBuffers;
+        std::vector<vk::Sampler>                    mLiteralSamplers;
+        std::vector<arg>                            mArguments;
+        std::vector<vulkan_utils::uniform_buffer>   mPodBuffers;
     };
 
     template <typename T>
