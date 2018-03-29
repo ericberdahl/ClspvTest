@@ -81,7 +81,11 @@ namespace vulkan_utils {
         void* memMap = mem.device.mapMemory(*mem.mem, 0, VK_WHOLE_SIZE, vk::MemoryMapFlags());
         std::unique_ptr<void, decltype(unmapper)> unmapper_ptr(memMap, unmapper);
 
+        const vk::MappedMemoryRange mappedRange(*mem.mem, 0, VK_WHOLE_SIZE);
+
+        mem.device.invalidateMappedMemoryRanges(mappedRange);
         f(memMap);
+        mem.device.flushMappedMemoryRanges(mappedRange);
     }
 
     template <typename Fn>

@@ -63,9 +63,10 @@ namespace vulkan_utils {
         alloc_info.setAllocationSize(mem_reqs.size)
                 .setMemoryTypeIndex(find_compatible_memory_index(mem_props,
                                                                  mem_reqs.memoryTypeBits,
-                                                                 vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent));
+                                                                 vk::MemoryPropertyFlagBits::eHostVisible));
+        LOGI("Allocating device memory using type %d of available types 0x%x", alloc_info.memoryTypeIndex, mem_reqs.memoryTypeBits);
         assert(alloc_info.memoryTypeIndex < std::numeric_limits<uint32_t>::max() &&
-               "No mappable, coherent memory");
+               "No mappable memory");
         return device.allocateMemoryUnique(alloc_info);
     }
 
