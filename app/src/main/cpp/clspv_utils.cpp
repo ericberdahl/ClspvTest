@@ -666,7 +666,22 @@ namespace clspv_utils {
 
         inKernel.bindCommand(*mCommand);
 
+        mCommand->pipelineBarrier(vk::PipelineStageFlagBits::eHost,
+                                  vk::PipelineStageFlagBits::eComputeShader,
+                                  vk::DependencyFlags(),
+                                  { { vk::AccessFlagBits::eHostWrite, vk::AccessFlagBits::eShaderRead } },    // memory barriers
+                                  nullptr,    // buffer memory barriers
+                                  nullptr);    // image memory barriers
+
         mCommand->dispatch(num_workgroups.x, num_workgroups.y, 1);
+
+        mCommand->pipelineBarrier(vk::PipelineStageFlagBits::eComputeShader,
+                                  vk::PipelineStageFlagBits::eHost,
+                                  vk::DependencyFlags(),
+                                  { { vk::AccessFlagBits::eShaderWrite, vk::AccessFlagBits::eHostRead} },    // memory barriers
+                                  nullptr,    // buffer memory barriers
+                                  nullptr);    // image memory barriers
+
         mCommand->end();
     }
 
