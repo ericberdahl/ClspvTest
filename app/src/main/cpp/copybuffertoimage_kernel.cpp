@@ -64,7 +64,7 @@ namespace copybuffertoimage_kernel {
                                                   info.memory_properties);
 
         invocation.addLiteralSamplers(samplers);
-        invocation.addBufferArgument(src_buffer);
+        invocation.addStorageBufferArgument(src_buffer);
         invocation.addWriteOnlyImageArgument(dst_image);
         invocation.addPodArgument(scalars);
 

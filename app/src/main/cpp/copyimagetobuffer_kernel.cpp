@@ -61,7 +61,7 @@ namespace copyimagetobuffer_kernel {
 
         invocation.addLiteralSamplers(samplers);
         invocation.addReadOnlyImageArgument(src_image);
-        invocation.addBufferArgument(dst_buffer);
+        invocation.addStorageBufferArgument(dst_buffer);
         invocation.addPodArgument(scalars);
 
         return invocation.run(info.graphics_queue, kernel, num_workgroups);

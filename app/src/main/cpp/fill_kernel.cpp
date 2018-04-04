@@ -56,7 +56,7 @@ namespace fill_kernel {
                                                   info.memory_properties);
 
         invocation.addLiteralSamplers(samplers);
-        invocation.addBufferArgument(dst_buffer);
+        invocation.addStorageBufferArgument(dst_buffer);
         invocation.addPodArgument(scalars);
         return invocation.run(info.graphics_queue, kernel, num_workgroups);
     }

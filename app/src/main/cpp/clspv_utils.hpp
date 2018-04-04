@@ -131,7 +131,8 @@ namespace clspv_utils {
 
         void    addLiteralSamplers(vk::ArrayProxy<const vk::Sampler> samplers);
 
-        void    addBufferArgument(vk::Buffer buf);
+        void    addStorageBufferArgument(vk::Buffer buf);
+        void    addUniformBufferArgument(vk::Buffer buf);
         void    addReadOnlyImageArgument(vk::ImageView image);
         void    addWriteOnlyImageArgument(vk::ImageView image);
         void    addSamplerArgument(vk::Sampler samp);

@@ -477,10 +477,19 @@ namespace clspv_utils {
         mLiteralSamplers.insert(mLiteralSamplers.end(), samplers.begin(), samplers.end());
     }
 
-    void kernel_invocation::addBufferArgument(vk::Buffer buf) {
+    void kernel_invocation::addStorageBufferArgument(vk::Buffer buf) {
         arg item;
 
         item.type = vk::DescriptorType::eStorageBuffer;
+        item.buffer = buf;
+
+        mArguments.push_back(item);
+    }
+
+    void kernel_invocation::addUniformBufferArgument(vk::Buffer buf) {
+        arg item;
+
+        item.type = vk::DescriptorType::eUniformBuffer;
         item.buffer = buf;
 
         mArguments.push_back(item);
@@ -517,13 +526,7 @@ namespace clspv_utils {
         vulkan_utils::uniform_buffer scalar_args(mDevice, mMemoryProperties, sizeofPod);
 
         vulkan_utils::copyToDeviceMemory(scalar_args.mem, pod, sizeofPod);
-
-        arg item;
-
-        item.type = vk::DescriptorType::eUniformBuffer;
-        item.buffer = *scalar_args.buf;
-
-        mArguments.push_back(item);
+        addUniformBufferArgument(*scalar_args.buf);
 
         mPodBuffers.push_back(std::move(scalar_args));
     }

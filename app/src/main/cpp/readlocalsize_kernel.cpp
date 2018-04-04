@@ -30,7 +30,7 @@ namespace readlocalsize_kernel {
                                               info.memory_properties);
 
         invocation.addLiteralSamplers(samplers);
-        invocation.addBufferArgument(*outArgs.buf);
+        invocation.addStorageBufferArgument(*outArgs.buf);
 
         auto result = invocation.run(info.graphics_queue, kernel, num_workgroups);
 
