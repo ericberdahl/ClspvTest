@@ -26,7 +26,7 @@ namespace clspv_utils {
 
             struct arg {
                 enum kind_t {
-                    kind_unknown, kind_pod, kind_buffer, kind_ro_image, kind_wo_image, kind_sampler
+                    kind_unknown, kind_pod, kind_pod_ubo, kind_buffer, kind_ro_image, kind_wo_image, kind_sampler
                 };
 
                 arg() : kind(kind_unknown), binding(-1), offset(0) {};
@@ -131,7 +131,8 @@ namespace clspv_utils {
 
         void    addLiteralSamplers(vk::ArrayProxy<const vk::Sampler> samplers);
 
-        void    addBufferArgument(vk::Buffer buf);
+        void    addStorageBufferArgument(vk::Buffer buf);
+        void    addUniformBufferArgument(vk::Buffer buf);
         void    addReadOnlyImageArgument(vk::ImageView image);
         void    addWriteOnlyImageArgument(vk::ImageView image);
         void    addSamplerArgument(vk::Sampler samp);
@@ -163,13 +164,13 @@ namespace clspv_utils {
         };
 
     private:
-        vk::Device                          mDevice;
-        vk::UniqueCommandBuffer             mCommand;
-        vk::PhysicalDeviceMemoryProperties  mMemoryProperties;
+        vk::Device                                  mDevice;
+        vk::UniqueCommandBuffer                     mCommand;
+        vk::PhysicalDeviceMemoryProperties          mMemoryProperties;
 
-        std::vector<vk::Sampler>            mLiteralSamplers;
-        std::vector<arg>                    mArguments;
-        std::vector<vulkan_utils::buffer>   mPodBuffers;
+        std::vector<vk::Sampler>                    mLiteralSamplers;
+        std::vector<arg>                            mArguments;
+        std::vector<vulkan_utils::uniform_buffer>   mPodBuffers;
     };
 
     template <typename T>

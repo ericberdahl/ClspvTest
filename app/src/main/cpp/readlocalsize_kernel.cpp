@@ -21,7 +21,7 @@ namespace readlocalsize_kernel {
         static_assert(4 == offsetof(scalar_args, outWorkgroupY), "outWorkgroupY offset incorrect");
         static_assert(8 == offsetof(scalar_args, outWorkgroupZ), "outWorkgroupZ offset incorrect");
 
-        vulkan_utils::buffer outArgs(info, sizeof(scalar_args));
+        vulkan_utils::storage_buffer outArgs(info, sizeof(scalar_args));
 
         // The localsize kernel needs only a single workgroup with a single workitem
         const clspv_utils::WorkgroupDimensions num_workgroups(1, 1);
@@ -30,15 +30,15 @@ namespace readlocalsize_kernel {
                                               info.memory_properties);
 
         invocation.addLiteralSamplers(samplers);
-        invocation.addBufferArgument(*outArgs.buf);
+        invocation.addStorageBufferArgument(*outArgs.buf);
 
         auto result = invocation.run(info.graphics_queue, kernel, num_workgroups);
 
-        vulkan_utils::memory_map argMap(outArgs);
-        auto outScalars = static_cast<const scalar_args *>(argMap.map());
-        outLocalSizes = std::make_tuple(outScalars->outWorkgroupX,
-                                        outScalars->outWorkgroupY,
-                                        outScalars->outWorkgroupZ);
+        scalar_args outScalars;
+        vulkan_utils::copyFromDeviceMemory(&outScalars, outArgs.mem, sizeof(outScalars));
+        outLocalSizes = std::make_tuple(outScalars.outWorkgroupX,
+                                        outScalars.outWorkgroupY,
+                                        outScalars.outWorkgroupZ);
 
         return result;
     }

@@ -63,16 +63,11 @@ namespace vulkan_utils {
         alloc_info.setAllocationSize(mem_reqs.size)
                 .setMemoryTypeIndex(find_compatible_memory_index(mem_props,
                                                                  mem_reqs.memoryTypeBits,
-                                                                 vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent));
+                                                                 vk::MemoryPropertyFlagBits::eHostVisible));
+        LOGI("Allocating device memory using type %d of available types 0x%x", alloc_info.memoryTypeIndex, mem_reqs.memoryTypeBits);
         assert(alloc_info.memoryTypeIndex < std::numeric_limits<uint32_t>::max() &&
-               "No mappable, coherent memory");
+               "No mappable memory");
         return device.allocateMemoryUnique(alloc_info);
-    }
-
-    buffer::buffer(const sample_info &info, vk::DeviceSize num_bytes) :
-            buffer(*info.device, info.memory_properties, num_bytes)
-    {
-
     }
 
     image::image(const sample_info& info,
@@ -84,54 +79,18 @@ namespace vulkan_utils {
 
     }
 
-    memory_map::memory_map(vk::Device device, vk::DeviceMemory memory) :
-            dev(device),
-            mem(memory),
-            data(nullptr)
+    void copyFromDeviceMemory(void* dst, const device_memory& src, std::size_t numBytes)
     {
-        map();
+        withMap(src, [dst, numBytes](void* src_ptr) {
+            std::memcpy(dst, src_ptr, numBytes);
+        });
     }
 
-    memory_map::memory_map(memory_map&& other) :
-            memory_map()
+    void copyToDeviceMemory(const device_memory& dst, const void* src, std::size_t numBytes)
     {
-        swap(other);
-    }
-
-    memory_map::~memory_map()
-    {
-        unmap();
-    }
-
-    memory_map& memory_map::operator=(memory_map&& other)
-    {
-        swap(other);
-        return *this;
-    }
-
-    void memory_map::swap(memory_map& other)
-    {
-        using std::swap;
-
-        swap(dev, other.dev);
-        swap(mem, other.mem);
-        swap(data, other.data);
-    }
-
-    void* memory_map::map()
-    {
-        if (!data) {
-            data = dev.mapMemory(mem, 0, VK_WHOLE_SIZE, vk::MemoryMapFlags());
-        }
-        return data;
-    }
-
-    void memory_map::unmap()
-    {
-        if (data) {
-            dev.unmapMemory(mem);
-            data = nullptr;
-        }
+        withMap(dst, [src, numBytes](void* dest_ptr) {
+            std::memcpy(dest_ptr, src, numBytes);
+        });
     }
 
     device_memory::device_memory(device_memory&& other) :
@@ -174,25 +133,44 @@ namespace vulkan_utils {
         device = nullptr;
     }
 
-    buffer::buffer(buffer&& other) :
-            buffer()
+    uniform_buffer::uniform_buffer(const sample_info &info, vk::DeviceSize num_bytes) :
+            uniform_buffer(*info.device, info.memory_properties, num_bytes)
+    {
+    }
+
+    uniform_buffer::uniform_buffer(vk::Device dev, const vk::PhysicalDeviceMemoryProperties memoryProperties, vk::DeviceSize num_bytes) :
+            uniform_buffer()
+    {
+        // Allocate the buffer
+        vk::BufferCreateInfo buf_info;
+        buf_info.setUsage(vk::BufferUsageFlagBits::eUniformBuffer)
+                .setSize(num_bytes)
+                .setSharingMode(vk::SharingMode::eExclusive);
+
+        buf = dev.createBufferUnique(buf_info);
+
+        mem.allocate(dev, dev.getBufferMemoryRequirements(*buf), memoryProperties);
+
+        // Bind the memory to the buffer object
+        dev.bindBufferMemory(*buf, *mem.mem, 0);
+    }
+
+    uniform_buffer::uniform_buffer(uniform_buffer&& other) :
+            uniform_buffer()
     {
         swap(other);
     }
 
-    buffer::~buffer() {
-        if (!buf) {
-            // LOGI("buffer was reset");
-        }
+    uniform_buffer::~uniform_buffer() {
     }
 
-    buffer& buffer::operator=(buffer&& other)
+    uniform_buffer& uniform_buffer::operator=(uniform_buffer&& other)
     {
         swap(other);
         return *this;
     }
 
-    void buffer::swap(buffer& other)
+    void uniform_buffer::swap(uniform_buffer& other)
     {
         using std::swap;
 
@@ -200,28 +178,49 @@ namespace vulkan_utils {
         swap(buf, other.buf);
     }
 
-    void buffer::allocate(vk::Device                                dev,
-                          const vk::PhysicalDeviceMemoryProperties& memory_properties,
-                          vk::DeviceSize                            inNumBytes) {
-        reset();
+    storage_buffer::storage_buffer(const sample_info &info, vk::DeviceSize num_bytes) :
+            storage_buffer(*info.device, info.memory_properties, num_bytes)
+    {
+    }
 
+    storage_buffer::storage_buffer(vk::Device dev, const vk::PhysicalDeviceMemoryProperties memoryProperties, vk::DeviceSize num_bytes) :
+            storage_buffer()
+    {
         // Allocate the buffer
         vk::BufferCreateInfo buf_info;
         buf_info.setUsage(vk::BufferUsageFlagBits::eStorageBuffer)
-                .setSize(inNumBytes)
+                .setSize(num_bytes)
                 .setSharingMode(vk::SharingMode::eExclusive);
 
         buf = dev.createBufferUnique(buf_info);
 
-        mem.allocate(dev, dev.getBufferMemoryRequirements(*buf), memory_properties);
+        mem.allocate(dev, dev.getBufferMemoryRequirements(*buf), memoryProperties);
 
         // Bind the memory to the buffer object
         dev.bindBufferMemory(*buf, *mem.mem, 0);
     }
 
-    void buffer::reset() {
-        buf.reset();
-        mem.reset();
+    storage_buffer::storage_buffer(storage_buffer&& other) :
+            storage_buffer()
+    {
+        swap(other);
+    }
+
+    storage_buffer::~storage_buffer() {
+    }
+
+    storage_buffer& storage_buffer::operator=(storage_buffer&& other)
+    {
+        swap(other);
+        return *this;
+    }
+
+    void storage_buffer::swap(storage_buffer& other)
+    {
+        using std::swap;
+
+        swap(mem, other.mem);
+        swap(buf, other.buf);
     }
 
     image::image(image&& other) :

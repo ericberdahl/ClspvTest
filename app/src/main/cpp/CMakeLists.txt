@@ -75,6 +75,7 @@ set(CLSPV_FLAGS ${CLSPV_FLAGS} -samplermap=${CLSHADER_SOURCE_DIR}/sampler_map)
 set(CLSPV_FLAGS ${CLSPV_FLAGS} -cluster-pod-kernel-args)
 set(CLSPV_FLAGS ${CLSPV_FLAGS} -hack-undef)
 set(CLSPV_FLAGS ${CLSPV_FLAGS} -hack-inserts)
+set(CLSPV_FLAGS ${CLSPV_FLAGS} -pod-ubo)
 
 set(SPRIV_OPT_FLAGS)
 set(SPRIV_OPT_FLAGS ${SPRIV_OPT_FLAGS} --set-spec-const-default-value "0:2 1:2 2:2")

@@ -36,7 +36,7 @@ namespace testgreaterthanorequalto_kernel {
                                                   info.memory_properties);
 
         invocation.addLiteralSamplers(samplers);
-        invocation.addBufferArgument(dst_buffer);
+        invocation.addStorageBufferArgument(dst_buffer);
         invocation.addPodArgument(scalars);
 
         return invocation.run(info.graphics_queue, kernel, num_workgroups);
@@ -59,11 +59,11 @@ namespace testgreaterthanorequalto_kernel {
         const std::size_t buffer_size = buffer_length * sizeof(float);
 
         // allocate buffers and images
-        vulkan_utils::buffer  dstBuffer(info, buffer_size);
+        vulkan_utils::storage_buffer  dstBuffer(info, buffer_size);
 
         // initialize destination memory with unexpected value. the kernel should write either 0 or
         // 1. so, initialize thedestination with 2.
-        test_utils::fill_buffer<float>(dstBuffer.mem, buffer_length, 2.0f);
+        vulkan_utils::fillDeviceMemory(dstBuffer.mem, buffer_length, 2.0f);
 
         // set up expected results of the destination buffer
         int index = 0;

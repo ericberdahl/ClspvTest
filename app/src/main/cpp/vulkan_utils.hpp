@@ -74,35 +74,93 @@ namespace vulkan_utils {
         lhs.swap(rhs);
     }
 
-    struct buffer {
-        buffer() {}
+    template <typename Fn>
+    void withMap(const device_memory& mem, Fn f) {
+        auto unmapper = [&mem](void* ptr) { mem.device.unmapMemory(*mem.mem); };
 
-        buffer(const sample_info &info, vk::DeviceSize num_bytes);
+        void* memMap = mem.device.mapMemory(*mem.mem, 0, VK_WHOLE_SIZE, vk::MemoryMapFlags());
+        std::unique_ptr<void, decltype(unmapper)> unmapper_ptr(memMap, unmapper);
 
-        buffer(vk::Device dev, const vk::PhysicalDeviceMemoryProperties memoryProperties, vk::DeviceSize num_bytes) : buffer() {
-            allocate(dev, memoryProperties, num_bytes);
-        };
+        const vk::MappedMemoryRange mappedRange(*mem.mem, 0, VK_WHOLE_SIZE);
 
-        buffer(const buffer& other) = delete;
+        mem.device.invalidateMappedMemoryRanges(mappedRange);
+        f(memMap);
+        mem.device.flushMappedMemoryRanges(mappedRange);
+    }
 
-        buffer(buffer&& other);
+    template <typename Fn>
+    void withMap(const device_memory& memA, const device_memory& memB, Fn f) {
+        withMap(memA, [&memB, f](void* memMapA) {
+            withMap(memB, [f, memMapA](void* memMapB) {
+               f(memMapA, memMapB);
+            });
+        });
+    }
 
-        ~buffer();
+    void copyToDeviceMemory(const device_memory& dst, const void* src, std::size_t numBytes);
 
-        buffer& operator=(const buffer& other) = delete;
+    void copyFromDeviceMemory(void* dst, const device_memory& src, std::size_t numBytes);
 
-        buffer& operator=(buffer&& other);
+    template <typename T>
+    void fillDeviceMemory(const device_memory& dst, std::size_t numElements, const T& element) {
+        withMap(dst, [numElements, &element](void* memMap) {
+            T* dest_ptr = static_cast<T*>(memMap);
+            std::fill(dest_ptr, dest_ptr + numElements, element);
+        });
+    }
 
-        void    swap(buffer& other);
+    struct uniform_buffer {
+        uniform_buffer () {}
 
-        void    allocate(vk::Device dev, const vk::PhysicalDeviceMemoryProperties& memory_properties, vk::DeviceSize num_bytes);
-        void    reset();
+        uniform_buffer (const sample_info &info, vk::DeviceSize num_bytes);
+
+        uniform_buffer (vk::Device dev, const vk::PhysicalDeviceMemoryProperties memoryProperties, vk::DeviceSize num_bytes);
+
+        uniform_buffer (const uniform_buffer& other) = delete;
+
+        uniform_buffer (uniform_buffer&& other);
+
+        ~uniform_buffer();
+
+        uniform_buffer& operator=(const uniform_buffer& other) = delete;
+
+        uniform_buffer& operator=(uniform_buffer&& other);
+
+        void    swap(uniform_buffer& other);
 
         device_memory       mem;
         vk::UniqueBuffer    buf;
     };
 
-    inline void swap(buffer& lhs, buffer& rhs)
+    inline void swap(uniform_buffer& lhs, uniform_buffer& rhs)
+    {
+        lhs.swap(rhs);
+    }
+
+    struct storage_buffer {
+        storage_buffer () {}
+
+        storage_buffer (const sample_info &info, vk::DeviceSize num_bytes);
+
+        storage_buffer (vk::Device dev, const vk::PhysicalDeviceMemoryProperties memoryProperties, vk::DeviceSize num_bytes);
+
+        storage_buffer (const storage_buffer & other) = delete;
+
+        storage_buffer (storage_buffer && other);
+
+        ~storage_buffer ();
+
+        storage_buffer & operator=(const storage_buffer & other) = delete;
+
+        storage_buffer & operator=(storage_buffer && other);
+
+        void    swap(storage_buffer & other);
+
+        device_memory       mem;
+        vk::UniqueBuffer    buf;
+    };
+
+    inline void swap(storage_buffer & lhs, storage_buffer & rhs)
     {
         lhs.swap(rhs);
     }
@@ -148,44 +206,6 @@ namespace vulkan_utils {
     };
 
     inline void swap(image& lhs, image& rhs)
-    {
-        lhs.swap(rhs);
-    }
-
-    class memory_map {
-    public:
-        memory_map() : data(nullptr) {}
-
-        memory_map(vk::Device device, vk::DeviceMemory memory);
-
-        memory_map(const device_memory& mem) : memory_map(mem.device, *mem.mem) {}
-
-        memory_map(const buffer& buf) : memory_map(buf.mem) {}
-
-        memory_map(const image& im) : memory_map(im.mem) {}
-
-        memory_map(const memory_map& other) = delete;
-
-        memory_map(memory_map&& other);
-
-        ~memory_map();
-
-        memory_map& operator=(const memory_map& other) = delete;
-
-        memory_map& operator=(memory_map&& other);
-
-        void    swap(memory_map& other);
-
-        void*   map();
-        void    unmap();
-
-    private:
-        vk::Device        dev;
-        vk::DeviceMemory  mem;
-        void*             data;
-    };
-
-    inline void swap(memory_map& lhs, memory_map& rhs)
     {
         lhs.swap(rhs);
     }

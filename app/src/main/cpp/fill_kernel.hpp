@@ -50,15 +50,10 @@ namespace fill_kernel {
 
         // allocate image buffer
         const std::size_t buffer_size = buffer_width * buffer_height * sizeof(PixelType);
-        vulkan_utils::buffer dst_buffer(info, buffer_size);
+        vulkan_utils::storage_buffer dst_buffer(info, buffer_size);
 
-        {
-            const PixelType src_value = pixels::traits<PixelType>::translate((gpu_types::float4){ 0.0f, 0.0f, 0.0f, 0.0f });
-
-            vulkan_utils::memory_map dst_map(dst_buffer);
-            auto dst_data = static_cast<PixelType*>(dst_map.map());
-            std::fill(dst_data, dst_data + (buffer_width * buffer_height), src_value);
-        }
+        const PixelType src_value = pixels::traits<PixelType>::translate((gpu_types::float4){ 0.0f, 0.0f, 0.0f, 0.0f });
+        vulkan_utils::fillDeviceMemory(dst_buffer.mem, buffer_width * buffer_height, src_value);
 
         invocationResult.mExecutionTime = invoke(module,
                                                  kernel,

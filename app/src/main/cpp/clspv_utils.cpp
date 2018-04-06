@@ -168,6 +168,10 @@ namespace clspv_utils {
                     vk::DescriptorType argType;
 
                     switch (ka.kind) {
+                        case details::spv_map::arg::kind_pod_ubo:
+                            argType = vk::DescriptorType::eUniformBuffer;
+                            break;
+
                         case details::spv_map::arg::kind_pod:
                         case details::spv_map::arg::kind_buffer:
                             argType = vk::DescriptorType::eStorageBuffer;
@@ -218,6 +222,8 @@ namespace clspv_utils {
 
             if (argType == "pod") {
                 result = arg::kind_pod;
+            } else if (argType == "pod_ubo") {
+                    result = arg::kind_pod_ubo;
             } else if (argType == "buffer") {
                 result = arg::kind_buffer;
             } else if (argType == "ro_image") {
@@ -471,10 +477,19 @@ namespace clspv_utils {
         mLiteralSamplers.insert(mLiteralSamplers.end(), samplers.begin(), samplers.end());
     }
 
-    void kernel_invocation::addBufferArgument(vk::Buffer buf) {
+    void kernel_invocation::addStorageBufferArgument(vk::Buffer buf) {
         arg item;
 
         item.type = vk::DescriptorType::eStorageBuffer;
+        item.buffer = buf;
+
+        mArguments.push_back(item);
+    }
+
+    void kernel_invocation::addUniformBufferArgument(vk::Buffer buf) {
+        arg item;
+
+        item.type = vk::DescriptorType::eUniformBuffer;
         item.buffer = buf;
 
         mArguments.push_back(item);
@@ -508,14 +523,11 @@ namespace clspv_utils {
     }
 
     void kernel_invocation::addPodArgument(const void* pod, std::size_t sizeofPod) {
-        vulkan_utils::buffer scalar_args(mDevice, mMemoryProperties, sizeofPod);
+        vulkan_utils::uniform_buffer scalar_args(mDevice, mMemoryProperties, sizeofPod);
 
-        {
-            vulkan_utils::memory_map scalar_map(scalar_args);
-            std::memcpy(scalar_map.map(), pod, sizeofPod);
-        }
+        vulkan_utils::copyToDeviceMemory(scalar_args.mem, pod, sizeofPod);
+        addUniformBufferArgument(*scalar_args.buf);
 
-        addBufferArgument(*scalar_args.buf);
         mPodBuffers.push_back(std::move(scalar_args));
     }
 
@@ -549,7 +561,8 @@ namespace clspv_utils {
                     break;
                 }
 
-                case vk::DescriptorType::eStorageBuffer: {
+                case vk::DescriptorType::eStorageBuffer:
+                case vk::DescriptorType::eUniformBuffer: {
                     vk::DescriptorBufferInfo bufferInfo;
                     bufferInfo.setRange(VK_WHOLE_SIZE)
                             .setBuffer(a.buffer);
@@ -622,8 +635,9 @@ namespace clspv_utils {
                     ++nextImage;
                     break;
 
+                case vk::DescriptorType::eUniformBuffer:
                 case vk::DescriptorType::eStorageBuffer:
-                    argSet.setDescriptorType(vk::DescriptorType::eStorageBuffer)
+                    argSet.setDescriptorType(a.type)
                             .setPBufferInfo(&(*nextBuffer));
                     ++nextBuffer;
                     break;
@@ -655,7 +669,22 @@ namespace clspv_utils {
 
         inKernel.bindCommand(*mCommand);
 
+        mCommand->pipelineBarrier(vk::PipelineStageFlagBits::eHost,
+                                  vk::PipelineStageFlagBits::eComputeShader,
+                                  vk::DependencyFlags(),
+                                  { { vk::AccessFlagBits::eHostWrite, vk::AccessFlagBits::eShaderRead } },    // memory barriers
+                                  nullptr,    // buffer memory barriers
+                                  nullptr);    // image memory barriers
+
         mCommand->dispatch(num_workgroups.x, num_workgroups.y, 1);
+
+        mCommand->pipelineBarrier(vk::PipelineStageFlagBits::eComputeShader,
+                                  vk::PipelineStageFlagBits::eHost,
+                                  vk::DependencyFlags(),
+                                  { { vk::AccessFlagBits::eShaderWrite, vk::AccessFlagBits::eHostRead} },    // memory barriers
+                                  nullptr,    // buffer memory barriers
+                                  nullptr);    // image memory barriers
+
         mCommand->end();
     }
 
