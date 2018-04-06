@@ -106,6 +106,30 @@ std::string read_asset_file(const std::string& fileName) {
 
 /* ============================================================================================== */
 
+
+void init_validation_layers(struct sample_info& info) {
+    /* Use standard_validation meta layer that enables all
+     * recommended validation layers
+     */
+    info.instance_layer_names.push_back("VK_LAYER_LUNARG_standard_validation");
+    if (!demo_check_layers(info.instance_layer_properties, info.instance_layer_names)) {
+        /* If standard validation is not present, search instead for the
+         * individual layers that make it up, in the correct order.
+         */
+        info.instance_layer_names.clear();
+        info.instance_layer_names.push_back("VK_LAYER_GOOGLE_threading");
+        info.instance_layer_names.push_back("VK_LAYER_LUNARG_parameter_validation");
+        info.instance_layer_names.push_back("VK_LAYER_LUNARG_object_tracker");
+        info.instance_layer_names.push_back("VK_LAYER_LUNARG_core_validation");
+        info.instance_layer_names.push_back("VK_LAYER_GOOGLE_unique_objects");
+
+        if (!demo_check_layers(info.instance_layer_properties, info.instance_layer_names)) {
+            LOGE("Cannot find validation layers! :(");
+            info.instance_layer_names.clear();
+        }
+    }
+}
+
 void init_compute_queue_family_index(struct sample_info &info) {
     /* This routine simply finds a compute queue for a later vkCreateDevice.
      */
@@ -440,27 +464,7 @@ void logResults(const test_utils::ModuleResultSet& moduleResultSet) {
 int sample_main(int argc, char *argv[]) {
     struct sample_info info = {};
     init_global_layer_properties(info);
-
-    /* Use standard_validation meta layer that enables all
-     * recommended validation layers
-     */
-    info.instance_layer_names.push_back("VK_LAYER_LUNARG_standard_validation");
-    if (!demo_check_layers(info.instance_layer_properties, info.instance_layer_names)) {
-        /* If standard validation is not present, search instead for the
-         * individual layers that make it up, in the correct order.
-         */
-        info.instance_layer_names.clear();
-        info.instance_layer_names.push_back("VK_LAYER_GOOGLE_threading");
-        info.instance_layer_names.push_back("VK_LAYER_LUNARG_parameter_validation");
-        info.instance_layer_names.push_back("VK_LAYER_LUNARG_object_tracker");
-        info.instance_layer_names.push_back("VK_LAYER_LUNARG_core_validation");
-        info.instance_layer_names.push_back("VK_LAYER_GOOGLE_unique_objects");
-
-        if (!demo_check_layers(info.instance_layer_properties, info.instance_layer_names)) {
-            LOGE("Cannot find validation layers! :(");
-            info.instance_layer_names.clear();
-        }
-    }
+    init_validation_layers(info);
 
     info.instance_extension_names.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
     init_instance(info, "vulkansamples_device");
