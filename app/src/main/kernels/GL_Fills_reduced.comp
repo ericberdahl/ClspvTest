@@ -6,7 +6,7 @@ layout (set = 1, binding = 0) buffer srcBuffer {
 	vec4    outImage[];
 };
 
-layout (set = 1, binding = 1) buffer argBuffer {
+layout (set = 1, binding = 1) uniform argBuffer {
     int     inPitch;
     int     inDeviceFormat;
     int     inOffsetX;

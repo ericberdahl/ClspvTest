@@ -31,3 +31,6 @@ test ReadConstantStruct readConstantData 32 1
 #
 module shaders_small_cl/TestComparisons
 test TestGreaterThanOrEqualTo testGtEq 32 32
+#
+module shaders/GL_Fills_reduced
+test main fill 32 32
