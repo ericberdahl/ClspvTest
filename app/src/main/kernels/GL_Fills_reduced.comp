@@ -1,0 +1,25 @@
+#version 450
+layout (local_size_x = 2, local_size_y = 2) in;
+layout (local_size_x_id = 0, local_size_y_id = 1) in;
+
+layout (set = 1, binding = 0) buffer srcBuffer {
+	vec4    outImage[];
+};
+
+layout (set = 1, binding = 1) buffer argBuffer {
+    int     inPitch;
+    int     inDeviceFormat;
+    int     inOffsetX;
+    int     inOffsetY;
+    int     inWidth;
+    int     inHeight;
+    vec4    inColor;
+};
+
+void main()
+{
+	float x =  gl_GlobalInvocationID.x;
+	float y =  gl_GlobalInvocationID.y;
+	int index = int(y * inPitch + x);
+	outImage[index] = inColor;
+}

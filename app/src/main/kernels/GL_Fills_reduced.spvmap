@@ -1,0 +1,8 @@
+kernel,main,arg,outImage,argOrdinal,0,descriptorSet,1,binding,0,offset,0,argKind,buffer
+kernel,main,arg,inPitch,argOrdinal,1,descriptorSet,1,binding,1,offset,0,argKind,pod
+kernel,main,arg,inDeviceFormat,argOrdinal,2,descriptorSet,1,binding,1,offset,4,argKind,pod
+kernel,main,arg,inOffsetX,argOrdinal,3,descriptorSet,1,binding,1,offset,8,argKind,pod
+kernel,main,arg,inOffsetY,argOrdinal,4,descriptorSet,1,binding,1,offset,12,argKind,pod
+kernel,main,arg,inWidth,argOrdinal,5,descriptorSet,1,binding,1,offset,16,argKind,pod
+kernel,main,arg,inHeight,argOrdinal,6,descriptorSet,1,binding,1,offset,20,argKind,pod
+kernel,main,arg,inColor,argOrdinal,7,descriptorSet,1,binding,1,offset,32,argKind,pod

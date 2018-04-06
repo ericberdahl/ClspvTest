@@ -8,5 +8,6 @@ local.properties
 .externalNativeBuild
 other_tests/
 loadmodules.txt
+shaders/
 shaders_cl/
 shaders_small_cl/
