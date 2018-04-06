@@ -91,8 +91,14 @@ set(OPENCL_KERNELS
 
 set(kernel_binaries)
 foreach (kernel ${OPENCL_KERNELS})
+    set(kernel_outputs_i
+        ${CLSHADER_OUTPUT_DIR}/${kernel}.spv
+        ${CLSHADER_OUTPUT_DIR}/${kernel}.spvmap
+        ${CLSHADER_NOINLINE_DIR}/${kernel}.spv
+        ${CLSHADER_NOINLINE_DIR}/${kernel}.spvmap
+        )
     add_custom_command(
-        OUTPUT ${CLSHADER_OUTPUT_DIR}/${kernel}.spv ${CLSHADER_OUTPUT_DIR}/${kernel}.spvmap ${CLSHADER_NOINLINE_DIR}/${kernel}.spv ${CLSHADER_NOINLINE_DIR}/${kernel}.spvmap
+        OUTPUT ${kernel_outputs_i}
         COMMAND ${CLSPV_COMMAND} ${CLSHADER_SOURCE_DIR}/${kernel}.cl -o=${CLSHADER_OUTPUT_DIR}/${kernel}.spvx -descriptormap=${CLSHADER_OUTPUT_DIR}/${kernel}.spvmap ${CLSPV_FLAGS}
         COMMAND ${SPRIV_OPT_COMMAND} ${CLSHADER_OUTPUT_DIR}/${kernel}.spvx -o ${CLSHADER_NOINLINE_DIR}/${kernel}.spv ${SPRIV_OPT_FLAGS}
         COMMAND ${SPRIV_OPT_COMMAND} ${CLSHADER_NOINLINE_DIR}/${kernel}.spv -o ${CLSHADER_OUTPUT_DIR}/${kernel}.spv ${SPRIV_OPT_INLINE_FLAGS}
@@ -101,7 +107,7 @@ foreach (kernel ${OPENCL_KERNELS})
         DEPENDS ${CLSHADER_SOURCE_DIR}/${kernel}.cl ${CLSHADER_SOURCE_DIR}/sampler_map
         VERBATIM
         )
-    list(APPEND kernel_binaries ${CLSHADER_OUTPUT_DIR}/${kernel}.spv ${CLSHADER_OUTPUT_DIR}/${kernel}.spvmap)
+    list(APPEND kernel_binaries ${kernel_outputs_i})
 endforeach (kernel ${OPENCL_KERNELS})
 
 add_custom_target(build-cl-shaders
@@ -113,5 +119,3 @@ add_custom_command(TARGET build-cl-shaders
                    )
 
 add_dependencies(native-activity build-cl-shaders)
-
-# build one OpenCL C kernel without aggressive inlining (to test that case)
