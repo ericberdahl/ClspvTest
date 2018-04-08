@@ -346,6 +346,11 @@ namespace clspv_utils {
 
     } // namespace details
 
+    execution_time_t& execution_time_t::operator+=(const execution_time_t& other) {
+        cpu_duration += other.cpu_duration;
+        return *this;
+    }
+
     kernel_module::kernel_module(vk::Device         device,
                                  vk::DescriptorPool pool,
                                  const std::string& moduleName) :
@@ -698,9 +703,9 @@ namespace clspv_utils {
 
     }
 
-    kernel_invocation::execution_time_t kernel_invocation::run(vk::Queue                   queue,
-                                                               const kernel&               kern,
-                                                               const WorkgroupDimensions&  num_workgroups) {
+    execution_time_t kernel_invocation::run(vk::Queue                   queue,
+                                            const kernel&               kern,
+                                            const WorkgroupDimensions&  num_workgroups) {
         updateDescriptorSets(kern.getLiteralSamplerDescSet(), kern.getArgumentDescSet());
         fillCommandBuffer(kern, num_workgroups);
 
@@ -709,7 +714,10 @@ namespace clspv_utils {
         queue.waitIdle();
         auto end = std::chrono::high_resolution_clock::now();
 
-        return end - start;
+
+        execution_time_t result;
+        result.cpu_duration = end - start;
+        return result;
     }
 
 } // namespace clspv_utils

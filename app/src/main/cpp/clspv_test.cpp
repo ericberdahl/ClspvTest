@@ -322,31 +322,31 @@ void run_all_tests(const sample_info&                   info,
     }
 }
 
-clspv_utils::kernel_invocation::execution_time_t totalExecutionTime(const test_utils::InvocationResult& ir) {
+clspv_utils::execution_time_t totalExecutionTime(const test_utils::InvocationResult& ir) {
     return ir.mExecutionTime;
 }
 
-clspv_utils::kernel_invocation::execution_time_t totalExecutionTime(const test_utils::KernelResult& kr) {
+clspv_utils::execution_time_t totalExecutionTime(const test_utils::KernelResult& kr) {
     return std::accumulate(kr.mInvocations.begin(), kr.mInvocations.end(),
-                           clspv_utils::kernel_invocation::execution_time_t(),
-                           [](clspv_utils::kernel_invocation::execution_time_t t, const test_utils::InvocationResult& ir) {
-                               return t + totalExecutionTime(ir);
+                           clspv_utils::execution_time_t(),
+                           [](clspv_utils::execution_time_t t, const test_utils::InvocationResult& ir) {
+                               return t += totalExecutionTime(ir);
                            });
 }
 
-clspv_utils::kernel_invocation::execution_time_t totalExecutionTime(const test_utils::ModuleResult& mr) {
+clspv_utils::execution_time_t totalExecutionTime(const test_utils::ModuleResult& mr) {
     return std::accumulate(mr.mKernels.begin(), mr.mKernels.end(),
-                           clspv_utils::kernel_invocation::execution_time_t(),
-                           [](clspv_utils::kernel_invocation::execution_time_t t, const test_utils::KernelResult& kr) {
-                               return t + totalExecutionTime(kr);
+                           clspv_utils::execution_time_t(),
+                           [](clspv_utils::execution_time_t t, const test_utils::KernelResult& kr) {
+                               return t += totalExecutionTime(kr);
                            });
 }
 
-clspv_utils::kernel_invocation::execution_time_t totalExecutionTime(const test_utils::ModuleResultSet& moduleResultSet) {
+clspv_utils::execution_time_t totalExecutionTime(const test_utils::ModuleResultSet& moduleResultSet) {
     return std::accumulate(moduleResultSet.begin(), moduleResultSet.end(),
-                           clspv_utils::kernel_invocation::execution_time_t(),
-                           [](clspv_utils::kernel_invocation::execution_time_t t, const test_utils::ModuleResult& mr) {
-                               return t + totalExecutionTime(mr);
+                           clspv_utils::execution_time_t(),
+                           [](clspv_utils::execution_time_t t, const test_utils::ModuleResult& mr) {
+                               return t += totalExecutionTime(mr);
                            });
 }
 
@@ -393,8 +393,10 @@ std::pair<unsigned int, unsigned int> countResults(const test_utils::ModuleResul
 
 void logResults(const test_utils::InvocationResult& ir) {
     std::ostringstream os;
+
+    const clspv_utils::execution_time_t totalTime = totalExecutionTime(ir);
     os << (ir.mNumCorrectPixels > 0 && ir.mPixelErrors.empty() ? "PASS" : "FAIL")
-       << " executionTime:" << totalExecutionTime(ir).count() * 1000.0 << "ms";
+       << " executionTime:" << totalTime.cpu_duration.count() * 1000.0 << "ms";
 
     if (!ir.mVariation.empty()) {
         os << " variation:" << ir.mVariation << "";
@@ -453,8 +455,9 @@ void logResults(const test_utils::ModuleResultSet& moduleResultSet) {
     auto results = countResults(moduleResultSet);
 
     std::ostringstream os;
+    const clspv_utils::execution_time_t totalTime = totalExecutionTime(moduleResultSet);
     os << "Overall Summary"
-       << " executionTime:" << totalExecutionTime(moduleResultSet).count() << "s"
+       << " executionTime:" << totalTime.cpu_duration.count() << "s"
        << " pass:" << results.first << " fail:" << results.second;
     LOGI("%s", os.str().c_str());
 }

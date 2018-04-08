@@ -77,6 +77,12 @@ namespace clspv_utils {
         int y;
     };
 
+    struct execution_time_t {
+        std::chrono::duration<double> cpu_duration;
+
+        execution_time_t&   operator+=(const execution_time_t& other);
+    };
+
     class kernel_module {
     public:
         kernel_module(vk::Device            device,
@@ -141,8 +147,6 @@ namespace clspv_utils {
 
         template <typename T>
         void    addPodArgument(const T& pod);
-
-        typedef std::chrono::duration<double> execution_time_t;
 
         execution_time_t    run(vk::Queue                   queue,
                                 const kernel&               kern,

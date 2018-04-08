@@ -15,7 +15,7 @@
 
 namespace fill_kernel {
 
-    clspv_utils::kernel_invocation::execution_time_t
+    clspv_utils::execution_time_t
     invoke(const clspv_utils::kernel_module&    module,
            const clspv_utils::kernel&           kernel,
            const sample_info&                   info,
