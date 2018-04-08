@@ -16,6 +16,11 @@
 
 cmake_minimum_required(VERSION 3.4.1)
 
+# locations of required external tools
+set(CLSPV_COMMAND /usr/local/bin/clspv)
+set(SPRIV_OPT_COMMAND /usr/local/bin/spirv-opt)
+set(GLSLANG_COMMAND /usr/local/bin/glslangValidator)
+
 # build native_app_glue as a static lib
 set(${CMAKE_C_FLAGS}, "${CMAKE_C_FLAGS}")
 add_library(native_app_glue STATIC
@@ -64,9 +69,6 @@ target_link_libraries(native-activity
 set(CLSHADER_SOURCE_DIR ${PROJECT_SOURCE_DIR}/kernels)
 set(CLSHADER_OUTPUT_DIR ${PROJECT_SOURCE_DIR}/assets/shaders_cl)
 set(CLSHADER_NOINLINE_DIR ${PROJECT_SOURCE_DIR}/assets/shaders_small_cl)
-
-set(CLSPV_COMMAND /usr/local/bin/clspv)
-set(SPRIV_OPT_COMMAND /usr/local/bin/spirv-opt)
 
 set(CLSPV_SAMPLERMAP ${CLSHADER_SOURCE_DIR}/sampler_map)
 
@@ -124,8 +126,6 @@ add_dependencies(native-activity build-cl-shaders)
 # build GLSL kernels
 set(GLSL_SOURCE_DIR ${PROJECT_SOURCE_DIR}/kernels)
 set(GLSL_OUTPUT_DIR ${PROJECT_SOURCE_DIR}/assets/shaders)
-
-set(GLSLANG_COMMAND /usr/local/bin/glslangValidator)
 
 set(GLSLANG_FLAGS)
 set(GLSLANG_FLAGS ${GLSLANG_FLAGS} -V)
