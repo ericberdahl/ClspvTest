@@ -198,26 +198,27 @@ vk::UniqueSampler create_compatible_sampler(vk::Device device, int opencl_flags)
 
 /* ============================================================================================== */
 
+struct test_map_t {
+    const char*                 name;
+    test_utils::test_kernel_fn  test_fn;
+};
+
+const test_map_t test_map[] = {
+        { "readLocalSize",      readlocalsize_kernel::test },
+        { "fill",               fill_kernel::test_series },
+        { "fill<float4>",       fill_kernel::test<gpu_types::float4> },
+        { "copyImageToBuffer",  copyimagetobuffer_kernel::test_matrix },
+        { "copyBufferToImage",  copybuffertoimage_kernel::test_matrix },
+        { "readConstantData",   readconstantdata_kernel::test_all },
+        { "testGtEq",           testgreaterthanorequalto_kernel::test_all },
+};
+
 test_utils::test_kernel_fn lookup_test_fn(const std::string& testName) {
     test_utils::test_kernel_fn result = nullptr;
 
-    if (testName == "readLocalSize") {
-        result = readlocalsize_kernel::test;
-    }
-    else if (testName == "fill") {
-        result = fill_kernel::test_series;
-    }
-    else if (testName == "copyImageToBuffer") {
-        result = copyimagetobuffer_kernel::test_matrix;
-    }
-    else if (testName == "copyBufferToImage") {
-        result = copybuffertoimage_kernel::test_matrix;
-    }
-    else if (testName == "readConstantData") {
-        result = readconstantdata_kernel::test_all;
-    }
-    else if (testName == "testGtEq") {
-        result = testgreaterthanorequalto_kernel::test_all;
+    auto found = std::find_if(std::begin(test_map), std::end(test_map), [&testName](const test_map_t& entry){ return testName == entry.name; });
+    if (found != std::end(test_map)) {
+        result = found->test_fn;
     }
 
     return result;
