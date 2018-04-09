@@ -346,8 +346,20 @@ namespace clspv_utils {
 
     } // namespace details
 
+    execution_time_t::execution_time_t() :
+            cpu_duration(),
+            host_barrier_timestamp_delta(0),
+            post_execution_timestamp_delta(0),
+            gpu_barrier_timestamp_delta(0)
+    {
+
+    }
+
     execution_time_t& execution_time_t::operator+=(const execution_time_t& other) {
         cpu_duration += other.cpu_duration;
+        host_barrier_timestamp_delta += other.host_barrier_timestamp_delta;
+        post_execution_timestamp_delta += other.post_execution_timestamp_delta;
+        gpu_barrier_timestamp_delta += other.gpu_barrier_timestamp_delta;
         return *this;
     }
 
@@ -473,6 +485,12 @@ namespace clspv_utils {
             mLiteralSamplers(),
             mArguments() {
         mCommand = allocate_command_buffer(mDevice, cmdPool);
+
+        vk::QueryPoolCreateInfo poolCreateInfo;
+        poolCreateInfo.setQueryType(vk::QueryType::eTimestamp)
+                .setQueryCount(kQueryIndex_Count);
+
+        mQueryPool = device.createQueryPoolUnique(poolCreateInfo);
     }
 
     kernel_invocation::~kernel_invocation() {
@@ -674,21 +692,25 @@ namespace clspv_utils {
 
         inKernel.bindCommand(*mCommand);
 
+        mCommand->resetQueryPool(*mQueryPool, kQueryIndex_FirstIndex, kQueryIndex_Count);
+
+        mCommand->writeTimestamp(vk::PipelineStageFlagBits::eComputeShader, *mQueryPool, kQueryIndex_StartOfExecution);
         mCommand->pipelineBarrier(vk::PipelineStageFlagBits::eHost,
                                   vk::PipelineStageFlagBits::eComputeShader,
                                   vk::DependencyFlags(),
                                   { { vk::AccessFlagBits::eHostWrite, vk::AccessFlagBits::eShaderRead } },    // memory barriers
                                   nullptr,    // buffer memory barriers
                                   nullptr);    // image memory barriers
-
+        mCommand->writeTimestamp(vk::PipelineStageFlagBits::eComputeShader, *mQueryPool, kQueryIndex_PostHostBarrier);
         mCommand->dispatch(num_workgroups.x, num_workgroups.y, 1);
-
+        mCommand->writeTimestamp(vk::PipelineStageFlagBits::eComputeShader, *mQueryPool, kQueryIndex_PostExecution);
         mCommand->pipelineBarrier(vk::PipelineStageFlagBits::eComputeShader,
                                   vk::PipelineStageFlagBits::eHost,
                                   vk::DependencyFlags(),
                                   { { vk::AccessFlagBits::eShaderWrite, vk::AccessFlagBits::eHostRead} },    // memory barriers
                                   nullptr,    // buffer memory barriers
                                   nullptr);    // image memory barriers
+        mCommand->writeTimestamp(vk::PipelineStageFlagBits::eComputeShader, *mQueryPool, kQueryIndex_PostGPUBarrier);
 
         mCommand->end();
     }
@@ -714,9 +736,20 @@ namespace clspv_utils {
         queue.waitIdle();
         auto end = std::chrono::high_resolution_clock::now();
 
+        uint64_t timestamps[kQueryIndex_Count];
+        mDevice.getQueryPoolResults(*mQueryPool,
+                                    kQueryIndex_FirstIndex,
+                                    kQueryIndex_Count,
+                                    sizeof(uint64_t),
+                                    timestamps,
+                                    sizeof(uint64_t),
+                                    vk::QueryResultFlagBits::e64 | vk::QueryResultFlagBits::eWait);
 
         execution_time_t result;
         result.cpu_duration = end - start;
+        result.host_barrier_timestamp_delta = timestamps[kQueryIndex_PostHostBarrier] - timestamps[kQueryIndex_StartOfExecution];
+        result.post_execution_timestamp_delta = timestamps[kQueryIndex_PostExecution] - timestamps[kQueryIndex_StartOfExecution];
+        result.gpu_barrier_timestamp_delta = timestamps[kQueryIndex_PostGPUBarrier] - timestamps[kQueryIndex_StartOfExecution];
         return result;
     }
 

@@ -78,7 +78,12 @@ namespace clspv_utils {
     };
 
     struct execution_time_t {
-        std::chrono::duration<double> cpu_duration;
+        execution_time_t();
+
+        std::chrono::duration<double>   cpu_duration;
+        uint64_t                        host_barrier_timestamp_delta;
+        uint64_t                        post_execution_timestamp_delta;
+        uint64_t                        gpu_barrier_timestamp_delta;
 
         execution_time_t&   operator+=(const execution_time_t& other);
     };
@@ -160,6 +165,16 @@ namespace clspv_utils {
         void        submitCommand(vk::Queue queue);
 
     private:
+        enum QueryIndex {
+            kQueryIndex_FirstIndex = 0,
+            kQueryIndex_StartOfExecution = 0,
+            kQueryIndex_PostHostBarrier = 1,
+            kQueryIndex_PostExecution = 2,
+            kQueryIndex_PostGPUBarrier= 3,
+            kQueryIndex_Count = 4
+        };
+
+    private:
         struct arg {
             vk::DescriptorType  type;
             vk::Buffer          buffer;
@@ -171,6 +186,7 @@ namespace clspv_utils {
         vk::Device                                  mDevice;
         vk::UniqueCommandBuffer                     mCommand;
         vk::PhysicalDeviceMemoryProperties          mMemoryProperties;
+        vk::UniqueQueryPool                         mQueryPool;
 
         std::vector<vk::Sampler>                    mLiteralSamplers;
         std::vector<arg>                            mArguments;

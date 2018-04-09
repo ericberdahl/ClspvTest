@@ -391,19 +391,22 @@ std::pair<unsigned int, unsigned int> countResults(const test_utils::ModuleResul
                            });
 };
 
-void logResults(const test_utils::InvocationResult& ir) {
+void logResults(sample_info& info, const test_utils::InvocationResult& ir) {
     std::ostringstream os;
 
     const clspv_utils::execution_time_t totalTime = totalExecutionTime(ir);
-    os << (ir.mNumCorrectPixels > 0 && ir.mPixelErrors.empty() ? "PASS" : "FAIL")
-       << " executionTime:" << totalTime.cpu_duration.count() * 1000.0 << "ms";
+    os << (ir.mNumCorrectPixels > 0 && ir.mPixelErrors.empty() ? "PASS" : "FAIL");
 
     if (!ir.mVariation.empty()) {
         os << " variation:" << ir.mVariation << "";
     }
 
     os << " correctValues:" << ir.mNumCorrectPixels
-       << " incorrectValues:" << ir.mPixelErrors.size();
+       << " incorrectValues:" << ir.mPixelErrors.size()
+       << " wallClockTime:" << totalTime.cpu_duration.count() * 1000.0 << "ms"
+       << " executionTime:" << ((totalTime.post_execution_timestamp_delta - totalTime.host_barrier_timestamp_delta) * info.physical_device_properties.limits.timestampPeriod)/1000.0f << "µs"
+       << " hostBarrierTime:" << (totalTime.host_barrier_timestamp_delta * info.physical_device_properties.limits.timestampPeriod)/1000.0f << "µs"
+       << " gpuBarrierTime:" << ((totalTime.gpu_barrier_timestamp_delta - totalTime.post_execution_timestamp_delta) * info.physical_device_properties.limits.timestampPeriod)/1000.0f << "µs";
 
     LOGI("      %s", os.str().c_str());
 
@@ -414,7 +417,7 @@ void logResults(const test_utils::InvocationResult& ir) {
     }
 }
 
-void logResults(const test_utils::KernelResult& kr) {
+void logResults(sample_info& info, const test_utils::KernelResult& kr) {
     std::ostringstream os;
 
     os << "Kernel:" << kr.mEntryName;
@@ -430,11 +433,11 @@ void logResults(const test_utils::KernelResult& kr) {
     LOGI("   %s", os.str().c_str());
 
     for (auto ir : kr.mInvocations) {
-        logResults(ir);
+        logResults(info, ir);
     }
 }
 
-void logResults(const test_utils::ModuleResult& mr) {
+void logResults(sample_info& info, const test_utils::ModuleResult& mr) {
     std::ostringstream os;
     os << "Module:" << mr.mModuleName;
     if (!mr.mExceptionString.empty()) {
@@ -443,21 +446,19 @@ void logResults(const test_utils::ModuleResult& mr) {
     LOGI("%s", os.str().c_str());
 
     for (auto kr : mr.mKernels) {
-        logResults(kr);
+        logResults(info, kr);
     }
 }
 
-void logResults(const test_utils::ModuleResultSet& moduleResultSet) {
+void logResults(sample_info& info, const test_utils::ModuleResultSet& moduleResultSet) {
     for (auto mr : moduleResultSet) {
-        logResults(mr);
+        logResults(info, mr);
     }
 
     auto results = countResults(moduleResultSet);
 
     std::ostringstream os;
-    const clspv_utils::execution_time_t totalTime = totalExecutionTime(moduleResultSet);
     os << "Overall Summary"
-       << " executionTime:" << totalTime.cpu_duration.count() << "s"
        << " pass:" << results.first << " fail:" << results.second;
     LOGI("%s", os.str().c_str());
 }
@@ -524,7 +525,7 @@ int sample_main(int argc, char *argv[]) {
     info.device->waitIdle();
     info.device.reset();
 
-    logResults(moduleResultSet);
+    logResults(info, moduleResultSet);
     LOGI("ClspvTest complete!!");
 
     return 0;

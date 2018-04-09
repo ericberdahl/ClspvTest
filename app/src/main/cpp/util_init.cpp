@@ -111,6 +111,7 @@ void init_enumerate_device(struct sample_info &info, uint32_t gpu_count) {
 
     /* This is as good a place as any to do this */
     info.memory_properties = info.gpu.getMemoryProperties();
+    info.physical_device_properties = info.gpu.getProperties();
 }
 
 void init_debug_report_callback(struct sample_info &info, PFN_vkDebugReportCallbackEXT dbgFunc) {
