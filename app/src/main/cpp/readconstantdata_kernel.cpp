@@ -41,6 +41,7 @@ namespace readconstantdata_kernel {
                   const clspv_utils::kernel&           kernel,
                   const sample_info&                   info,
                   vk::ArrayProxy<const vk::Sampler>    samplers,
+                  const std::vector<std::string>&      args,
                   test_utils::InvocationResultSet&     resultSet)
     {
         test_utils::InvocationResult invocationResult;

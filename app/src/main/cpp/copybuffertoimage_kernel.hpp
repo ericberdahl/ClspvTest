@@ -36,6 +36,7 @@ namespace copybuffertoimage_kernel {
               const clspv_utils::kernel&        kernel,
               const sample_info&                info,
               vk::ArrayProxy<const vk::Sampler> samplers,
+              const std::vector<std::string>&   args,
               test_utils::InvocationResultSet&  resultSet)
     {
         test_utils::InvocationResult invocationResult;
@@ -88,6 +89,7 @@ namespace copybuffertoimage_kernel {
                      const clspv_utils::kernel&         kernel,
                      const sample_info&                 info,
                      vk::ArrayProxy<const vk::Sampler>  samplers,
+                     const std::vector<std::string>&    args,
                      test_utils::InvocationResultSet&   resultSet);
 
     template <typename ImagePixelType>
@@ -95,6 +97,7 @@ namespace copybuffertoimage_kernel {
                      const clspv_utils::kernel&          kernel,
                      const sample_info&                  info,
                      vk::ArrayProxy<const vk::Sampler>   samplers,
+                     const std::vector<std::string>&     args,
                      test_utils::InvocationResultSet&    resultSet)
     {
         const test_utils::test_kernel_fn tests[] = {
@@ -111,6 +114,7 @@ namespace copybuffertoimage_kernel {
                                             std::begin(tests), std::end(tests),
                                             info,
                                             samplers,
+                                            args,
                                             resultSet);
     }
 

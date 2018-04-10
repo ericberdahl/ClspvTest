@@ -12,18 +12,20 @@ namespace test_utils {
                                  const test_kernel_fn*              last,
                                  const sample_info&                 info,
                                  vk::ArrayProxy<const vk::Sampler>  samplers,
+                                 const std::vector<std::string>&    args,
                                  InvocationResultSet&               resultSet) {
         for (; first != last; ++first) {
-            (*first)(module, kernel, info, samplers, resultSet);
+            (*first)(module, kernel, info, samplers, args, resultSet);
         }
     }
 
-    KernelResult test_kernel(const clspv_utils::kernel_module&       module,
-                             const std::string&                      entryPoint,
-                             test_kernel_fn                          testFn,
-                             const clspv_utils::WorkgroupDimensions& numWorkgroups,
-                             const sample_info&                      info,
-                             vk::ArrayProxy<const vk::Sampler>       samplers) {
+    KernelResult test_kernel(const clspv_utils::kernel_module&          module,
+                             const std::string&                         entryPoint,
+                             test_kernel_fn                             testFn,
+                             const clspv_utils::WorkgroupDimensions&    numWorkgroups,
+                             const sample_info&                         info,
+                             const std::vector<std::string>&            args,
+                             vk::ArrayProxy<const vk::Sampler>          samplers) {
         KernelResult kernelResult;
         kernelResult.mEntryName = entryPoint;
         kernelResult.mSkipped = false;
@@ -33,7 +35,7 @@ namespace test_utils {
 	        kernelResult.mCompiledCorrectly = true;
 
 			if (testFn) {
-				testFn(module, kernel, info, samplers, kernelResult.mInvocations);
+				testFn(module, kernel, info, samplers, args, kernelResult.mInvocations);
 			}
 		}
         catch (const vk::SystemError &e) {
@@ -94,6 +96,7 @@ namespace test_utils {
                                                                 epTest == kernelTests.end() ? nullptr : epTest->test,
                                                                 num_workgroups,
                                                                 info,
+                                                                epTest->args,
                                                                 samplers));
                 }
             }

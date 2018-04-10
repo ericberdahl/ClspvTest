@@ -250,15 +250,26 @@ std::vector<test_utils::module_test_bundle> read_module_manifest(std::istream& i
         else if (op == "test") {
             // test kernel in module
             if (currentModule) {
-                std::string entryPoint;
-                std::string testName;
-                int workgroup_x;
-                int workgroup_y;
+                std::string                 entryPoint;
+                std::string                 testName;
+                int                         workgroup_x;
+                int                         workgroup_y;
+                std::vector<std::string>    testArgs;
 
                 in_line >> entryPoint
                         >> testName
                         >> workgroup_x
                         >> workgroup_y;
+
+                while (!in_line.eof()) {
+                    std::string arg;
+                    in_line >> arg;
+
+                    // comment delimiter halts collection of test arguments
+                    if (arg[0] == '#') break;
+
+                    testArgs.push_back(arg);
+                }
 
                 auto testFn = lookup_test_fn(testName);
 
@@ -281,7 +292,8 @@ std::vector<test_utils::module_test_bundle> read_module_manifest(std::istream& i
                 if (lineIsGood) {
                     currentModule->kernelTests.push_back({entryPoint, testFn,
                                                           clspv_utils::WorkgroupDimensions(
-                                                                  workgroup_x, workgroup_y)});
+                                                                  workgroup_x, workgroup_y),
+                                                          testArgs});
                 }
             }
             else {
