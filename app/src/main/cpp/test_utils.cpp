@@ -73,31 +73,51 @@ namespace test_utils {
 
             std::vector<std::string> entryPoints(module.getEntryPoints());
             for (auto ep : entryPoints) {
+                std::vector<kernel_test_map> entryTests;
+                std::copy_if(kernelTests.begin(), kernelTests.end(),
+                             std::back_inserter(entryTests),
+                             [&ep](const kernel_test_map &ktm) {
+                                 return ktm.entry == ep;
+                             });
 
-                const auto epTest = std::find_if(kernelTests.begin(), kernelTests.end(),
-                                                 [&ep](const kernel_test_map &ktm) {
-                                                     return ktm.entry == ep;
-                                                 });
+                if (entryTests.empty()) {
+                    // This entry point was not called out specifically in the test map. Just
+                    // compile the kernel with a default workgroup, but don't execute any specific
+                    // test.
+                    clspv_utils::WorkgroupDimensions    num_workgroups;
+                    std::vector<std::string>            emptyArgs;
 
-                clspv_utils::WorkgroupDimensions num_workgroups;
-                if (epTest != kernelTests.end()) {
-                    num_workgroups = epTest->workgroupSize;
-                }
-
-                if (0 == num_workgroups.x && 0 == num_workgroups.y) {
-                    // WorkgroupDimensions(0, 0) is a sentinel to skip this kernel entirely
-
-                    KernelResult kernelResult;
-                    kernelResult.mEntryName = ep;
-                    moduleResult.mKernels.push_back(std::move(kernelResult));
-                } else {
                     moduleResult.mKernels.push_back(test_kernel(module,
                                                                 ep,
-                                                                epTest == kernelTests.end() ? nullptr : epTest->test,
+                                                                nullptr,
                                                                 num_workgroups,
                                                                 info,
-                                                                epTest->args,
+                                                                emptyArgs,
                                                                 samplers));
+                }
+                else {
+                    // This entry point contained at least one test specified by the test map.
+                    // Iterate through all entries for the entry point in the test map.
+
+                    for (auto& epTest : entryTests) {
+                        const clspv_utils::WorkgroupDimensions num_workgroups = epTest.workgroupSize;
+
+                        if (0 == num_workgroups.x && 0 == num_workgroups.y) {
+                            // WorkgroupDimensions(0, 0) is a sentinel to skip this kernel entirely
+
+                            KernelResult kernelResult;
+                            kernelResult.mEntryName = ep;
+                            moduleResult.mKernels.push_back(std::move(kernelResult));
+                        } else {
+                            moduleResult.mKernels.push_back(test_kernel(module,
+                                                                        ep,
+                                                                        epTest.test,
+                                                                        num_workgroups,
+                                                                        info,
+                                                                        epTest.args,
+                                                                        samplers));
+                        }
+                    }
                 }
             }
         }
