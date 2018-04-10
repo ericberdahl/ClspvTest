@@ -46,9 +46,22 @@ namespace fill_kernel {
         test_utils::InvocationResult invocationResult;
         invocationResult.mVariation = pixels::traits<PixelType>::type_name;
 
-        const int buffer_height = 64;
-        const int buffer_width = 64;
+        int buffer_height = 64;
+        int buffer_width = 64;
         const gpu_types::float4 color = { 0.25f, 0.50f, 0.75f, 1.0f };
+
+        for (auto arg = args.begin(); arg != args.end(); arg = std::next(arg)) {
+            if (*arg == "-w") {
+                arg = std::next(arg);
+                if (arg == args.end()) throw std::runtime_error("badly formed arguments to fill test");
+                buffer_width = std::atoi(arg->c_str());
+            }
+            else if (*arg == "-h") {
+                arg = std::next(arg);
+                if (arg == args.end()) throw std::runtime_error("badly formed arguments to fill test");
+                buffer_height = std::atoi(arg->c_str());
+            }
+        }
 
         // allocate image buffer
         const std::size_t buffer_size = buffer_width * buffer_height * sizeof(PixelType);

@@ -2,7 +2,8 @@
 #test ReadLocalSize readLocalSize 1 1
 #
 module shaders_cl/Fills
-test FillWithColorKernel fill 32 32
+test FillWithColorKernel fill 32 32 -w 64 -h 64
+test FillWithColorKernel fill 32 32 -w 1080 -h 720
 #
 module shaders_cl/Memory
 test CopyBufferToImageKernel copyBufferToImage 32 32
