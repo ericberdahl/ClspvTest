@@ -209,6 +209,11 @@ namespace vulkan_utils {
     {
         lhs.swap(rhs);
     }
+
+    double timestamp_delta_ns(uint64_t                              startTimestamp,
+                              uint64_t                              endTimestamp,
+                              const vk::PhysicalDeviceProperties&   deviceProperties,
+                              const vk::QueueFamilyProperties&      queueFamilyProperties);
 }
 
 std::ostream& operator<<(std::ostream& os, vk::MemoryPropertyFlags vkFlags);

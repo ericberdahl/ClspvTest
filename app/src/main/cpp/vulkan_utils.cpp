@@ -299,6 +299,22 @@ namespace vulkan_utils {
         mem.reset();
     }
 
+    double timestamp_delta_ns(uint64_t                              startTimestamp,
+                              uint64_t                              endTimestamp,
+                              const vk::PhysicalDeviceProperties&   deviceProperties,
+                              const vk::QueueFamilyProperties&      queueFamilyProperties) {
+        uint64_t timestampDelta;
+        if (endTimestamp >= startTimestamp) {
+            timestampDelta = endTimestamp - startTimestamp;
+        }
+        else {
+            const uint64_t maxTimestamp = std::numeric_limits<uint64_t>::max() >> (64 - queueFamilyProperties.timestampValidBits);
+            timestampDelta = maxTimestamp - startTimestamp + endTimestamp + 1;
+        }
+
+        return timestampDelta * deviceProperties.limits.timestampPeriod;
+    }
+
 } // namespace vulkan_utils
 
 std::ostream& operator<<(std::ostream& os, vk::MemoryPropertyFlags vkFlags) {
