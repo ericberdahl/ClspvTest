@@ -347,20 +347,9 @@ namespace clspv_utils {
     } // namespace details
 
     execution_time_t::execution_time_t() :
-            cpu_duration(),
-            host_barrier_timestamp_delta(0),
-            post_execution_timestamp_delta(0),
-            gpu_barrier_timestamp_delta(0)
+            cpu_duration(0),
+            timestamps()
     {
-
-    }
-
-    execution_time_t& execution_time_t::operator+=(const execution_time_t& other) {
-        cpu_duration += other.cpu_duration;
-        host_barrier_timestamp_delta += other.host_barrier_timestamp_delta;
-        post_execution_timestamp_delta += other.post_execution_timestamp_delta;
-        gpu_barrier_timestamp_delta += other.gpu_barrier_timestamp_delta;
-        return *this;
     }
 
     kernel_module::kernel_module(vk::Device         device,
@@ -747,9 +736,10 @@ namespace clspv_utils {
 
         execution_time_t result;
         result.cpu_duration = end - start;
-        result.host_barrier_timestamp_delta = timestamps[kQueryIndex_PostHostBarrier] - timestamps[kQueryIndex_StartOfExecution];
-        result.post_execution_timestamp_delta = timestamps[kQueryIndex_PostExecution] - timestamps[kQueryIndex_StartOfExecution];
-        result.gpu_barrier_timestamp_delta = timestamps[kQueryIndex_PostGPUBarrier] - timestamps[kQueryIndex_StartOfExecution];
+        result.timestamps.start = timestamps[kQueryIndex_StartOfExecution];
+        result.timestamps.host_barrier = timestamps[kQueryIndex_PostHostBarrier];
+        result.timestamps.execution = timestamps[kQueryIndex_PostExecution];
+        result.timestamps.gpu_barrier = timestamps[kQueryIndex_PostGPUBarrier];
         return result;
     }
 

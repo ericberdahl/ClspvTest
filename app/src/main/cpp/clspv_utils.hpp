@@ -78,14 +78,19 @@ namespace clspv_utils {
     };
 
     struct execution_time_t {
+        struct vulkan_timestamps_t {
+            vulkan_timestamps_t() : start(0), host_barrier(0), execution(0), gpu_barrier(0) {}
+
+            uint64_t start;
+            uint64_t host_barrier;
+            uint64_t execution;
+            uint64_t gpu_barrier;
+        };
+
         execution_time_t();
 
         std::chrono::duration<double>   cpu_duration;
-        uint64_t                        host_barrier_timestamp_delta;
-        uint64_t                        post_execution_timestamp_delta;
-        uint64_t                        gpu_barrier_timestamp_delta;
-
-        execution_time_t&   operator+=(const execution_time_t& other);
+        vulkan_timestamps_t             timestamps;
     };
 
     class kernel_module {

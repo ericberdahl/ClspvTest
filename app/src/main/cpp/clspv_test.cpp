@@ -139,9 +139,10 @@ void init_compute_queue_family_index(struct sample_info &info) {
     auto found = std::find_if(queue_props.begin(), queue_props.end(), [](vk::QueueFamilyProperties p) {
         return (p.queueFlags & vk::QueueFlagBits::eCompute);
     });
+    assert(found != queue_props.end());
 
     info.graphics_queue_family_index = std::distance(queue_props.begin(), found);
-    assert(found != queue_props.end());
+    info.graphics_queue_family_properties = queue_props[info.graphics_queue_family_index];
 }
 
 void my_init_descriptor_pool(struct sample_info &info) {
@@ -335,34 +336,6 @@ void run_all_tests(const sample_info&                   info,
     }
 }
 
-clspv_utils::execution_time_t totalExecutionTime(const test_utils::InvocationResult& ir) {
-    return ir.mExecutionTime;
-}
-
-clspv_utils::execution_time_t totalExecutionTime(const test_utils::KernelResult& kr) {
-    return std::accumulate(kr.mInvocations.begin(), kr.mInvocations.end(),
-                           clspv_utils::execution_time_t(),
-                           [](clspv_utils::execution_time_t t, const test_utils::InvocationResult& ir) {
-                               return t += totalExecutionTime(ir);
-                           });
-}
-
-clspv_utils::execution_time_t totalExecutionTime(const test_utils::ModuleResult& mr) {
-    return std::accumulate(mr.mKernels.begin(), mr.mKernels.end(),
-                           clspv_utils::execution_time_t(),
-                           [](clspv_utils::execution_time_t t, const test_utils::KernelResult& kr) {
-                               return t += totalExecutionTime(kr);
-                           });
-}
-
-clspv_utils::execution_time_t totalExecutionTime(const test_utils::ModuleResultSet& moduleResultSet) {
-    return std::accumulate(moduleResultSet.begin(), moduleResultSet.end(),
-                           clspv_utils::execution_time_t(),
-                           [](clspv_utils::execution_time_t t, const test_utils::ModuleResult& mr) {
-                               return t += totalExecutionTime(mr);
-                           });
-}
-
 std::pair<unsigned int, unsigned int> countResults(const test_utils::InvocationResult& ir) {
     // an invocation passes if it generates at least one correct value and no incorrect values
     return (ir.mNumCorrectPixels > 0 && ir.mPixelErrors.empty() ? std::make_pair(1, 0) : std::make_pair(0, 1));
@@ -407,7 +380,7 @@ std::pair<unsigned int, unsigned int> countResults(const test_utils::ModuleResul
 void logResults(sample_info& info, const test_utils::InvocationResult& ir) {
     std::ostringstream os;
 
-    const clspv_utils::execution_time_t totalTime = totalExecutionTime(ir);
+    const clspv_utils::execution_time_t totalTime = ir.mExecutionTime;
     os << (ir.mNumCorrectPixels > 0 && ir.mPixelErrors.empty() ? "PASS" : "FAIL");
 
     if (!ir.mVariation.empty()) {
@@ -417,9 +390,9 @@ void logResults(sample_info& info, const test_utils::InvocationResult& ir) {
     os << " correctValues:" << ir.mNumCorrectPixels
        << " incorrectValues:" << ir.mPixelErrors.size()
        << " wallClockTime:" << totalTime.cpu_duration.count() * 1000.0 << "ms"
-       << " executionTime:" << ((totalTime.post_execution_timestamp_delta - totalTime.host_barrier_timestamp_delta) * info.physical_device_properties.limits.timestampPeriod)/1000.0f << "µs"
-       << " hostBarrierTime:" << (totalTime.host_barrier_timestamp_delta * info.physical_device_properties.limits.timestampPeriod)/1000.0f << "µs"
-       << " gpuBarrierTime:" << ((totalTime.gpu_barrier_timestamp_delta - totalTime.post_execution_timestamp_delta) * info.physical_device_properties.limits.timestampPeriod)/1000.0f << "µs";
+       << " executionTime:" << vulkan_utils::timestamp_delta_ns(totalTime.timestamps.host_barrier, totalTime.timestamps.execution, info.physical_device_properties, info.graphics_queue_family_properties)/1000.0f << "µs"
+       << " hostBarrierTime:" << vulkan_utils::timestamp_delta_ns(totalTime.timestamps.start, totalTime.timestamps.host_barrier, info.physical_device_properties, info.graphics_queue_family_properties)/1000.0f << "µs"
+       << " gpuBarrierTime:" << vulkan_utils::timestamp_delta_ns(totalTime.timestamps.execution, totalTime.timestamps.gpu_barrier, info.physical_device_properties, info.graphics_queue_family_properties)/1000.0f << "µs";
 
     LOGI("      %s", os.str().c_str());
 

@@ -64,6 +64,7 @@ struct sample_info {
     vk::Queue                           graphics_queue;
 
     uint32_t                            graphics_queue_family_index;
+    vk::QueueFamilyProperties           graphics_queue_family_properties;
 
     vk::PhysicalDeviceMemoryProperties  memory_properties;
     vk::PhysicalDeviceProperties        physical_device_properties;
