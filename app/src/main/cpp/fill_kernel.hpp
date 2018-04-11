@@ -44,7 +44,6 @@ namespace fill_kernel {
               const std::vector<std::string>&        args,
               test_utils::InvocationResultSet&       resultSet) {
         test_utils::InvocationResult invocationResult;
-        invocationResult.mVariation = pixels::traits<PixelType>::type_name;
 
         int buffer_height = 64;
         int buffer_width = 64;
@@ -62,6 +61,10 @@ namespace fill_kernel {
                 buffer_height = std::atoi(arg->c_str());
             }
         }
+
+        std::ostringstream os;
+        os << "<dst:" << pixels::traits<PixelType>::type_name << " w:" << buffer_width << " h:" << buffer_height << ">";
+        invocationResult.mVariation = os.str();
 
         // allocate image buffer
         const std::size_t buffer_size = buffer_width * buffer_height * sizeof(PixelType);
