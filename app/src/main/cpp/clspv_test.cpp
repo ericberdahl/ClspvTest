@@ -377,6 +377,19 @@ std::pair<unsigned int, unsigned int> countResults(const test_utils::ModuleResul
                            });
 };
 
+void logPhysicalDeviceInfo(sample_info& info) {
+    const vk::PhysicalDeviceProperties props = info.gpu.getProperties();
+    std::ostringstream os;
+    os << "PhysicalDevice {" << std::endl
+       << "   apiVersion:" << props.apiVersion << std::endl
+       << "   driverVersion:" << props.driverVersion << std::endl
+       << "   vendorID:" << props.vendorID << std::endl
+       << "   deviceID:" << props.deviceID << std::endl
+       << "   deviceName:" << props.deviceName << std::endl
+       << "}";
+    LOGI("%s", os.str().c_str());
+}
+
 void logResults(sample_info& info, const test_utils::InvocationResult& ir) {
     std::ostringstream os;
 
@@ -437,6 +450,8 @@ void logResults(sample_info& info, const test_utils::ModuleResult& mr) {
 }
 
 void logResults(sample_info& info, const test_utils::ModuleResultSet& moduleResultSet) {
+    logPhysicalDeviceInfo(info);
+
     for (auto mr : moduleResultSet) {
         logResults(info, mr);
     }
@@ -493,6 +508,8 @@ int sample_main(int argc, char *argv[]) {
     test_utils::ModuleResultSet moduleResultSet;
     run_all_tests(info, rawSamplers, moduleResultSet);
 
+    logResults(info, moduleResultSet);
+
     //
     // Clean up
     //
@@ -503,7 +520,6 @@ int sample_main(int argc, char *argv[]) {
     info.device->waitIdle();
     info.device.reset();
 
-    logResults(info, moduleResultSet);
     LOGI("ClspvTest complete!!");
 
     return 0;
