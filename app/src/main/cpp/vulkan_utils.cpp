@@ -50,6 +50,10 @@ namespace vulkan_utils {
                 typeBits >>= 1;
             }
 
+            if (result == std::numeric_limits<uint32_t>::max()) {
+                throw std::runtime_error("no compatible memory for allocation");
+            }
+
             return result;
         }
     }
@@ -64,7 +68,6 @@ namespace vulkan_utils {
                 .setMemoryTypeIndex(find_compatible_memory_index(mem_props,
                                                                  mem_reqs.memoryTypeBits,
                                                                  vk::MemoryPropertyFlagBits::eHostVisible));
-        LOGI("Allocating device memory using type %d of available types 0x%x", alloc_info.memoryTypeIndex, mem_reqs.memoryTypeBits);
         assert(alloc_info.memoryTypeIndex < std::numeric_limits<uint32_t>::max() &&
                "No mappable memory");
         return device.allocateMemoryUnique(alloc_info);
