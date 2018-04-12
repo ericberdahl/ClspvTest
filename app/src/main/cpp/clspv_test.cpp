@@ -472,14 +472,6 @@ int sample_main(int argc, char *argv[]) {
     init_command_pool(info);
     my_init_descriptor_pool(info);
 
-    {
-        for (int i = 0; i < info.memory_properties.memoryTypeCount; ++i) {
-            std::ostringstream os;
-            os << info.memory_properties.memoryTypes[i];
-            LOGI("memoryType: %d properties:{%s}", i, os.str().c_str());
-        }
-    }
-
     // This sample presumes that all OpenCL C kernels were compiled with the same samplermap file,
     // whose contents and order are statically known to the application. Thus, the app can create
     // a set of compatible samplers thusly.
