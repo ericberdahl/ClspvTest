@@ -105,6 +105,7 @@ namespace test_utils {
         bool				mCompiledCorrectly	= false;
         std::string     	mExceptionString;
         InvocationResultSet mInvocations;
+        bool                mVerboseRequested   = false;
     };
 
     typedef std::vector<KernelResult> KernelResultSet;
@@ -126,10 +127,13 @@ namespace test_utils {
                                    InvocationResultSet&                 resultSet);
 
     struct kernel_test_map {
+        kernel_test_map() {}
+
         std::string                         entry;
-        test_kernel_fn                      test;
+        test_kernel_fn                      test = nullptr;
         clspv_utils::WorkgroupDimensions    workgroupSize;
         std::vector<std::string>            args;
+        bool                                verbose = false;
     };
 
     struct module_test_bundle {

@@ -107,15 +107,20 @@ namespace test_utils {
 
                             KernelResult kernelResult;
                             kernelResult.mEntryName = ep;
+                            kernelResult.mVerboseRequested = epTest.verbose;
+
                             moduleResult.mKernels.push_back(std::move(kernelResult));
                         } else {
-                            moduleResult.mKernels.push_back(test_kernel(module,
-                                                                        ep,
-                                                                        epTest.test,
-                                                                        num_workgroups,
-                                                                        info,
-                                                                        epTest.args,
-                                                                        samplers));
+                            KernelResult kernelResult = test_kernel(module,
+                                                                    ep,
+                                                                    epTest.test,
+                                                                    num_workgroups,
+                                                                    info,
+                                                                    epTest.args,
+                                                                    samplers);
+                            kernelResult.mVerboseRequested = epTest.verbose;
+
+                            moduleResult.mKernels.push_back(kernelResult);
                         }
                     }
                 }

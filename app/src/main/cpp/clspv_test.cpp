@@ -208,6 +208,7 @@ const test_map_t test_map[] = {
         { "readLocalSize",      readlocalsize_kernel::test },
         { "fill",               fill_kernel::test_series },
         { "fill<float4>",       fill_kernel::test<gpu_types::float4> },
+        { "fill<half4>",        fill_kernel::test<gpu_types::half4> },
         { "copyImageToBuffer",  copyimagetobuffer_kernel::test_matrix },
         { "copyBufferToImage",  copybuffertoimage_kernel::test_matrix },
         { "readConstantData",   readconstantdata_kernel::test_all },
@@ -253,7 +254,7 @@ manifest_t read_manifest(std::istream& in) {
             result.tests.push_back({ moduleName });
             currentModule = &result.tests.back();
         }
-        else if (op == "test") {
+        else if (op == "test" || op == "test_verbose") {
             // test kernel in module
             if (currentModule) {
                 std::string                 entryPoint;
@@ -261,6 +262,7 @@ manifest_t read_manifest(std::istream& in) {
                 int                         workgroup_x;
                 int                         workgroup_y;
                 std::vector<std::string>    testArgs;
+                const bool                  isVerbose = (op == "test_verbose");
 
                 in_line >> entryPoint
                         >> testName
@@ -298,10 +300,14 @@ manifest_t read_manifest(std::istream& in) {
                 }
 
                 if (lineIsGood) {
-                    currentModule->kernelTests.push_back({entryPoint, testFn,
-                                                          clspv_utils::WorkgroupDimensions(
-                                                                  workgroup_x, workgroup_y),
-                                                          testArgs});
+                    test_utils::kernel_test_map testMap;
+                    testMap.entry = entryPoint;
+                    testMap.test = testFn;
+                    testMap.workgroupSize = clspv_utils::WorkgroupDimensions(workgroup_x, workgroup_y);
+                    testMap.args = testArgs;
+                    testMap.verbose = isVerbose;
+
+                    currentModule->kernelTests.push_back(testMap);
                 }
             }
             else {
@@ -314,8 +320,10 @@ manifest_t read_manifest(std::istream& in) {
                 std::string entryPoint;
                 in_line >> entryPoint;
 
-                currentModule->kernelTests.push_back(
-                        {entryPoint, nullptr, clspv_utils::WorkgroupDimensions(0, 0)});
+                test_utils::kernel_test_map testMap;
+                testMap.entry = entryPoint;
+                testMap.workgroupSize = clspv_utils::WorkgroupDimensions(0, 0);
+                currentModule->kernelTests.push_back(testMap);
             }
             else {
                 LOGE("%s: no module for skip '%s'", __func__, line.c_str());
@@ -416,7 +424,7 @@ void logPhysicalDeviceInfo(sample_info& info) {
     LOGI("%s", os.str().c_str());
 }
 
-void logResults(sample_info& info, const test_utils::InvocationResult& ir) {
+void logResults(sample_info& info, const test_utils::InvocationResult& ir, bool verbose = false) {
     std::ostringstream os;
 
     const clspv_utils::execution_time_t totalTime = ir.mExecutionTime;
@@ -435,7 +443,7 @@ void logResults(sample_info& info, const test_utils::InvocationResult& ir) {
 
     LOGI("      %s", os.str().c_str());
 
-    if (false) {
+    if (verbose) {
         for (auto err : ir.mPixelErrors) {
             LOGD("         %s", err.c_str());
         }
@@ -458,7 +466,7 @@ void logResults(sample_info& info, const test_utils::KernelResult& kr) {
     LOGI("   %s", os.str().c_str());
 
     for (auto ir : kr.mInvocations) {
-        logResults(info, ir);
+        logResults(info, ir, kr.mVerboseRequested);
     }
 }
 
