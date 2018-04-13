@@ -225,8 +225,12 @@ test_utils::test_kernel_fn lookup_test_fn(const std::string& testName) {
     return result;
 }
 
-std::vector<test_utils::module_test_bundle> read_module_manifest(std::istream& in) {
-    std::vector<test_utils::module_test_bundle> result;
+struct manifest_t {
+    std::vector<test_utils::module_test_bundle> tests;
+};
+
+manifest_t read_manifest(std::istream& in) {
+    manifest_t result;
 
     test_utils::module_test_bundle* currentModule = NULL;
     while (!in.eof()) {
@@ -245,8 +249,8 @@ std::vector<test_utils::module_test_bundle> read_module_manifest(std::istream& i
             std::string moduleName;
             in_line >> moduleName;
 
-            result.push_back({ moduleName });
-            currentModule = &result.back();
+            result.tests.push_back({ moduleName });
+            currentModule = &result.tests.back();
         }
         else if (op == "test") {
             // test kernel in module
@@ -314,6 +318,10 @@ std::vector<test_utils::module_test_bundle> read_module_manifest(std::istream& i
                 LOGE("read_loadmodule_file: no module for skip '%s'", line.c_str());
             }
         }
+        else if (op == "end") {
+            // terminate reading the manifest
+            break;
+        }
         else {
             LOGE("read_loadmodule_file: ignoring ill-formed line '%s'", line.c_str());
         }
@@ -322,16 +330,16 @@ std::vector<test_utils::module_test_bundle> read_module_manifest(std::istream& i
     return result;
 }
 
-std::vector<test_utils::module_test_bundle> read_module_manifest(const std::string& inManifest) {
+manifest_t read_manifest(const std::string& inManifest) {
     std::istringstream is(inManifest);
-    return read_module_manifest(is);
+    return read_manifest(is);
 }
 
-void run_all_tests(const sample_info&                   info,
-                   vk::ArrayProxy<const vk::Sampler>    samplers,
-                   test_utils::ModuleResultSet&         resultSet) {
-    auto all_tests = read_module_manifest(read_asset_file("test_manifest.txt"));
-    for (auto m : all_tests) {
+void run_manifest(const manifest_t&                     manifest,
+                  const sample_info&                    info,
+                  vk::ArrayProxy<const vk::Sampler>     samplers,
+                  test_utils::ModuleResultSet&          resultSet) {
+    for (auto m : manifest.tests) {
         resultSet.push_back(test_utils::test_module(m.name, m.kernelTests, info, samplers));
     }
 }
@@ -467,9 +475,11 @@ void logResults(sample_info& info, const test_utils::ModuleResultSet& moduleResu
 /* ============================================================================================== */
 
 int sample_main(int argc, char *argv[]) {
+    auto manifest = read_manifest(read_asset_file("test_manifest.txt"));
+
     struct sample_info info = {};
     init_global_layer_properties(info);
-    init_validation_layers(info);
+//    init_validation_layers(info);
 
     info.instance_extension_names.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
     init_instance(info, "vulkansamples_device");
@@ -506,7 +516,7 @@ int sample_main(int argc, char *argv[]) {
     const auto rawSamplers = vulkan_utils::extractUniques(samplers);
 
     test_utils::ModuleResultSet moduleResultSet;
-    run_all_tests(info, rawSamplers, moduleResultSet);
+    run_manifest(manifest, info, rawSamplers, moduleResultSet);
 
     logResults(info, moduleResultSet);
 
