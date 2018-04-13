@@ -226,6 +226,7 @@ test_utils::test_kernel_fn lookup_test_fn(const std::string& testName) {
 }
 
 struct manifest_t {
+    bool                                        use_validation_layer = true;
     std::vector<test_utils::module_test_bundle> tests;
 };
 
@@ -281,13 +282,15 @@ manifest_t read_manifest(std::istream& in) {
                 bool lineIsGood = true;
 
                 if (!testFn) {
-                    LOGE("read_loadmodule_file: cannot find test '%s' from command '%s'",
+                    LOGE("%s: cannot find test '%s' from command '%s'",
+                         __func__,
                          testName.c_str(),
                          line.c_str());
                     lineIsGood = false;
                 }
                 if (1 > workgroup_x || 1 > workgroup_y) {
-                    LOGE("read_loadmodule_file: bad workgroup dimensions {%d,%d} from command '%s'",
+                    LOGE("%s: bad workgroup dimensions {%d,%d} from command '%s'",
+                         __func__,
                          workgroup_x,
                          workgroup_y,
                          line.c_str());
@@ -302,7 +305,7 @@ manifest_t read_manifest(std::istream& in) {
                 }
             }
             else {
-                LOGE("read_loadmodule_file: no module for test '%s'", line.c_str());
+                LOGE("%s: no module for test '%s'", __func__, line.c_str());
             }
         }
         else if (op == "skip") {
@@ -315,7 +318,22 @@ manifest_t read_manifest(std::istream& in) {
                         {entryPoint, nullptr, clspv_utils::WorkgroupDimensions(0, 0)});
             }
             else {
-                LOGE("read_loadmodule_file: no module for skip '%s'", line.c_str());
+                LOGE("%s: no module for skip '%s'", __func__, line.c_str());
+            }
+        }
+        else if (op == "vkValidation") {
+            // turn vulkan validation layers on/off
+            std::string on_off;
+            in_line >> on_off;
+
+            if (on_off == "all") {
+                result.use_validation_layer = true;
+            }
+            else if (on_off == "none") {
+                result.use_validation_layer = false;
+            }
+            else {
+                LOGE("%s: unrecognized vkValidation token '%s'", __func__, on_off.c_str());
             }
         }
         else if (op == "end") {
@@ -323,7 +341,7 @@ manifest_t read_manifest(std::istream& in) {
             break;
         }
         else {
-            LOGE("read_loadmodule_file: ignoring ill-formed line '%s'", line.c_str());
+            LOGE("%s: ignoring ill-formed line '%s'", __func__, line.c_str());
         }
     }
 
@@ -475,11 +493,13 @@ void logResults(sample_info& info, const test_utils::ModuleResultSet& moduleResu
 /* ============================================================================================== */
 
 int sample_main(int argc, char *argv[]) {
-    auto manifest = read_manifest(read_asset_file("test_manifest.txt"));
+    const auto manifest = read_manifest(read_asset_file("test_manifest.txt"));
 
     struct sample_info info = {};
     init_global_layer_properties(info);
-//    init_validation_layers(info);
+    if (manifest.use_validation_layer) {
+        init_validation_layers(info);
+    }
 
     info.instance_extension_names.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
     init_instance(info, "vulkansamples_device");
