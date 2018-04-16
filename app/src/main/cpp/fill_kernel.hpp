@@ -34,6 +34,7 @@ namespace fill_kernel {
                      const sample_info&                  info,
                      vk::ArrayProxy<const vk::Sampler>   samplers,
                      const std::vector<std::string>&     args,
+                     bool                                verbose,
                      test_utils::InvocationResultSet&    resultSet);
 
     template <typename PixelType>
@@ -42,6 +43,7 @@ namespace fill_kernel {
               const sample_info&                     info,
               vk::ArrayProxy<const vk::Sampler>      samplers,
               const std::vector<std::string>&        args,
+              bool                                   verbose,
               test_utils::InvocationResultSet&       resultSet) {
         test_utils::InvocationResult invocationResult;
 
@@ -88,6 +90,7 @@ namespace fill_kernel {
                                              buffer_width, buffer_height,
                                              buffer_width,
                                              color,
+                                             verbose,
                                              invocationResult);
 
         resultSet.push_back(std::move(invocationResult));

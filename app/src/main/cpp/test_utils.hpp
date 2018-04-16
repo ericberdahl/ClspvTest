@@ -92,8 +92,9 @@ namespace test_utils {
 
     struct InvocationResult {
         std::string                     mVariation;
-        unsigned int                    mNumCorrectPixels   = 0;
-        std::vector<std::string>        mPixelErrors;
+        unsigned int                    mNumCorrect = 0;
+        unsigned int                    mNumErrors  = 0;
+        std::vector<std::string>        mMessages;
         clspv_utils::execution_time_t   mExecutionTime;
     };
 
@@ -105,7 +106,6 @@ namespace test_utils {
         bool				mCompiledCorrectly	= false;
         std::string     	mExceptionString;
         InvocationResultSet mInvocations;
-        bool                mVerboseRequested   = false;
     };
 
     typedef std::vector<KernelResult> KernelResultSet;
@@ -124,6 +124,7 @@ namespace test_utils {
                                    const sample_info&                   info,
                                    vk::ArrayProxy<const vk::Sampler>    samplers,
                                    const std::vector<std::string>&      args,
+                                   bool                                 verbose,
                                    InvocationResultSet&                 resultSet);
 
     struct kernel_test_map {
@@ -225,6 +226,7 @@ namespace test_utils {
                       ObservedPixelType observed_pixel,
                       int               row,
                       int               column,
+                      bool              verbose,
                       InvocationResult& result) {
         typedef typename details::pixel_promotion<ExpectedPixelType, ObservedPixelType>::promotion_type promotion_type;
 
@@ -233,21 +235,29 @@ namespace test_utils {
 
         const bool pixel_is_correct = pixel_compare(observed, expected);
         if (pixel_is_correct) {
-            ++result.mNumCorrectPixels;
+            ++result.mNumCorrect;
         }
         else {
-            const std::string expectedString = pixels::traits<decltype(expected_pixel)>::toString(expected_pixel);
-            const std::string observedString = pixels::traits<decltype(observed_pixel)>::toString(observed_pixel);
+            ++result.mNumErrors;
+            if (verbose) {
+                const std::string expectedString = pixels::traits<decltype(expected_pixel)>::toString(
+                        expected_pixel);
+                const std::string observedString = pixels::traits<decltype(observed_pixel)>::toString(
+                        observed_pixel);
 
-            const std::string expectedPromotionString = pixels::traits<decltype(expected)>::toString(expected);
-            const std::string observedPromotionString = pixels::traits<decltype(observed)>::toString(observed);
+                const std::string expectedPromotionString = pixels::traits<decltype(expected)>::toString(
+                        expected);
+                const std::string observedPromotionString = pixels::traits<decltype(observed)>::toString(
+                        observed);
 
-            std::ostringstream os;
-            os << (pixel_is_correct ? "CORRECT  " : "INCORRECT")
-               << ": pixel{row:" << row << ", col:" << column<< "}"
-               << " expected:" << expectedString << " observed:" << observedString
-               << " expectedPromotion:" << expectedPromotionString << " observedPromotion:" << observedPromotionString;
-            result.mPixelErrors.push_back(os.str());
+                std::ostringstream os;
+                os << (pixel_is_correct ? "CORRECT  " : "INCORRECT")
+                   << ": pixel{row:" << row << ", col:" << column << "}"
+                   << " expected:" << expectedString << " observed:" << observedString
+                   << " expectedPromotion:" << expectedPromotionString << " observedPromotion:"
+                   << observedPromotionString;
+                result.mMessages.push_back(os.str());
+            }
         }
     }
 
@@ -257,12 +267,13 @@ namespace test_utils {
                        int                      height,
                        int                      pitch,
                        ExpectedPixelType        expected,
+                       bool                     verbose,
                        InvocationResult&        result) {
         auto row = observed_pixels;
         for (int r = 0; r < height; ++r, row += pitch) {
             auto p = row;
             for (int c = 0; c < width; ++c, ++p) {
-                check_result(expected, *p, r, c, result);
+                check_result(expected, *p, r, c, verbose, result);
             }
         }
     }
@@ -273,6 +284,7 @@ namespace test_utils {
                        int                      width,
                        int                      height,
                        int                      pitch,
+                       bool                     verbose,
                        InvocationResult&        result) {
         auto expected_row = expected_pixels;
         auto observed_row = observed_pixels;
@@ -280,7 +292,7 @@ namespace test_utils {
             auto expected_p = expected_row;
             auto observed_p = observed_row;
             for (int c = 0; c < width; ++c, ++expected_p, ++observed_p) {
-                check_result(*expected_p, *observed_p, r, c, result);
+                check_result(*expected_p, *observed_p, r, c, verbose, result);
             }
         }
     }
@@ -291,12 +303,13 @@ namespace test_utils {
                        int                                  width,
                        int                                  height,
                        int                                  pitch,
+                       bool                                 verbose,
                        InvocationResult&                    result) {
-        vulkan_utils::withMap(expected, observed, [width, height, pitch, &result](void* srcMap, void* dstMap) {
+        vulkan_utils::withMap(expected, observed, [width, height, pitch, verbose, &result](void* srcMap, void* dstMap) {
             auto src_pixels = static_cast<const ExpectedPixelType *>(srcMap);
             auto dst_pixels = static_cast<const ObservedPixelType *>(dstMap);
 
-            check_results(src_pixels, dst_pixels, width, height, pitch, result);
+            check_results(src_pixels, dst_pixels, width, height, pitch, verbose, result);
         });
     }
 
@@ -306,11 +319,12 @@ namespace test_utils {
                        int                                  width,
                        int                                  height,
                        int                                  pitch,
+                       bool                                 verbose,
                        InvocationResult&                    result) {
-        vulkan_utils::withMap(observed, [expected_pixels, width, height, pitch, &result](void* dstMap) {
+        vulkan_utils::withMap(observed, [expected_pixels, width, height, pitch, verbose, &result](void* dstMap) {
             auto dst_pixels = static_cast<const ObservedPixelType *>(dstMap);
 
-            check_results(expected_pixels, dst_pixels, width, height, pitch, result);
+            check_results(expected_pixels, dst_pixels, width, height, pitch, verbose, result);
         });
     }
 
@@ -320,10 +334,11 @@ namespace test_utils {
                        int                                  height,
                        int                                  pitch,
                        const gpu_types::float4&             expected,
+                       bool                                 verbose,
                        InvocationResult&                    result) {
-        vulkan_utils::withMap(observed, [width, height, pitch, expected, &result](void* memMap) {
+        vulkan_utils::withMap(observed, [width, height, pitch, expected, verbose, &result](void* memMap) {
             auto pixels = static_cast<const ObservedPixelType *>(memMap);
-            check_results(pixels, width, height, pitch, expected, result);
+            check_results(pixels, width, height, pitch, expected, verbose, result);
         });
     }
 
@@ -334,6 +349,7 @@ namespace test_utils {
                                  const sample_info&                 info,
                                  vk::ArrayProxy<const vk::Sampler>  samplers,
                                  const std::vector<std::string>&    args,
+                                 bool                               verbose,
                                  InvocationResultSet&               resultSet);
 
     KernelResult test_kernel(const clspv_utils::kernel_module&          module,
@@ -342,6 +358,7 @@ namespace test_utils {
                              const clspv_utils::WorkgroupDimensions&    numWorkgroups,
                              const sample_info&                         info,
                              const std::vector<std::string>&            args,
+                             bool                                       verbose,
                              vk::ArrayProxy<const vk::Sampler>          samplers);
 
     ModuleResult test_module(const std::string&                     moduleName,

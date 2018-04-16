@@ -13,9 +13,10 @@ namespace test_utils {
                                  const sample_info&                 info,
                                  vk::ArrayProxy<const vk::Sampler>  samplers,
                                  const std::vector<std::string>&    args,
+                                 bool                               verbose,
                                  InvocationResultSet&               resultSet) {
         for (; first != last; ++first) {
-            (*first)(module, kernel, info, samplers, args, resultSet);
+            (*first)(module, kernel, info, samplers, args, verbose, resultSet);
         }
     }
 
@@ -25,6 +26,7 @@ namespace test_utils {
                              const clspv_utils::WorkgroupDimensions&    numWorkgroups,
                              const sample_info&                         info,
                              const std::vector<std::string>&            args,
+                             bool                                       verbose,
                              vk::ArrayProxy<const vk::Sampler>          samplers) {
         KernelResult kernelResult;
         kernelResult.mEntryName = entryPoint;
@@ -35,7 +37,7 @@ namespace test_utils {
 	        kernelResult.mCompiledCorrectly = true;
 
 			if (testFn) {
-				testFn(module, kernel, info, samplers, args, kernelResult.mInvocations);
+				testFn(module, kernel, info, samplers, args, verbose, kernelResult.mInvocations);
 			}
 		}
         catch (const vk::SystemError &e) {
@@ -93,6 +95,7 @@ namespace test_utils {
                                                                 num_workgroups,
                                                                 info,
                                                                 emptyArgs,
+                                                                false,
                                                                 samplers));
                 }
                 else {
@@ -107,7 +110,6 @@ namespace test_utils {
 
                             KernelResult kernelResult;
                             kernelResult.mEntryName = ep;
-                            kernelResult.mVerboseRequested = epTest.verbose;
 
                             moduleResult.mKernels.push_back(std::move(kernelResult));
                         } else {
@@ -117,8 +119,8 @@ namespace test_utils {
                                                                     num_workgroups,
                                                                     info,
                                                                     epTest.args,
+                                                                    epTest.verbose,
                                                                     samplers);
-                            kernelResult.mVerboseRequested = epTest.verbose;
 
                             moduleResult.mKernels.push_back(kernelResult);
                         }

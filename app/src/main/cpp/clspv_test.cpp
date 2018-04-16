@@ -372,7 +372,7 @@ void run_manifest(const manifest_t&                     manifest,
 
 std::pair<unsigned int, unsigned int> countResults(const test_utils::InvocationResult& ir) {
     // an invocation passes if it generates at least one correct value and no incorrect values
-    return (ir.mNumCorrectPixels > 0 && ir.mPixelErrors.empty() ? std::make_pair(1, 0) : std::make_pair(0, 1));
+    return (ir.mNumCorrect > 0 && ir.mNumErrors == 0 ? std::make_pair(1, 0) : std::make_pair(0, 1));
 };
 
 std::pair<unsigned int, unsigned int> countResults(const test_utils::KernelResult& kr) {
@@ -424,18 +424,18 @@ void logPhysicalDeviceInfo(sample_info& info) {
     LOGI("%s", os.str().c_str());
 }
 
-void logResults(sample_info& info, const test_utils::InvocationResult& ir, bool verbose = false) {
+void logResults(sample_info& info, const test_utils::InvocationResult& ir) {
     std::ostringstream os;
 
     const clspv_utils::execution_time_t totalTime = ir.mExecutionTime;
-    os << (ir.mNumCorrectPixels > 0 && ir.mPixelErrors.empty() ? "PASS" : "FAIL");
+    os << (ir.mNumCorrect > 0 && ir.mNumErrors == 0 ? "PASS" : "FAIL");
 
     if (!ir.mVariation.empty()) {
         os << " variation:" << ir.mVariation << "";
     }
 
-    os << " correctValues:" << ir.mNumCorrectPixels
-       << " incorrectValues:" << ir.mPixelErrors.size()
+    os << " correctValues:" << ir.mNumCorrect
+       << " incorrectValues:" << ir.mNumErrors
        << " wallClockTime:" << totalTime.cpu_duration.count() * 1000.0 << "ms"
        << " executionTime:" << vulkan_utils::timestamp_delta_ns(totalTime.timestamps.host_barrier, totalTime.timestamps.execution, info.physical_device_properties, info.graphics_queue_family_properties)/1000.0f << "µs"
        << " hostBarrierTime:" << vulkan_utils::timestamp_delta_ns(totalTime.timestamps.start, totalTime.timestamps.host_barrier, info.physical_device_properties, info.graphics_queue_family_properties)/1000.0f << "µs"
@@ -443,10 +443,8 @@ void logResults(sample_info& info, const test_utils::InvocationResult& ir, bool 
 
     LOGI("      %s", os.str().c_str());
 
-    if (verbose) {
-        for (auto err : ir.mPixelErrors) {
-            LOGD("         %s", err.c_str());
-        }
+    for (auto err : ir.mMessages) {
+        LOGD("         %s", err.c_str());
     }
 }
 
@@ -466,7 +464,7 @@ void logResults(sample_info& info, const test_utils::KernelResult& kr) {
     LOGI("   %s", os.str().c_str());
 
     for (auto ir : kr.mInvocations) {
-        logResults(info, ir, kr.mVerboseRequested);
+        logResults(info, ir);
     }
 }
 

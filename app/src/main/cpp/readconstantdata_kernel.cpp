@@ -42,6 +42,7 @@ namespace readconstantdata_kernel {
                   const sample_info&                   info,
                   vk::ArrayProxy<const vk::Sampler>    samplers,
                   const std::vector<std::string>&      args,
+                  bool                                 verbose,
                   test_utils::InvocationResultSet&     resultSet)
     {
         test_utils::InvocationResult invocationResult;
@@ -84,6 +85,7 @@ namespace readconstantdata_kernel {
         test_utils::check_results<float, float>(expectedResults.data(), dstBuffer.mem,
                                                 buffer_width, buffer_height,
                                                 buffer_height,
+                                                verbose,
                                                 invocationResult);
 
         resultSet.push_back(std::move(invocationResult));

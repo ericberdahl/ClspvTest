@@ -48,6 +48,7 @@ namespace readlocalsize_kernel {
               const sample_info&                 info,
               vk::ArrayProxy<const vk::Sampler>  samplers,
               const std::vector<std::string>&    args,
+              bool                               verbose,
               test_utils::InvocationResultSet&   resultSet)
     {
         test_utils::InvocationResult    invocationResult;
@@ -62,13 +63,18 @@ namespace readlocalsize_kernel {
                               1 == std::get<2>(observed));
 
         if (success) {
-            ++invocationResult.mNumCorrectPixels;
+            ++invocationResult.mNumCorrect;
         } else {
-            std::ostringstream os;
-            os << (success ? "CORRECT" : "INCORRECT")
-               << ": workgroup_size expected{x=" << expected.x << ", y=" << expected.y << ", z=1}"
-               << " observed{x=" << std::get<0>(observed) << ", y=" << std::get<1>(observed) <<", z=" << std::get<2>(observed) << "}";
-            invocationResult.mPixelErrors.push_back(os.str());
+            ++invocationResult.mNumErrors;
+            if (verbose) {
+                std::ostringstream os;
+                os << (success ? "CORRECT" : "INCORRECT")
+                   << ": workgroup_size expected{x=" << expected.x << ", y=" << expected.y
+                   << ", z=1}"
+                   << " observed{x=" << std::get<0>(observed) << ", y=" << std::get<1>(observed)
+                   << ", z=" << std::get<2>(observed) << "}";
+                invocationResult.mMessages.push_back(os.str());
+            }
         }
 
         resultSet.push_back(std::move(invocationResult));

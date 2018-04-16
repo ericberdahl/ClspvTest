@@ -29,6 +29,7 @@ namespace testgreaterthanorequalto_kernel {
                   const sample_info&                   info,
                   vk::ArrayProxy<const vk::Sampler>    samplers,
                   const std::vector<std::string>&      args,
+                  bool                                 verbose,
                   test_utils::InvocationResultSet&     resultSet);
 
 }
