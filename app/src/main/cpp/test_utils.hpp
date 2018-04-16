@@ -128,13 +128,11 @@ namespace test_utils {
                                    InvocationResultSet&                 resultSet);
 
     struct kernel_test_map {
-        kernel_test_map() {}
-
         std::string                         entry;
-        test_kernel_fn                      test = nullptr;
+        test_kernel_fn                      test        = nullptr;
         clspv_utils::WorkgroupDimensions    workgroupSize;
         std::vector<std::string>            args;
-        bool                                verbose = false;
+        bool                                verbose     = false;
     };
 
     struct module_test_bundle {
@@ -352,14 +350,10 @@ namespace test_utils {
                                  bool                               verbose,
                                  InvocationResultSet&               resultSet);
 
-    KernelResult test_kernel(const clspv_utils::kernel_module&          module,
-                             const std::string&                         entryPoint,
-                             test_kernel_fn                             testFn,
-                             const clspv_utils::WorkgroupDimensions&    numWorkgroups,
-                             const sample_info&                         info,
-                             const std::vector<std::string>&            args,
-                             bool                                       verbose,
-                             vk::ArrayProxy<const vk::Sampler>          samplers);
+    KernelResult test_kernel(const clspv_utils::kernel_module&  module,
+                             const kernel_test_map&             kernelTest,
+                             const sample_info&                 info,
+                             vk::ArrayProxy<const vk::Sampler>  samplers);
 
     ModuleResult test_module(const std::string&                     moduleName,
                              const std::vector<kernel_test_map>&    kernelTests,

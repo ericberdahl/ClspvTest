@@ -20,24 +20,26 @@ namespace test_utils {
         }
     }
 
-    KernelResult test_kernel(const clspv_utils::kernel_module&          module,
-                             const std::string&                         entryPoint,
-                             test_kernel_fn                             testFn,
-                             const clspv_utils::WorkgroupDimensions&    numWorkgroups,
-                             const sample_info&                         info,
-                             const std::vector<std::string>&            args,
-                             bool                                       verbose,
-                             vk::ArrayProxy<const vk::Sampler>          samplers) {
+    KernelResult test_kernel(const clspv_utils::kernel_module&  module,
+                             const kernel_test_map&             kernelTest,
+                             const sample_info&                 info,
+                             vk::ArrayProxy<const vk::Sampler>  samplers) {
         KernelResult kernelResult;
-        kernelResult.mEntryName = entryPoint;
+        kernelResult.mEntryName = kernelTest.entry;
         kernelResult.mSkipped = false;
 
 		try {
-	        clspv_utils::kernel kernel(module, entryPoint, numWorkgroups);
+	        clspv_utils::kernel kernel(module, kernelTest.entry, kernelTest.workgroupSize);
 	        kernelResult.mCompiledCorrectly = true;
 
-			if (testFn) {
-				testFn(module, kernel, info, samplers, args, verbose, kernelResult.mInvocations);
+			if (kernelTest.test) {
+                kernelTest.test(module,
+                                kernel,
+                                info,
+                                samplers,
+                                kernelTest.args,
+                                kernelTest.verbose,
+                                kernelResult.mInvocations);
 			}
 		}
         catch (const vk::SystemError &e) {
@@ -86,44 +88,28 @@ namespace test_utils {
                     // This entry point was not called out specifically in the test map. Just
                     // compile the kernel with a default workgroup, but don't execute any specific
                     // test.
-                    clspv_utils::WorkgroupDimensions    num_workgroups;
-                    std::vector<std::string>            emptyArgs;
+                    kernel_test_map dummyMap;
+                    dummyMap.entry = ep;
 
-                    moduleResult.mKernels.push_back(test_kernel(module,
-                                                                ep,
-                                                                nullptr,
-                                                                num_workgroups,
-                                                                info,
-                                                                emptyArgs,
-                                                                false,
-                                                                samplers));
+                    entryTests.push_back(dummyMap);
                 }
-                else {
-                    // This entry point contained at least one test specified by the test map.
-                    // Iterate through all entries for the entry point in the test map.
 
-                    for (auto& epTest : entryTests) {
-                        const clspv_utils::WorkgroupDimensions num_workgroups = epTest.workgroupSize;
+                // Iterate through all entries for the entry point in the test map.
+                for (auto& epTest : entryTests) {
+                    if (0 == epTest.workgroupSize.x && 0 == epTest.workgroupSize.y) {
+                        // WorkgroupDimensions(0, 0) is a sentinel to skip this kernel entirely
 
-                        if (0 == num_workgroups.x && 0 == num_workgroups.y) {
-                            // WorkgroupDimensions(0, 0) is a sentinel to skip this kernel entirely
+                        KernelResult kernelResult;
+                        kernelResult.mEntryName = ep;
 
-                            KernelResult kernelResult;
-                            kernelResult.mEntryName = ep;
+                        moduleResult.mKernels.push_back(std::move(kernelResult));
+                    } else {
+                        KernelResult kernelResult = test_kernel(module,
+                                                                epTest,
+                                                                info,
+                                                                samplers);
 
-                            moduleResult.mKernels.push_back(std::move(kernelResult));
-                        } else {
-                            KernelResult kernelResult = test_kernel(module,
-                                                                    ep,
-                                                                    epTest.test,
-                                                                    num_workgroups,
-                                                                    info,
-                                                                    epTest.args,
-                                                                    epTest.verbose,
-                                                                    samplers);
-
-                            moduleResult.mKernels.push_back(kernelResult);
-                        }
+                        moduleResult.mKernels.push_back(kernelResult);
                     }
                 }
             }
