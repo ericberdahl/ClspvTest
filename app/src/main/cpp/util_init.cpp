@@ -85,6 +85,8 @@ void init_instance(struct sample_info &info, char const *const app_short_name) {
             .setPpEnabledExtensionNames(info.instance_extension_names.size() ? info.instance_extension_names.data() : NULL);
 
     info.inst = vk::createInstanceUnique(inst_info);
+
+    info.getPhysicalDeviceFeatures2KHR = (PFN_vkGetPhysicalDeviceFeatures2KHR) info.inst->getProcAddr("vkGetPhysicalDeviceFeatures2KHR");
 }
 
 void init_device(struct sample_info &info) {
@@ -104,10 +106,20 @@ void init_device(struct sample_info &info) {
     info.device = info.gpu.createDeviceUnique(device_info);
 }
 
-void init_enumerate_device(struct sample_info &info, uint32_t gpu_count) {
+void init_enumerate_device(struct sample_info &info) {
     auto gpus = info.inst->enumeratePhysicalDevices();
-    assert(gpu_count >= gpus.size());
-    info.gpu = gpus[0];
+    // find the first physical device in the list which supports the variablePointers feature
+    auto found_gpu = find_if(gpus.begin(), gpus.end(), [&info](vk::PhysicalDevice g) {
+        vk::StructureChain<vk::PhysicalDeviceFeatures2KHR, vk::PhysicalDeviceVariablePointerFeaturesKHR> structureChain;
+        vk::PhysicalDeviceFeatures2KHR& features = structureChain.get<vk::PhysicalDeviceFeatures2KHR>();
+        info.getPhysicalDeviceFeatures2KHR((VkPhysicalDevice)g, reinterpret_cast<VkPhysicalDeviceFeatures2KHR*>(&features));
+
+        return structureChain.get<vk::PhysicalDeviceVariablePointerFeaturesKHR>().variablePointers;
+    });
+    if (found_gpu == gpus.end()) {
+        throw std::runtime_error("no compatible GPU found");
+    }
+    info.gpu = *found_gpu;
 
     /* This is as good a place as any to do this */
     info.memory_properties = info.gpu.getMemoryProperties();
