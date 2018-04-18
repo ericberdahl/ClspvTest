@@ -1,3 +1,35 @@
+# Glossary of verbs for manifests
+#
+# module module-path
+# Look for the files {module-path}.spv and {module-path}.spvmap in the assets directory, loading the
+# module at runtime. Each entry point in the module will be compiled unless specified by a skip verb
+# for that entry point. If entry points associated with a test verb will then also have the
+# indicated test function executed on that entry point.
+#
+# skip entry-point
+# Do not even compile entry-point (found in the most recently loaded module), just ignore it. This
+# can be useful to work around driver bugs whereby compiling a given entry point has undesirable
+# side effects (e.g. crashes the app).
+#
+# test entry-point test-entry workgroup-size-x workgroup-size-y (test-arg...)
+# Run a test, specified by the test-entry name, against the entry-point (found in the most recently
+# loaded module). test-entry is matched by a table internal to the application to look up the actual
+# test function executed. The test is executed with the indicated workgroup size. Any additional
+# test arguments are collected and passed (as a list of strings) to the test function itself. Test
+# arguments are, therefore, specific to each test function.
+#
+# verbosity [full|silent]
+# Change the amount of output subsequent tests will emit.
+# full - (default) instruct tests to emit as much detail about their results as they can
+# silent - instruct tests to emit as little detail about their results as practical
+#
+# vkValidation [all|none]
+# Instruct the test harness how to set up Vulkan validations layers for this test run. Note that
+# the vkValidation verb affects all tests (different from verbosity and iterations, for example),
+# with the last entry in the manifest affecting all tests in the test run.
+# all - (default) install all validation layers before running tests
+# none - install no validations layers before running tests
+#
 module shaders_cl/localsize
 test ReadLocalSize readLocalSize 1 1
 #
