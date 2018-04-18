@@ -232,7 +232,8 @@ struct manifest_t {
 };
 
 manifest_t read_manifest(std::istream& in) {
-    manifest_t result;
+    manifest_t      result;
+    bool            verbose     = false;
 
     test_utils::module_test_bundle* currentModule = NULL;
     while (!in.eof()) {
@@ -248,26 +249,23 @@ manifest_t read_manifest(std::istream& in) {
         }
         else if (op == "module") {
             // add module to list of modules to load
-            std::string moduleName;
-            in_line >> moduleName;
+            test_utils::module_test_bundle moduleEntry;
+            in_line >> moduleEntry.name;
 
-            result.tests.push_back({ moduleName });
+            result.tests.push_back(moduleEntry);
             currentModule = &result.tests.back();
         }
-        else if (op == "test" || op == "test_verbose") {
+        else if (op == "test") {
             // test kernel in module
             if (currentModule) {
-                std::string                 entryPoint;
-                std::string                 testName;
-                int                         workgroup_x;
-                int                         workgroup_y;
-                std::vector<std::string>    testArgs;
-                const bool                  isVerbose = (op == "test_verbose");
+                test_utils::kernel_test_map testEntry;
+                testEntry.verbose = verbose;
 
-                in_line >> entryPoint
+                std::string testName;
+                in_line >> testEntry.entry
                         >> testName
-                        >> workgroup_x
-                        >> workgroup_y;
+                        >> testEntry.workgroupSize.x
+                        >> testEntry.workgroupSize.y;
 
                 while (!in_line.eof()) {
                     std::string arg;
@@ -276,38 +274,31 @@ manifest_t read_manifest(std::istream& in) {
                     // comment delimiter halts collection of test arguments
                     if (arg[0] == '#') break;
 
-                    testArgs.push_back(arg);
+                    testEntry.args.push_back(arg);
                 }
 
-                auto testFn = lookup_test_fn(testName);
+                testEntry.test = lookup_test_fn(testName);
 
                 bool lineIsGood = true;
 
-                if (!testFn) {
+                if (!testEntry.test) {
                     LOGE("%s: cannot find test '%s' from command '%s'",
                          __func__,
                          testName.c_str(),
                          line.c_str());
                     lineIsGood = false;
                 }
-                if (1 > workgroup_x || 1 > workgroup_y) {
+                if (1 > testEntry.workgroupSize.x || 1 > testEntry.workgroupSize.y) {
                     LOGE("%s: bad workgroup dimensions {%d,%d} from command '%s'",
                          __func__,
-                         workgroup_x,
-                         workgroup_y,
+                         testEntry.workgroupSize.x,
+                         testEntry.workgroupSize.y,
                          line.c_str());
                     lineIsGood = false;
                 }
 
                 if (lineIsGood) {
-                    test_utils::kernel_test_map testMap;
-                    testMap.entry = entryPoint;
-                    testMap.test = testFn;
-                    testMap.workgroupSize = clspv_utils::WorkgroupDimensions(workgroup_x, workgroup_y);
-                    testMap.args = testArgs;
-                    testMap.verbose = isVerbose;
-
-                    currentModule->kernelTests.push_back(testMap);
+                    currentModule->kernelTests.push_back(testEntry);
                 }
             }
             else {
@@ -317,13 +308,12 @@ manifest_t read_manifest(std::istream& in) {
         else if (op == "skip") {
             // skip kernel in module
             if (currentModule) {
-                std::string entryPoint;
-                in_line >> entryPoint;
+                test_utils::kernel_test_map skipEntry;
+                skipEntry.workgroupSize = clspv_utils::WorkgroupDimensions(0, 0);
 
-                test_utils::kernel_test_map testMap;
-                testMap.entry = entryPoint;
-                testMap.workgroupSize = clspv_utils::WorkgroupDimensions(0, 0);
-                currentModule->kernelTests.push_back(testMap);
+                in_line >> skipEntry.entry;
+
+                currentModule->kernelTests.push_back(skipEntry);
             }
             else {
                 LOGE("%s: no module for skip '%s'", __func__, line.c_str());
@@ -342,6 +332,21 @@ manifest_t read_manifest(std::istream& in) {
             }
             else {
                 LOGE("%s: unrecognized vkValidation token '%s'", __func__, on_off.c_str());
+            }
+        }
+        else if (op == "verbosity") {
+            // set verbosity of tests
+            std::string verbose_level;
+            in_line >> verbose_level;
+
+            if (verbose_level == "full") {
+                verbose = true;
+            }
+            else if (verbose_level == "silent") {
+                verbose = false;
+            }
+            else {
+                LOGE("%s: unrecognized verbose level '%s'", __func__, verbose_level.c_str());
             }
         }
         else if (op == "end") {
