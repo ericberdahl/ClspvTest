@@ -104,6 +104,7 @@ namespace test_utils {
         std::string         mEntryName;
         bool				mSkipped			= true;
         bool				mCompiledCorrectly	= false;
+        unsigned int        mIterations         = 0;
         std::string     	mExceptionString;
         InvocationResultSet mInvocations;
     };
@@ -132,6 +133,7 @@ namespace test_utils {
         test_kernel_fn                      test        = nullptr;
         clspv_utils::WorkgroupDimensions    workgroupSize;
         std::vector<std::string>            args;
+        unsigned int                        iterations  = 1;
         bool                                verbose     = false;
     };
 

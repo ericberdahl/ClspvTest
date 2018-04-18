@@ -23,12 +23,21 @@
 # full - (default) instruct tests to emit as much detail about their results as they can
 # silent - instruct tests to emit as little detail about their results as practical
 #
+# iterations num-iterations
+# Change the number of times subsequent tests will run. The default number of iterations is 1.
+# num-iterations must be positive. This could be useful for exploring timing of individual kernel
+# execution (e.g. allowing one to run a test multiple times in rapid succession without having to
+# launch ClspvTest multiple times.
+#
 # vkValidation [all|none]
 # Instruct the test harness how to set up Vulkan validations layers for this test run. Note that
 # the vkValidation verb affects all tests (different from verbosity and iterations, for example),
 # with the last entry in the manifest affecting all tests in the test run.
 # all - (default) install all validation layers before running tests
 # none - install no validations layers before running tests
+#
+# end
+# Stops processing the manifest. Everything after the end verb is ignored by the manifest parser
 #
 module shaders_cl/localsize
 test ReadLocalSize readLocalSize 1 1

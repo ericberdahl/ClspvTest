@@ -233,6 +233,7 @@ struct manifest_t {
 
 manifest_t read_manifest(std::istream& in) {
     manifest_t      result;
+    unsigned int    iterations  = 1;
     bool            verbose     = false;
 
     test_utils::module_test_bundle* currentModule = NULL;
@@ -260,6 +261,7 @@ manifest_t read_manifest(std::istream& in) {
             if (currentModule) {
                 test_utils::kernel_test_map testEntry;
                 testEntry.verbose = verbose;
+                testEntry.iterations = iterations;
 
                 std::string testName;
                 in_line >> testEntry.entry
@@ -349,6 +351,18 @@ manifest_t read_manifest(std::istream& in) {
                 LOGE("%s: unrecognized verbose level '%s'", __func__, verbose_level.c_str());
             }
         }
+        else if (op == "iterations") {
+            // set number of iterations for tests
+            int iterations_requested;
+            in_line >> iterations_requested;
+
+            if (0 >= iterations_requested) {
+                LOGE("%s: illegal iteration count requested '%d'", __func__, iterations_requested);
+            }
+            else  {
+                iterations = iterations_requested;
+            }
+        }
         else if (op == "end") {
             // terminate reading the manifest
             break;
@@ -416,7 +430,7 @@ std::pair<unsigned int, unsigned int> countResults(const test_utils::ModuleResul
                            });
 };
 
-void logPhysicalDeviceInfo(sample_info& info) {
+void logPhysicalDeviceInfo(const sample_info& info) {
     const vk::PhysicalDeviceProperties props = info.gpu.getProperties();
     std::ostringstream os;
     os << "PhysicalDevice {" << std::endl
@@ -429,10 +443,29 @@ void logPhysicalDeviceInfo(sample_info& info) {
     LOGI("%s", os.str().c_str());
 }
 
-void logResults(sample_info& info, const test_utils::InvocationResult& ir) {
-    std::ostringstream os;
+struct execution_times {
+    double wallClockTime_s      = 0.0;
+    double executionTime_ns     = 0.0;
+    double hostBarrierTime_ns   = 0.0;
+    double gpuBarrierTime_ns    = 0.0;
+};
 
-    const clspv_utils::execution_time_t totalTime = ir.mExecutionTime;
+execution_times measureInvocationTime(const sample_info& info, const test_utils::InvocationResult& ir) {
+    auto& timestamps = ir.mExecutionTime.timestamps;
+
+    execution_times result;
+    result.wallClockTime_s = ir.mExecutionTime.cpu_duration.count();
+    result.executionTime_ns = vulkan_utils::timestamp_delta_ns(timestamps.host_barrier, timestamps.execution, info.physical_device_properties, info.graphics_queue_family_properties);
+    result.hostBarrierTime_ns = vulkan_utils::timestamp_delta_ns(timestamps.start, timestamps.host_barrier, info.physical_device_properties, info.graphics_queue_family_properties);
+    result.gpuBarrierTime_ns = vulkan_utils::timestamp_delta_ns(timestamps.execution, timestamps.gpu_barrier, info.physical_device_properties, info.graphics_queue_family_properties);
+
+    return result;
+}
+
+void logResults(const sample_info& info, const test_utils::InvocationResult& ir) {
+    const execution_times times = measureInvocationTime(info, ir);
+
+    std::ostringstream os;
     os << (ir.mNumCorrect > 0 && ir.mNumErrors == 0 ? "PASS" : "FAIL");
 
     if (!ir.mVariation.empty()) {
@@ -441,10 +474,10 @@ void logResults(sample_info& info, const test_utils::InvocationResult& ir) {
 
     os << " correctValues:" << ir.mNumCorrect
        << " incorrectValues:" << ir.mNumErrors
-       << " wallClockTime:" << totalTime.cpu_duration.count() * 1000.0 << "ms"
-       << " executionTime:" << vulkan_utils::timestamp_delta_ns(totalTime.timestamps.host_barrier, totalTime.timestamps.execution, info.physical_device_properties, info.graphics_queue_family_properties)/1000.0f << "µs"
-       << " hostBarrierTime:" << vulkan_utils::timestamp_delta_ns(totalTime.timestamps.start, totalTime.timestamps.host_barrier, info.physical_device_properties, info.graphics_queue_family_properties)/1000.0f << "µs"
-       << " gpuBarrierTime:" << vulkan_utils::timestamp_delta_ns(totalTime.timestamps.execution, totalTime.timestamps.gpu_barrier, info.physical_device_properties, info.graphics_queue_family_properties)/1000.0f << "µs";
+       << " wallClockTime:" << times.wallClockTime_s * 1000.0f << "ms"
+       << " executionTime:" << times.executionTime_ns/1000.0f << "µs"
+       << " hostBarrierTime:" << times.hostBarrierTime_ns/1000.0f << "µs"
+       << " gpuBarrierTime:" << times.gpuBarrierTime_ns/1000.0f << "µs";
 
     LOGI("      %s", os.str().c_str());
 
@@ -453,7 +486,65 @@ void logResults(sample_info& info, const test_utils::InvocationResult& ir) {
     }
 }
 
-void logResults(sample_info& info, const test_utils::KernelResult& kr) {
+void logSummaryStats(const sample_info& info, const test_utils::InvocationResultSet& resultSet) {
+    std::vector<execution_times> times;
+    times.reserve(resultSet.size());
+    transform(resultSet.begin(), resultSet.end(), std::back_inserter(times),
+              [&info](const test_utils::InvocationResult& ir) {
+                  return measureInvocationTime(info, ir);
+              });
+    auto num_times = times.size();
+
+    execution_times mean = accumulate(times.begin(), times.end(), execution_times(),
+                                      [&info](execution_times accum, const execution_times& t) {
+                                          accum.wallClockTime_s += t.wallClockTime_s;
+                                          accum.executionTime_ns += t.executionTime_ns;
+                                          accum.hostBarrierTime_ns += t.hostBarrierTime_ns;
+                                          accum.gpuBarrierTime_ns += t.gpuBarrierTime_ns;
+                                          return accum;
+                                      });
+    mean.wallClockTime_s /= num_times;
+    mean.executionTime_ns /= num_times;
+    mean.hostBarrierTime_ns /= num_times;
+    mean.gpuBarrierTime_ns /= num_times;
+
+    std::ostringstream os;
+    os << "AVERAGE "
+       << " wallClockTime:" << mean.wallClockTime_s * 1000.0f << "ms"
+       << " executionTime:" << mean.executionTime_ns/1000.0f << "µs"
+       << " hostBarrierTime:" << mean.hostBarrierTime_ns/1000.0f << "µs"
+       << " gpuBarrierTime:" << mean.gpuBarrierTime_ns/1000.0f << "µs";
+
+    LOGI("      %s", os.str().c_str());
+
+    if (num_times > 1) {
+        execution_times variance = accumulate(times.begin(), times.end(), execution_times(),
+                                              [mean](execution_times accum, const execution_times& t) {
+                                                  accum.wallClockTime_s += pow(mean.wallClockTime_s - t.wallClockTime_s, 2);
+                                                  accum.executionTime_ns += pow(mean.executionTime_ns - t.executionTime_ns, 2);
+                                                  accum.hostBarrierTime_ns += pow(mean.hostBarrierTime_ns - t.hostBarrierTime_ns, 2);
+                                                  accum.gpuBarrierTime_ns += pow(mean.gpuBarrierTime_ns - t.gpuBarrierTime_ns, 2);
+                                                  return accum;
+                                              });
+        variance.wallClockTime_s /= (num_times - 1);
+        variance.executionTime_ns /= (num_times - 1);
+        variance.hostBarrierTime_ns /= (num_times - 1);
+        variance.gpuBarrierTime_ns /= (num_times - 1);
+
+        os.clear();
+        os.str("");
+        os << "STD_DEVIATION "
+           << " wallClockTime:" << sqrt(variance.wallClockTime_s) * 1000.0f << "ms"
+           << " executionTime:" << sqrt(variance.executionTime_ns)/1000.0f << "µs"
+           << " hostBarrierTime:" << sqrt(variance.hostBarrierTime_ns)/1000.0f << "µs"
+           << " gpuBarrierTime:" << sqrt(variance.gpuBarrierTime_ns)/1000.0f << "µs";
+
+        LOGI("      %s", os.str().c_str());
+
+    }
+}
+
+void logResults(const sample_info& info, const test_utils::KernelResult& kr) {
     std::ostringstream os;
 
     os << "Kernel:" << kr.mEntryName;
@@ -471,9 +562,13 @@ void logResults(sample_info& info, const test_utils::KernelResult& kr) {
     for (auto ir : kr.mInvocations) {
         logResults(info, ir);
     }
+
+    if (kr.mIterations > 1) {
+        logSummaryStats(info, kr.mInvocations);
+    }
 }
 
-void logResults(sample_info& info, const test_utils::ModuleResult& mr) {
+void logResults(const sample_info& info, const test_utils::ModuleResult& mr) {
     std::ostringstream os;
     os << "Module:" << mr.mModuleName;
     if (!mr.mExceptionString.empty()) {
@@ -486,7 +581,7 @@ void logResults(sample_info& info, const test_utils::ModuleResult& mr) {
     }
 }
 
-void logResults(sample_info& info, const test_utils::ModuleResultSet& moduleResultSet) {
+void logResults(const sample_info& info, const test_utils::ModuleResultSet& moduleResultSet) {
     logPhysicalDeviceInfo(info);
 
     for (auto mr : moduleResultSet) {

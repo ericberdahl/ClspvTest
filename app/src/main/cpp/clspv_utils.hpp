@@ -79,12 +79,10 @@ namespace clspv_utils {
 
     struct execution_time_t {
         struct vulkan_timestamps_t {
-            vulkan_timestamps_t() : start(0), host_barrier(0), execution(0), gpu_barrier(0) {}
-
-            uint64_t start;
-            uint64_t host_barrier;
-            uint64_t execution;
-            uint64_t gpu_barrier;
+            uint64_t start          = 0;
+            uint64_t host_barrier   = 0;
+            uint64_t execution      = 0;
+            uint64_t gpu_barrier    = 0;
         };
 
         execution_time_t();

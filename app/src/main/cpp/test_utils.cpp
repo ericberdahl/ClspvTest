@@ -33,13 +33,16 @@ namespace test_utils {
 	        kernelResult.mCompiledCorrectly = true;
 
 			if (kernelTest.test) {
-                kernelTest.test(module,
-                                kernel,
-                                info,
-                                samplers,
-                                kernelTest.args,
-                                kernelTest.verbose,
-                                kernelResult.mInvocations);
+                kernelResult.mIterations = kernelTest.iterations;
+                for (unsigned int i = kernelTest.iterations; i > 0; --i) {
+                    kernelTest.test(module,
+                                    kernel,
+                                    info,
+                                    samplers,
+                                    kernelTest.args,
+                                    kernelTest.verbose,
+                                    kernelResult.mInvocations);
+                }
 			}
 		}
         catch (const vk::SystemError &e) {
