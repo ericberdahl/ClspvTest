@@ -18,10 +18,8 @@ namespace clspv_utils {
     namespace details {
         struct spv_map {
             struct sampler {
-                sampler() : opencl_flags(0), binding(-1) {};
-
-                int opencl_flags;
-                int binding;
+                int opencl_flags    = 0;
+                int binding         = -1;
             };
 
             struct arg {
@@ -29,18 +27,14 @@ namespace clspv_utils {
                     kind_unknown, kind_pod, kind_pod_ubo, kind_buffer, kind_ro_image, kind_wo_image, kind_sampler
                 };
 
-                arg() : kind(kind_unknown), binding(-1), offset(0) {};
-
-                kind_t kind;
-                int binding;
-                int offset;
+                kind_t  kind    = kind_unknown;
+                int     binding = -1;
+                int     offset  = 0;
             };
 
             struct kernel {
-                kernel() : name(), descriptor_set(-1), args() {};
-
                 std::string name;
-                int descriptor_set;
+                int                 descriptor_set  = -1;
                 std::vector<arg> args;
             };
 
@@ -48,13 +42,11 @@ namespace clspv_utils {
 
             static spv_map parse(std::istream &in);
 
-            spv_map() : samplers(), samplers_desc_set(-1), kernels() {};
-
             kernel* findKernel(const std::string& name);
             const kernel* findKernel(const std::string& name) const;
 
             std::vector<sampler> samplers;
-            int samplers_desc_set;
+            int                     samplers_desc_set   = -1;
             std::vector<kernel> kernels;
         };
 
