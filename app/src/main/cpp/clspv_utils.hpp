@@ -24,7 +24,13 @@ namespace clspv_utils {
 
             struct arg {
                 enum kind_t {
-                    kind_unknown, kind_pod, kind_pod_ubo, kind_buffer, kind_ro_image, kind_wo_image, kind_sampler
+                    kind_unknown,
+                    kind_pod,
+                    kind_pod_ubo,
+                    kind_buffer,
+                    kind_ro_image,
+                    kind_wo_image,
+                    kind_sampler
                 };
 
                 kind_t  kind    = kind_unknown;
@@ -33,21 +39,19 @@ namespace clspv_utils {
             };
 
             struct kernel {
-                std::string name;
+                std::string         name;
                 int                 descriptor_set  = -1;
-                std::vector<arg> args;
+                std::vector<arg>    args;
             };
-
-            static arg::kind_t parse_argType(const std::string &argType);
 
             static spv_map parse(std::istream &in);
 
             kernel* findKernel(const std::string& name);
             const kernel* findKernel(const std::string& name) const;
 
-            std::vector<sampler> samplers;
+            std::vector<sampler>    samplers;
             int                     samplers_desc_set   = -1;
-            std::vector<kernel> kernels;
+            std::vector<kernel>     kernels;
         };
 
         struct pipeline {

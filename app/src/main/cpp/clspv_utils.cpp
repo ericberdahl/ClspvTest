@@ -17,6 +17,48 @@
 namespace clspv_utils {
 
     namespace {
+        const auto kArgKind_DescriptorType_Map = {
+                std::make_pair(details::spv_map::arg::kind_pod_ubo, vk::DescriptorType::eUniformBuffer),
+                std::make_pair(details::spv_map::arg::kind_pod, vk::DescriptorType::eStorageBuffer),
+                std::make_pair(details::spv_map::arg::kind_buffer, vk::DescriptorType::eStorageBuffer),
+                std::make_pair(details::spv_map::arg::kind_ro_image, vk::DescriptorType::eSampledImage),
+                std::make_pair(details::spv_map::arg::kind_wo_image, vk::DescriptorType::eStorageImage),
+                std::make_pair(details::spv_map::arg::kind_sampler, vk::DescriptorType::eSampler)
+        };
+
+        vk::DescriptorType findDescriptorType(details::spv_map::arg::kind_t argKind) {
+            auto found = std::find_if(std::begin(kArgKind_DescriptorType_Map),
+                                      std::end(kArgKind_DescriptorType_Map),
+                                      [argKind](decltype(kArgKind_DescriptorType_Map)::const_reference p) {
+                                          return argKind == p.first;
+                                      });
+            if (found == std::end(kArgKind_DescriptorType_Map)) {
+                throw std::runtime_error("unknown argKind encountered");
+            }
+            return found->second;
+        }
+
+
+        const auto kSpvMapArgType_ArgKind_Map = {
+                std::make_pair("pod", details::spv_map::arg::kind_pod),
+                std::make_pair("pod_ubo", details::spv_map::arg::kind_pod_ubo),
+                std::make_pair("buffer", details::spv_map::arg::kind_buffer),
+                std::make_pair("ro_image", details::spv_map::arg::kind_ro_image),
+                std::make_pair("wo_image", details::spv_map::arg::kind_wo_image),
+                std::make_pair("sampler", details::spv_map::arg::kind_sampler)
+        };
+
+        details::spv_map::arg::kind_t findArgKind(const std::string &argType) {
+            auto found = std::find_if(std::begin(kSpvMapArgType_ArgKind_Map),
+                                      std::end(kSpvMapArgType_ArgKind_Map),
+                                      [&argType](decltype(kSpvMapArgType_ArgKind_Map)::const_reference p) {
+                                          return argType == p.first;
+                                      });
+            if (found == std::end(kSpvMapArgType_ArgKind_Map)) {
+                throw std::runtime_error("unknown argType encountered");
+            }
+            return found->second;
+        }
 
         details::spv_map create_spv_map(const char *spvmapFilename) {
             // Read the spvmap file into a string buffer
@@ -165,35 +207,7 @@ namespace clspv_utils {
                     // ignore any argument not in offset 0
                     if (0 != ka.offset) continue;
 
-                    vk::DescriptorType argType;
-
-                    switch (ka.kind) {
-                        case details::spv_map::arg::kind_pod_ubo:
-                            argType = vk::DescriptorType::eUniformBuffer;
-                            break;
-
-                        case details::spv_map::arg::kind_pod:
-                        case details::spv_map::arg::kind_buffer:
-                            argType = vk::DescriptorType::eStorageBuffer;
-                            break;
-
-                        case details::spv_map::arg::kind_ro_image:
-                            argType = vk::DescriptorType::eSampledImage;
-                            break;
-
-                        case details::spv_map::arg::kind_wo_image:
-                            argType = vk::DescriptorType::eStorageImage;
-                            break;
-
-                        case details::spv_map::arg::kind_sampler:
-                            argType = vk::DescriptorType::eSampler;
-                            break;
-
-                        default:
-                            assert(0 && "unkown argument type");
-                    }
-
-                    descriptorTypes.push_back(argType);
+                    descriptorTypes.push_back(findDescriptorType(ka.kind));
                 }
 
                 result.push_back(create_descriptor_set_layout(device, descriptorTypes));
@@ -216,28 +230,6 @@ namespace clspv_utils {
     } // anonymous namespace
 
     namespace details {
-
-        spv_map::arg::kind_t spv_map::parse_argType(const std::string &argType) {
-            arg::kind_t result = arg::kind_unknown;
-
-            if (argType == "pod") {
-                result = arg::kind_pod;
-            } else if (argType == "pod_ubo") {
-                    result = arg::kind_pod_ubo;
-            } else if (argType == "buffer") {
-                result = arg::kind_buffer;
-            } else if (argType == "ro_image") {
-                result = arg::kind_ro_image;
-            } else if (argType == "wo_image") {
-                result = arg::kind_wo_image;
-            } else if (argType == "sampler") {
-                result = arg::kind_sampler;
-            } else {
-                assert(0 && "unknown spvmap arg type");
-            }
-
-            return result;
-        }
 
         spv_map spv_map::parse(std::istream &in) {
             spv_map result;
@@ -311,7 +303,7 @@ namespace clspv_utils {
                         } else if ("offset" == key) {
                             ka->offset = std::atoi(value.c_str());
                         } else if ("argKind" == key) {
-                            ka->kind = parse_argType(value);
+                            ka->kind = findArgKind(value);
                         }
                     }
                 }
