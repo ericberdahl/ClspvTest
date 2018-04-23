@@ -19,6 +19,7 @@ namespace clspv_utils {
         struct spv_map {
             struct sampler {
                 int opencl_flags    = 0;
+                int descriptor_set  = -1;
                 int binding         = -1;
             };
 
@@ -33,9 +34,11 @@ namespace clspv_utils {
                     kind_sampler
                 };
 
-                kind_t  kind    = kind_unknown;
-                int     binding = -1;
-                int     offset  = 0;
+                kind_t  kind            = kind_unknown;
+                int     ordinal         = -1;
+                int     descriptor_set  = -1;
+                int     binding         = -1;
+                int     offset          = 0;
             };
 
             struct kernel {

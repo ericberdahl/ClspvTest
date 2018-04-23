@@ -98,6 +98,12 @@ namespace clspv_utils {
             return result;
         }
 
+        typedef std::pair<std::string,std::string> key_value_t;
+
+        key_value_t read_key_value_pair(std::istream& in) {
+            return std::make_pair(read_csv_field(in), read_csv_field(in));
+        };
+
         vk::UniqueShaderModule create_shader(vk::Device device, const std::string& spvFilename) {
             std::unique_ptr<std::FILE, decltype(&std::fclose)> spv_file(AndroidFopen(spvFilename.c_str(), "rb"),
                                                                         &std::fclose);
@@ -227,6 +233,55 @@ namespace clspv_utils {
             return device.createPipelineLayoutUnique(createInfo);
         }
 
+        details::spv_map::sampler parse_spvmap_sampler(key_value_t tag, std::istream& in) {
+            details::spv_map::sampler result;
+
+            result.opencl_flags = std::atoi(tag.second.c_str());
+
+            while (!in.eof()) {
+                tag = read_key_value_pair(in);
+
+                if ("descriptorSet" == tag.first) {
+                    result.descriptor_set = std::atoi(tag.second.c_str());
+                } else if ("binding" == tag.first) {
+                    result.binding = std::atoi(tag.second.c_str());
+                }
+            }
+
+            assert(result.opencl_flags != 0);
+            assert(result.descriptor_set >= 0);
+            assert(result.binding >= 0);
+
+            return result;
+        }
+
+        details::spv_map::arg parse_spvmap_kernel_arg(key_value_t tag, std::istream& in) {
+            details::spv_map::arg result;
+
+            while (!in.eof()) {
+                tag = read_key_value_pair(in);
+
+                if ("argOrdinal" == tag.first) {
+                    result.ordinal = std::atoi(tag.second.c_str());
+                } else if ("descriptorSet" == tag.first) {
+                    result.descriptor_set = std::atoi(tag.second.c_str());
+                } else if ("binding" == tag.first) {
+                    result.binding = std::atoi(tag.second.c_str());
+                } else if ("offset" == tag.first) {
+                    result.offset = std::atoi(tag.second.c_str());
+                } else if ("argKind" == tag.first) {
+                    result.kind = findArgKind(tag.second);
+                }
+            }
+
+            assert(result.ordinal >= 0);
+            assert(result.descriptor_set >= 0);
+            assert(result.binding >= 0);
+            assert(result.offset >= 0);
+            assert(result.kind != details::spv_map::arg::kind_unknown);
+
+            return result;
+        }
     } // anonymous namespace
 
     namespace details {
@@ -240,72 +295,39 @@ namespace clspv_utils {
                 std::getline(in, line);
 
                 std::istringstream in_line(line);
-                std::string key = read_csv_field(in_line);
-                std::string value = read_csv_field(in_line);
-                if ("sampler" == key) {
-                    auto s = result.samplers.insert(result.samplers.end(), spv_map::sampler());
-                    assert(s != result.samplers.end());
+                auto tag = read_key_value_pair(in_line);
+                if ("sampler" == tag.first) {
+                    auto sampler = parse_spvmap_sampler(tag, in_line);
 
-                    s->opencl_flags = std::atoi(value.c_str());
+                    // all samplers, if any, are documented to share descriptor set 0
+                    assert(sampler.descriptor_set == 0);
 
-                    while (!in_line.eof()) {
-                        key = read_csv_field(in_line);
-                        value = read_csv_field(in_line);
-
-                        if ("descriptorSet" == key) {
-                            // all samplers, if any, are documented to share descriptor set 0
-                            const int ds = std::atoi(value.c_str());
-                            assert(ds == 0);
-
-                            if (-1 == result.samplers_desc_set) {
-                                result.samplers_desc_set = ds;
-                            }
-                        } else if ("binding" == key) {
-                            s->binding = std::atoi(value.c_str());
-                        }
+                    if (-1 == result.samplers_desc_set) {
+                        result.samplers_desc_set = sampler.descriptor_set;
                     }
-                } else if ("kernel" == key) {
-                    auto kernel = result.findKernel(value);
+
+                    result.samplers.push_back(sampler);
+                } else if ("kernel" == tag.first) {
+                    auto kernel_arg = parse_spvmap_kernel_arg(tag, in_line);
+
+                    auto kernel = result.findKernel(tag.second);
                     if (!kernel) {
                         result.kernels.push_back(spv_map::kernel());
                         kernel = &result.kernels.back();
-                        kernel->name = value;
+                        kernel->name = tag.second;
                     }
                     assert(kernel);
 
-                    auto ka = kernel->args.end();
-
-                    while (!in_line.eof()) {
-                        key = read_csv_field(in_line);
-                        value = read_csv_field(in_line);
-
-                        if ("argOrdinal" == key) {
-                            assert(ka == kernel->args.end());
-
-                            const int arg_index = std::atoi(value.c_str());
-
-                            if (kernel->args.size() <= arg_index) {
-                                kernel->args.resize(arg_index + 1, spv_map::arg());
-                            }
-                            ka = std::next(kernel->args.begin(), arg_index);
-
-                            assert(ka != kernel->args.end());
-                        } else if ("descriptorSet" == key) {
-                            const int ds = std::atoi(value.c_str());
-                            if (-1 == kernel->descriptor_set) {
-                                kernel->descriptor_set = ds;
-                            }
-
-                            // all args for a kernel are documented to share the same descriptor set
-                            assert(ds == kernel->descriptor_set);
-                        } else if ("binding" == key) {
-                            ka->binding = std::atoi(value.c_str());
-                        } else if ("offset" == key) {
-                            ka->offset = std::atoi(value.c_str());
-                        } else if ("argKind" == key) {
-                            ka->kind = findArgKind(value);
-                        }
+                    if (-1 == kernel->descriptor_set) {
+                        kernel->descriptor_set = kernel_arg.descriptor_set;
                     }
+                    // all args for a kernel are documented to share the same descriptor set
+                    assert(kernel_arg.descriptor_set == kernel->descriptor_set);
+
+                    if (kernel->args.size() <= kernel_arg.ordinal) {
+                        kernel->args.resize(kernel_arg.ordinal + 1, spv_map::arg());
+                    }
+                    kernel->args[kernel_arg.ordinal] = kernel_arg;
                 }
             }
 
