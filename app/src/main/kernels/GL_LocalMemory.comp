@@ -1,0 +1,48 @@
+#version 450
+layout (local_size_x = 2, local_size_y = 2, local_size_z = 2) in;
+layout (local_size_x_id = 0, local_size_y_id = 1, local_size_z_id = 2) in;
+
+layout (constant_id = 3) const int LOCAL_SIZE = 1;
+
+layout (set = 1, binding = 0) buffer arg0 {
+	int inIndices[];
+};
+
+layout (set = 1, binding = 1) buffer arg1 {
+	vec4 inSource[];
+};
+
+layout (set = 1, binding = 2) buffer arg2 {
+    vec4 outDest[];
+};
+
+shared int sharedIndices[LOCAL_SIZE];
+
+void main()
+{
+    // collect information about the current work item's location in the data space
+    uint group_id   = gl_WorkGroupID.x;
+    uint local_size = gl_WorkGroupSize.x;
+    uint local_id   = gl_LocalInvocationID.x;
+
+    // Step 1. Copy indices from inIndices into sharedIndices.
+
+    uint localIndexWriteBase = local_size - local_id - 1;
+    uint globalReadBase = 2*local_size*group_id + localIndexWriteBase;
+
+    sharedIndices[localIndexWriteBase             ] = inIndices[globalReadBase             ];
+    sharedIndices[localIndexWriteBase + local_size] = inIndices[globalReadBase + local_size];
+
+    // Step 2. Wait for all items in the work group to finish copying indices
+
+    barrier();
+
+    // Step 3. Use the values in sharedIndices to copy from inSource to outDest
+
+    uint localIndexReadBase = 2*local_id;
+    uint globalWriteBase = 2*local_size*group_id + localIndexReadBase;
+
+    outDest[globalWriteBase    ] = inSource[ sharedIndices[localIndexReadBase    ] ];
+    outDest[globalWriteBase + 1] = inSource[ sharedIndices[localIndexReadBase + 1] ];
+}
+

@@ -1,0 +1,10 @@
+sampler,34,samplerExpr,"CLK_ADDRESS_CLAMP_TO_EDGE|CLK_FILTER_LINEAR|CLK_NORMALIZED_COORDS_FALSE",descriptorSet,0,binding,0
+sampler,18,samplerExpr,"CLK_ADDRESS_CLAMP_TO_EDGE|CLK_FILTER_NEAREST|CLK_NORMALIZED_COORDS_FALSE",descriptorSet,0,binding,1
+sampler,16,samplerExpr,"CLK_ADDRESS_NONE|CLK_FILTER_NEAREST|CLK_NORMALIZED_COORDS_FALSE",descriptorSet,0,binding,2
+sampler,35,samplerExpr,"CLK_ADDRESS_CLAMP_TO_EDGE|CLK_FILTER_LINEAR|CLK_NORMALIZED_COORDS_TRUE",descriptorSet,0,binding,3
+sampler,19,samplerExpr,"CLK_ADDRESS_CLAMP_TO_EDGE|CLK_FILTER_NEAREST|CLK_NORMALIZED_COORDS_TRUE",descriptorSet,0,binding,4
+sampler,17,samplerExpr,"CLK_ADDRESS_NONE|CLK_FILTER_NEAREST|CLK_NORMALIZED_COORDS_TRUE",descriptorSet,0,binding,5
+kernel,main,arg,inIndices,argOrdinal,0,descriptorSet,1,binding,0,offset,0,argKind,buffer
+kernel,main,arg,inSource,argOrdinal,1,descriptorSet,1,binding,1,offset,0,argKind,buffer
+kernel,main,arg,outDest,argOrdinal,2,descriptorSet,1,binding,2,offset,0,argKind,buffer
+kernel,main,arg,sharedIndices,argOrdinal,3,argKind,local,arrayElemSize,4,arrayNumElemSpecId,3

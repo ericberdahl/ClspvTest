@@ -28,6 +28,7 @@
 #include "pixels.hpp"
 #include "readconstantdata_kernel.hpp"
 #include "readlocalsize_kernel.hpp"
+#include "strangeshuffle_kernel.hpp"
 #include "testgreaterthanorequalto_kernel.hpp"
 #include "test_utils.hpp"
 #include "util_init.hpp"
@@ -213,6 +214,7 @@ const test_map_t test_map[] = {
         { "copyBufferToImage",  copybuffertoimage_kernel::test_matrix },
         { "readConstantData",   readconstantdata_kernel::test_all },
         { "testGtEq",           testgreaterthanorequalto_kernel::test_all },
+        { "strangeShuffle",     strangeshuffle_kernel::test },
 };
 
 test_utils::test_kernel_fn lookup_test_fn(const std::string& testName) {

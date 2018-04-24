@@ -44,6 +44,7 @@ add_library(native-activity SHARED
     fill_kernel.cpp
     readconstantdata_kernel.cpp
     readlocalsize_kernel.cpp
+    strangeshuffle_kernel.cpp
     testgreaterthanorequalto_kernel.cpp
     clspv_test.cpp
     clspv_utils.cpp
@@ -86,6 +87,7 @@ set(SPRIV_OPT_INLINE_FLAGS --inline-entry-points-exhaustive)
 
 set(OPENCL_KERNELS
     Fills
+    LocalMemory
     localsize
     Memory
     ReadConstantData
@@ -132,6 +134,7 @@ set(GLSLANG_FLAGS ${GLSLANG_FLAGS} -V)
 
 set(GLSL_KERNELS
     GL_Fills_reduced
+    GL_LocalMemory
     )
 
 set(gl_kernel_binaries)

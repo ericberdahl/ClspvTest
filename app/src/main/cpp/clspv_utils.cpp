@@ -356,11 +356,9 @@ namespace clspv_utils {
                     }
                     assert(kernel);
 
-                    if (-1 == kernel->descriptor_set) {
+                    if (-1 == kernel->descriptor_set && -1 != kernel_arg.descriptor_set) {
                         kernel->descriptor_set = kernel_arg.descriptor_set;
                     }
-                    // all args for a kernel are documented to share the same descriptor set
-                    assert(kernel_arg.descriptor_set == kernel->descriptor_set);
 
                     if (kernel->args.size() <= kernel_arg.ordinal) {
                         kernel->args.resize(kernel_arg.ordinal + 1, spv_map::arg());
