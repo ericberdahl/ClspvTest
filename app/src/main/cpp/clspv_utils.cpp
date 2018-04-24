@@ -45,7 +45,8 @@ namespace clspv_utils {
                 std::make_pair("buffer", details::spv_map::arg::kind_buffer),
                 std::make_pair("ro_image", details::spv_map::arg::kind_ro_image),
                 std::make_pair("wo_image", details::spv_map::arg::kind_wo_image),
-                std::make_pair("sampler", details::spv_map::arg::kind_sampler)
+                std::make_pair("sampler", details::spv_map::arg::kind_sampler),
+                std::make_pair("local", details::spv_map::arg::kind_local)
         };
 
         details::spv_map::arg::kind_t findArgKind(const std::string &argType) {
@@ -187,7 +188,10 @@ namespace clspv_utils {
         std::vector<vk::UniqueDescriptorSetLayout> create_descriptor_layouts(vk::Device device,
                                                                 const details::spv_map& spvMap,
                                                                 const std::string&      entryPoint) {
-            assert(!entryPoint.empty());
+            const auto kernel = spvMap.findKernel(entryPoint);
+            if (!kernel) {
+                throw std::runtime_error("entryPoint not found; cannot create descriptor layout");
+            }
 
             std::vector<vk::UniqueDescriptorSetLayout> result;
             std::vector<vk::DescriptorType> descriptorTypes;
@@ -200,24 +204,21 @@ namespace clspv_utils {
                 result.push_back(create_descriptor_set_layout(device, descriptorTypes));
             }
 
-            const auto kernel = spvMap.findKernel(entryPoint);
-            if (kernel) {
-                assert(kernel->descriptor_set == (spvMap.samplers.empty() ? 0 : 1));
+            assert(kernel->descriptor_set == (spvMap.samplers.empty() ? 0 : 1));
 
-                descriptorTypes.clear();
+            descriptorTypes.clear();
 
-                // If the caller has asked only for a pipeline layout for a single entry point,
-                // create empty descriptor layouts for all argument descriptors other than the
-                // one used by the requested entry point.
-                for (auto &ka : kernel->args) {
-                    // ignore any argument not in offset 0
-                    if (0 != ka.offset) continue;
+            // If the caller has asked only for a pipeline layout for a single entry point,
+            // create empty descriptor layouts for all argument descriptors other than the
+            // one used by the requested entry point.
+            for (auto &ka : kernel->args) {
+                // ignore any argument not in offset 0
+                if (0 != ka.offset) continue;
 
-                    descriptorTypes.push_back(findDescriptorType(ka.kind));
-                }
+                descriptorTypes.push_back(findDescriptorType(ka.kind));
+            }
 
-                result.push_back(create_descriptor_set_layout(device, descriptorTypes));
-            };
+            result.push_back(create_descriptor_set_layout(device, descriptorTypes));
 
             return result;
         }
@@ -231,6 +232,44 @@ namespace clspv_utils {
                     .setPSetLayouts(rawLayouts.size() ? rawLayouts.data() : nullptr);
 
             return device.createPipelineLayoutUnique(createInfo);
+        }
+
+        void validate_sampler(const details::spv_map::sampler& sampler) {
+            if (sampler.opencl_flags == 0) {
+                throw std::runtime_error("sampler in spvmap missing OpenCL flags");
+            }
+            if (sampler.descriptor_set < 0) {
+                throw std::runtime_error("sampler in spvmap missing descriptorSet");
+            }
+            if (sampler.binding < 0) {
+                throw std::runtime_error("sampler in spvmap missing binding");
+            }
+        }
+
+        void validate_kernel_arg(const details::spv_map::arg& arg) {
+            if (arg.kind == details::spv_map::arg::kind_unknown) {
+                throw std::runtime_error("known argument kind encountered in spvmap");
+            }
+            if (arg.ordinal < 0) {
+                throw std::runtime_error("argOrdinal missing from kernel argument in spvmap");
+            }
+
+            if (arg.kind == details::spv_map::arg::kind_local) {
+                if (arg.spec_constant < 0) {
+                    throw std::runtime_error("local argument in spvmap missing arrayNumElemSpecId");
+                }
+            }
+            else {
+                if (arg.descriptor_set < 0) {
+                    throw std::runtime_error("argument in spvmap missing descriptorSet");
+                }
+                if (arg.binding < 0) {
+                    throw std::runtime_error("argument in spvmap missing binding");
+                }
+                if (arg.offset < 0) {
+                    throw std::runtime_error("argument in spvmap missing offset");
+                }
+            }
         }
 
         details::spv_map::sampler parse_spvmap_sampler(key_value_t tag, std::istream& in) {
@@ -248,9 +287,7 @@ namespace clspv_utils {
                 }
             }
 
-            assert(result.opencl_flags != 0);
-            assert(result.descriptor_set >= 0);
-            assert(result.binding >= 0);
+            validate_sampler(result);
 
             return result;
         }
@@ -271,14 +308,15 @@ namespace clspv_utils {
                     result.offset = std::atoi(tag.second.c_str());
                 } else if ("argKind" == tag.first) {
                     result.kind = findArgKind(tag.second);
+                } else if ("arrayElemSize" == tag.first) {
+                    // arrayElemSize is ignored by clspvtest
+                } else if ("arrayNumElemSpecId" == tag.first) {
+                    result.spec_constant = std::atoi(tag.second.c_str());
                 }
+
             }
 
-            assert(result.ordinal >= 0);
-            assert(result.descriptor_set >= 0);
-            assert(result.binding >= 0);
-            assert(result.offset >= 0);
-            assert(result.kind != details::spv_map::arg::kind_unknown);
+            validate_kernel_arg(result);
 
             return result;
         }
@@ -394,8 +432,9 @@ namespace clspv_utils {
         return result;
     }
 
-    details::pipeline kernel_module::createPipeline(const std::string&         entryPoint,
-                                                    const WorkgroupDimensions& work_group_sizes) const {
+    details::pipeline kernel_module::createPipeline(const std::string&          entryPoint,
+                                                    const WorkgroupDimensions&  workGroupSizes_a,
+                                                    vk::ArrayProxy<int32_t>     otherSpecConstants) const {
         details::pipeline result;
 
         result.mDescriptorLayouts = create_descriptor_layouts(mDevice, mSpvMap, entryPoint);
@@ -414,33 +453,26 @@ namespace clspv_utils {
             result.mArgumentsDescriptor = *result.mDescriptors[kernel_arg_map->descriptor_set];
         }
 
-        const std::vector<int32_t> workGroupSizes = {
-                work_group_sizes.x,
-                work_group_sizes.y,
+        std::vector<int32_t> specConstants = {
+                workGroupSizes_a.x,
+                workGroupSizes_a.y,
                 1
         };
-        const std::vector<vk::SpecializationMapEntry> specializationEntries = {
-                {
-                        0,                          // specialization constant 0 - workgroup size X
-                        0 * sizeof(int32_t),          // offset - start of workGroupSizes array
-                        sizeof(workGroupSizes[0])   // sizeof the first element
-                },
-                {
-                        1,                          // specialization constant 1 - workgroup size Y
-                        1 * sizeof(int32_t),            // offset - one element into the array
-                        sizeof(workGroupSizes[1])   // sizeof the second element
-                },
-                {
-                        2,                          // specialization constant 2 - workgroup size Z
-                        2 * sizeof(int32_t),          // offset - two elements into the array
-                        sizeof(workGroupSizes[2])   // sizeof the second element
-                }
-        };
+        std::copy(otherSpecConstants.begin(), otherSpecConstants.end(), std::back_inserter(specConstants));
+
+        std::vector<vk::SpecializationMapEntry> specializationEntries;
+        uint32_t index = 0;
+        std::generate_n(std::back_inserter(specializationEntries),
+                        specConstants.size(),
+                        [&index] () {
+                            const uint32_t current = index++;
+                            return vk::SpecializationMapEntry(current, current * sizeof(int32_t), sizeof(int32_t));
+                        });
         vk::SpecializationInfo specializationInfo;
-        specializationInfo.setMapEntryCount(workGroupSizes.size())
+        specializationInfo.setMapEntryCount(specConstants.size())
                 .setPMapEntries(specializationEntries.data())
-                .setDataSize(workGroupSizes.size() * sizeof(int32_t))
-                .setPData(workGroupSizes.data());
+                .setDataSize(specConstants.size() * sizeof(int32_t))
+                .setPData(specConstants.data());
 
         vk::ComputePipelineCreateInfo createInfo;
         createInfo.setLayout(*result.mPipelineLayout)
@@ -457,13 +489,18 @@ namespace clspv_utils {
     kernel::kernel(const kernel_module&         module,
                    std::string                  entryPoint,
                    const WorkgroupDimensions&   workgroup_sizes) :
+            mModule(&module),
             mEntryPoint(entryPoint),
             mWorkgroupSizes(workgroup_sizes),
             mPipeline() {
-        mPipeline = module.createPipeline(entryPoint, workgroup_sizes);
+        updatePipeline(nullptr);
     }
 
     kernel::~kernel() {
+    }
+
+    void kernel::updatePipeline(vk::ArrayProxy<int32_t> otherSpecConstants) const {
+        mPipeline = mModule->createPipeline(mEntryPoint, mWorkgroupSizes, otherSpecConstants);
     }
 
     void kernel::bindCommand(vk::CommandBuffer command) const {
@@ -485,7 +522,9 @@ namespace clspv_utils {
             mCommand(),
             mMemoryProperties(memoryProperties),
             mLiteralSamplers(),
-            mArguments() {
+            mDescriptorArguments(),
+            mSpecConstantArguments()
+    {
         mCommand = allocate_command_buffer(mDevice, cmdPool);
 
         vk::QueryPoolCreateInfo poolCreateInfo;
@@ -508,7 +547,7 @@ namespace clspv_utils {
         item.type = vk::DescriptorType::eStorageBuffer;
         item.buffer = buf;
 
-        mArguments.push_back(item);
+        mDescriptorArguments.push_back(item);
     }
 
     void kernel_invocation::addUniformBufferArgument(vk::Buffer buf) {
@@ -517,7 +556,7 @@ namespace clspv_utils {
         item.type = vk::DescriptorType::eUniformBuffer;
         item.buffer = buf;
 
-        mArguments.push_back(item);
+        mDescriptorArguments.push_back(item);
     }
 
     void kernel_invocation::addSamplerArgument(vk::Sampler samp) {
@@ -526,7 +565,7 @@ namespace clspv_utils {
         item.type = vk::DescriptorType::eSampler;
         item.sampler = samp;
 
-        mArguments.push_back(item);
+        mDescriptorArguments.push_back(item);
     }
 
     void kernel_invocation::addReadOnlyImageArgument(vk::ImageView im) {
@@ -535,7 +574,7 @@ namespace clspv_utils {
         item.type = vk::DescriptorType::eSampledImage;
         item.image = im;
 
-        mArguments.push_back(item);
+        mDescriptorArguments.push_back(item);
     }
 
     void kernel_invocation::addWriteOnlyImageArgument(vk::ImageView im) {
@@ -544,7 +583,11 @@ namespace clspv_utils {
         item.type = vk::DescriptorType::eStorageImage;
         item.image = im;
 
-        mArguments.push_back(item);
+        mDescriptorArguments.push_back(item);
+    }
+
+    void kernel_invocation::addLocalArraySizeArgument(unsigned int numElements) {
+        mSpecConstantArguments.push_back(numElements);
     }
 
     void kernel_invocation::addPodArgument(const void* pod, std::size_t sizeofPod) {
@@ -574,7 +617,7 @@ namespace clspv_utils {
         //
         // Collect information about the arguments
         //
-        for (auto& a : mArguments) {
+        for (auto& a : mDescriptorArguments) {
             switch (a.type) {
                 case vk::DescriptorType::eStorageImage:
                 case vk::DescriptorType::eSampledImage: {
@@ -649,9 +692,9 @@ namespace clspv_utils {
                 .setDstBinding(0)
                 .setDescriptorCount(1);
 
-        assert(mArguments.empty() || argumentDescSet);
+        assert(mDescriptorArguments.empty() || argumentDescSet);
 
-        for (auto& a : mArguments) {
+        for (auto& a : mDescriptorArguments) {
             switch (a.type) {
                 case vk::DescriptorType::eStorageImage:
                 case vk::DescriptorType::eSampledImage:
@@ -730,6 +773,13 @@ namespace clspv_utils {
     execution_time_t kernel_invocation::run(vk::Queue                   queue,
                                             const kernel&               kern,
                                             const WorkgroupDimensions&  num_workgroups) {
+        // HACK re-create the pipeline if the invocation includes spec constant arguments.
+        // TODO factor the pipeline recreation better, possibly along with an overhaul of kernel
+        // management
+        if (!mSpecConstantArguments.empty()) {
+            kern.updatePipeline(mSpecConstantArguments);
+        }
+
         updateDescriptorSets(kern.getLiteralSamplerDescSet(), kern.getArgumentDescSet());
         fillCommandBuffer(kern, num_workgroups);
 

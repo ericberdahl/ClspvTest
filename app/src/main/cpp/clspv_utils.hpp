@@ -31,14 +31,16 @@ namespace clspv_utils {
                     kind_buffer,
                     kind_ro_image,
                     kind_wo_image,
-                    kind_sampler
+                    kind_sampler,
+                    kind_local
                 };
 
                 kind_t  kind            = kind_unknown;
                 int     ordinal         = -1;
                 int     descriptor_set  = -1;
                 int     binding         = -1;
-                int     offset          = 0;
+                int     offset          = -1;
+                int     spec_constant   = -1;
             };
 
             struct kernel {
@@ -102,7 +104,8 @@ namespace clspv_utils {
         std::vector<std::string>    getEntryPoints() const;
 
         details::pipeline           createPipeline(const std::string&           entryPoint,
-                                                   const WorkgroupDimensions&   work_group_sizes) const;
+                                                   const WorkgroupDimensions&   workGroupSizes,
+                                                   vk::ArrayProxy<int32_t>      otherSpecConstants) const;
 
     private:
         std::string                         mName;
@@ -120,18 +123,23 @@ namespace clspv_utils {
 
         ~kernel();
 
-        void bindCommand(vk::CommandBuffer command) const;
+        void                bindCommand(vk::CommandBuffer command) const;
 
-        std::string getEntryPoint() const { return mEntryPoint; }
+        std::string         getEntryPoint() const { return mEntryPoint; }
         WorkgroupDimensions getWorkgroupSize() const { return mWorkgroupSizes; }
 
-        vk::DescriptorSet getLiteralSamplerDescSet() const { return mPipeline.mLiteralSamplerDescriptor; }
-        vk::DescriptorSet getArgumentDescSet() const { return mPipeline.mArgumentsDescriptor; }
+        vk::DescriptorSet   getLiteralSamplerDescSet() const { return mPipeline.mLiteralSamplerDescriptor; }
+        vk::DescriptorSet   getArgumentDescSet() const { return mPipeline.mArgumentsDescriptor; }
+
+        // TODO remove const hack on updatePipeline
+        void                updatePipeline(vk::ArrayProxy<int32_t> otherSpecConstants) const;
 
     private:
-        std::string         mEntryPoint;
-        WorkgroupDimensions mWorkgroupSizes;
-        details::pipeline   mPipeline;
+        const kernel_module*        mModule;
+        std::string                 mEntryPoint;
+        WorkgroupDimensions         mWorkgroupSizes;
+        // TODO remove const hack on mPipeline
+        mutable details::pipeline   mPipeline;
     };
 
     class kernel_invocation {
@@ -149,6 +157,7 @@ namespace clspv_utils {
         void    addReadOnlyImageArgument(vk::ImageView image);
         void    addWriteOnlyImageArgument(vk::ImageView image);
         void    addSamplerArgument(vk::Sampler samp);
+        void    addLocalArraySizeArgument(unsigned int numElements);
 
         void    addPodArgument(const void* pod, std::size_t sizeofPod);
 
@@ -191,7 +200,8 @@ namespace clspv_utils {
         vk::UniqueQueryPool                         mQueryPool;
 
         std::vector<vk::Sampler>                    mLiteralSamplers;
-        std::vector<arg>                            mArguments;
+        std::vector<arg>                            mDescriptorArguments;
+        std::vector<int32_t>                        mSpecConstantArguments;
         std::vector<vulkan_utils::uniform_buffer>   mPodBuffers;
     };
 
