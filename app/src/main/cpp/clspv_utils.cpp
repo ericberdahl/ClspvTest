@@ -414,13 +414,12 @@ namespace clspv_utils {
             result.mArgumentsDescriptor = *result.mDescriptors[kernel_arg_map->descriptor_set];
         }
 
-        const unsigned int num_workgroup_sizes = 3;
-        const int32_t workGroupSizes[num_workgroup_sizes] = {
+        const std::vector<int32_t> workGroupSizes = {
                 work_group_sizes.x,
                 work_group_sizes.y,
                 1
         };
-        const vk::SpecializationMapEntry specializationEntries[num_workgroup_sizes] = {
+        const std::vector<vk::SpecializationMapEntry> specializationEntries = {
                 {
                         0,                          // specialization constant 0 - workgroup size X
                         0 * sizeof(int32_t),          // offset - start of workGroupSizes array
@@ -438,10 +437,10 @@ namespace clspv_utils {
                 }
         };
         vk::SpecializationInfo specializationInfo;
-        specializationInfo.setMapEntryCount(num_workgroup_sizes)
-                .setPMapEntries(specializationEntries)
-                .setDataSize(sizeof(workGroupSizes))
-                .setPData(workGroupSizes);
+        specializationInfo.setMapEntryCount(workGroupSizes.size())
+                .setPMapEntries(specializationEntries.data())
+                .setDataSize(workGroupSizes.size() * sizeof(int32_t))
+                .setPData(workGroupSizes.data());
 
         vk::ComputePipelineCreateInfo createInfo;
         createInfo.setLayout(*result.mPipelineLayout)
