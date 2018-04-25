@@ -48,6 +48,7 @@ namespace testgreaterthanorequalto_kernel {
                   test_utils::InvocationResultSet&  resultSet)
     {
         test_utils::InvocationResult invocationResult;
+        auto device = kernel.getDevice();
 
         const clspv_utils::WorkgroupDimensions workgroup_sizes = kernel.getWorkgroupSize();
 
@@ -58,7 +59,7 @@ namespace testgreaterthanorequalto_kernel {
         const std::size_t buffer_size = buffer_length * sizeof(float);
 
         // allocate buffers and images
-        vulkan_utils::storage_buffer  dstBuffer(info, buffer_size);
+        vulkan_utils::storage_buffer  dstBuffer(device.mDevice, device.mMemoryProperties, buffer_size);
 
         // initialize destination memory with unexpected value. the kernel should write either 0 or
         // 1. so, initialize thedestination with 2.

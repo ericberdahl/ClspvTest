@@ -51,6 +51,8 @@ namespace copyimagetobuffer_kernel {
         invocationResult.mVariation += pixels::traits<BufferPixelType>::type_name;
         invocationResult.mVariation += ">";
 
+        auto device = kernel.getDevice();
+
         const int buffer_height = 64;
         const int buffer_width = 64;
 
@@ -58,8 +60,8 @@ namespace copyimagetobuffer_kernel {
         const std::size_t buffer_size = buffer_length * sizeof(BufferPixelType);
 
         // allocate buffers and images
-        vulkan_utils::storage_buffer    dst_buffer(info, buffer_size);
-        vulkan_utils::image             srcImage(info, buffer_width, buffer_height, vk::Format(pixels::traits<ImagePixelType>::vk_pixel_type));
+        vulkan_utils::storage_buffer    dst_buffer(device.mDevice, device.mMemoryProperties, buffer_size);
+        vulkan_utils::image             srcImage(device.mDevice, device.mMemoryProperties, buffer_width, buffer_height, vk::Format(pixels::traits<ImagePixelType>::vk_pixel_type));
 
         // initialize source memory with random data
         test_utils::fill_random_pixels<ImagePixelType>(srcImage.mem, buffer_length);

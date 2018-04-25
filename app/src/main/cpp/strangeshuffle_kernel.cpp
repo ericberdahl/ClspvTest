@@ -39,17 +39,18 @@ namespace strangeshuffle_kernel {
               bool                              verbose,
               test_utils::InvocationResultSet&  resultSet) {
         test_utils::InvocationResult invocationResult;
+        auto device = kernel.getDevice();
 
         int buffer_width = 4096;
 
         // allocate source and destination buffers
         const std::size_t pixel_buffer_size = buffer_width * sizeof(gpu_types::float4);
-        vulkan_utils::storage_buffer src_buffer(info, pixel_buffer_size);
-        vulkan_utils::storage_buffer dst_buffer(info, pixel_buffer_size);
+        vulkan_utils::storage_buffer src_buffer(device.mDevice, device.mMemoryProperties, pixel_buffer_size);
+        vulkan_utils::storage_buffer dst_buffer(device.mDevice, device.mMemoryProperties, pixel_buffer_size);
 
         // allocate index buffer
         const std::size_t index_buffer_size = buffer_width * sizeof(int32_t);
-        vulkan_utils::storage_buffer index_buffer(info, index_buffer_size);
+        vulkan_utils::storage_buffer index_buffer(device.mDevice, device.mMemoryProperties, index_buffer_size);
 
         test_utils::fill_random_pixels<gpu_types::float4>(src_buffer.mem, buffer_width);
         test_utils::fill_random_pixels<gpu_types::float4>(dst_buffer.mem, buffer_width);

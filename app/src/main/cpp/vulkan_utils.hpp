@@ -10,8 +10,6 @@
 
 #include <vulkan/vulkan.hpp>
 
-struct sample_info;
-
 namespace vulkan_utils {
 
     template <typename Type, typename Deleter>
@@ -112,8 +110,6 @@ namespace vulkan_utils {
     struct uniform_buffer {
         uniform_buffer () {}
 
-        uniform_buffer (const sample_info &info, vk::DeviceSize num_bytes);
-
         uniform_buffer (vk::Device dev, const vk::PhysicalDeviceMemoryProperties memoryProperties, vk::DeviceSize num_bytes);
 
         uniform_buffer (const uniform_buffer& other) = delete;
@@ -140,8 +136,6 @@ namespace vulkan_utils {
     struct storage_buffer {
         storage_buffer () {}
 
-        storage_buffer (const sample_info &info, vk::DeviceSize num_bytes);
-
         storage_buffer (vk::Device dev, const vk::PhysicalDeviceMemoryProperties memoryProperties, vk::DeviceSize num_bytes);
 
         storage_buffer (const storage_buffer & other) = delete;
@@ -167,11 +161,6 @@ namespace vulkan_utils {
 
     struct image {
         image() {}
-
-        image(const sample_info&  info,
-              uint32_t      width,
-              uint32_t      height,
-              vk::Format    format);
 
         image(vk::Device                                dev,
               const vk::PhysicalDeviceMemoryProperties  memoryProperties,

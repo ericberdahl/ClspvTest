@@ -355,6 +355,7 @@ namespace readlocalsize_kernel {
               test_utils::InvocationResultSet&  resultSet)
     {
         test_utils::InvocationResult    invocationResult;
+        auto device = kernel.getDevice();
 
         invocationResult.mVariation = (args.empty() ? std::string("global_id_x") : args[0]);
 
@@ -365,7 +366,7 @@ namespace readlocalsize_kernel {
         // allocate data buffer
         auto num_elements = buffer_width * buffer_height;
         const std::size_t buffer_size = num_elements * sizeof(std::int32_t);
-        vulkan_utils::storage_buffer dst_buffer(info, buffer_size);
+        vulkan_utils::storage_buffer dst_buffer(device.mDevice, device.mMemoryProperties, buffer_size);
         test_utils::fill_random_pixels<std::int32_t>(dst_buffer.mem, num_elements);
 
         auto expectedResults = compute_expected_results(idtype,

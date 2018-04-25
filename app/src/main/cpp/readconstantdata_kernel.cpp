@@ -43,6 +43,7 @@ namespace readconstantdata_kernel {
                   test_utils::InvocationResultSet&  resultSet)
     {
         test_utils::InvocationResult invocationResult;
+        auto device = kernel.getDevice();
 
         const int buffer_height = 1;
         const int buffer_width = 64;
@@ -54,7 +55,7 @@ namespace readconstantdata_kernel {
         const std::size_t constant_data_length = 10;
 
         // allocate buffers and images
-        vulkan_utils::storage_buffer  dstBuffer(info, buffer_size);
+        vulkan_utils::storage_buffer  dstBuffer(device.mDevice, device.mMemoryProperties, buffer_size);
 
         // initialize destination memory with random data
         test_utils::fill_random_pixels<float>(dstBuffer.mem, buffer_length);

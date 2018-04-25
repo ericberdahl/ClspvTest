@@ -43,6 +43,7 @@ namespace fill_kernel {
               bool                              verbose,
               test_utils::InvocationResultSet&  resultSet) {
         test_utils::InvocationResult invocationResult;
+        auto device = kernel.getDevice();
 
         int buffer_height = 64;
         int buffer_width = 64;
@@ -67,7 +68,7 @@ namespace fill_kernel {
 
         // allocate image buffer
         const std::size_t buffer_size = buffer_width * buffer_height * sizeof(PixelType);
-        vulkan_utils::storage_buffer dst_buffer(info, buffer_size);
+        vulkan_utils::storage_buffer dst_buffer(device.mDevice, device.mMemoryProperties, buffer_size);
 
         const PixelType src_value = pixels::traits<PixelType>::translate((gpu_types::float4){ 0.0f, 0.0f, 0.0f, 0.0f });
         vulkan_utils::fillDeviceMemory(dst_buffer.mem, buffer_width * buffer_height, src_value);

@@ -135,6 +135,9 @@ namespace clspv_utils {
         kernel_module&          getModule() { return mModule; }
         const kernel_module&    getModule() const { return mModule; }
 
+        device_t&           getDevice() { return getModule().getDevice(); }
+        const device_t&     getDevice() const { return getModule().getDevice(); }
+
         vk::DescriptorSet   getLiteralSamplerDescSet() const { return mLayout.mLiteralSamplerDescriptor; }
         vk::DescriptorSet   getArgumentDescSet() const { return mLayout.mArgumentsDescriptor; }
 

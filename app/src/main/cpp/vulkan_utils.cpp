@@ -6,7 +6,6 @@
 #include <iterator>
 #include <limits>
 
-#include "util.hpp"
 #include "vulkan_utils.hpp"
 
 VkResult vkCreateDebugReportCallbackEXT(
@@ -73,15 +72,6 @@ namespace vulkan_utils {
         return device.allocateMemoryUnique(alloc_info);
     }
 
-    image::image(const sample_info& info,
-                 uint32_t           width,
-                 uint32_t           height,
-                 vk::Format         format) :
-            image(*info.device, info.memory_properties, width, height, format)
-    {
-
-    }
-
     void copyFromDeviceMemory(void* dst, const device_memory& src, std::size_t numBytes)
     {
         withMap(src, [dst, numBytes](void* src_ptr) {
@@ -136,11 +126,6 @@ namespace vulkan_utils {
         device = nullptr;
     }
 
-    uniform_buffer::uniform_buffer(const sample_info &info, vk::DeviceSize num_bytes) :
-            uniform_buffer(*info.device, info.memory_properties, num_bytes)
-    {
-    }
-
     uniform_buffer::uniform_buffer(vk::Device dev, const vk::PhysicalDeviceMemoryProperties memoryProperties, vk::DeviceSize num_bytes) :
             uniform_buffer()
     {
@@ -179,11 +164,6 @@ namespace vulkan_utils {
 
         swap(mem, other.mem);
         swap(buf, other.buf);
-    }
-
-    storage_buffer::storage_buffer(const sample_info &info, vk::DeviceSize num_bytes) :
-            storage_buffer(*info.device, info.memory_properties, num_bytes)
-    {
     }
 
     storage_buffer::storage_buffer(vk::Device dev, const vk::PhysicalDeviceMemoryProperties memoryProperties, vk::DeviceSize num_bytes) :
