@@ -230,6 +230,78 @@ namespace {
         return expected;
     }
 
+    std::vector<std::int32_t> compute_expected_results(idtype_t                                 idtype,
+                                                       int                                      buffer_width,
+                                                       int                                      buffer_height,
+                                                       const clspv_utils::WorkgroupDimensions&  workgroupSize) {
+        std::vector<std::int32_t> expectedResults;
+        switch (idtype) {
+            case idtype_globalid_x:
+                expectedResults = compute_expected_global_id_x(buffer_width, buffer_height, buffer_width);
+                break;
+
+            case idtype_globalid_y:
+                expectedResults = compute_expected_global_id_y(buffer_width, buffer_height, buffer_width);
+                break;
+
+            case idtype_globalid_z:
+                expectedResults = compute_expected_global_id_z(buffer_width, buffer_height, buffer_width);
+                break;
+
+            case idtype_globalsize_x:
+                expectedResults = compute_expected_global_size_x(buffer_width, buffer_height, buffer_width);
+                break;
+
+            case idtype_globalsize_y:
+                expectedResults = compute_expected_global_size_y(buffer_width, buffer_height, buffer_width);
+                break;
+
+            case idtype_globalsize_z:
+                expectedResults = compute_expected_global_size_z(buffer_width, buffer_height, buffer_width);
+                break;
+
+            case idtype_localsize_x:
+                expectedResults = compute_expected_local_size_x(buffer_width, buffer_height, buffer_width, workgroupSize.x);
+                break;
+
+            case idtype_localsize_y:
+                expectedResults = compute_expected_local_size_y(buffer_width, buffer_height, buffer_width, workgroupSize.y);
+                break;
+
+            case idtype_localsize_z:
+                expectedResults = compute_expected_local_size_z(buffer_width, buffer_height, buffer_width);
+                break;
+
+            case idtype_groupid_x:
+                expectedResults = compute_expected_group_id_x(buffer_width, buffer_height, buffer_width, workgroupSize.x);
+                break;
+
+            case idtype_groupid_y:
+                expectedResults = compute_expected_group_id_y(buffer_width, buffer_height, buffer_width, workgroupSize.y);
+                break;
+
+            case idtype_groupid_z:
+                expectedResults = compute_expected_group_id_z(buffer_width, buffer_height, buffer_width);
+                break;
+
+            case idtype_localid_x:
+                expectedResults = compute_expected_local_id_x(buffer_width, buffer_height, buffer_width, workgroupSize.x);
+                break;
+
+            case idtype_localid_y:
+                expectedResults = compute_expected_local_id_y(buffer_width, buffer_height, buffer_width, workgroupSize.y);
+                break;
+
+            case idtype_localid_z:
+                expectedResults = compute_expected_local_id_z(buffer_width, buffer_height, buffer_width);
+                break;
+
+            default:
+                throw std::runtime_error("unknown idtype requested");
+        }
+
+        return expectedResults;
+    }
 }
 
 namespace readlocalsize_kernel {
@@ -297,71 +369,10 @@ namespace readlocalsize_kernel {
         const std::size_t buffer_size = buffer_width * buffer_height * sizeof(std::int32_t);
         vulkan_utils::storage_buffer dst_buffer(info, buffer_size);
 
-        std::vector<std::int32_t> expectedResults;
-        switch (idtype) {
-        case idtype_globalid_x:
-            expectedResults = compute_expected_global_id_x(buffer_width, buffer_height, buffer_width);
-            break;
-
-        case idtype_globalid_y:
-            expectedResults = compute_expected_global_id_y(buffer_width, buffer_height, buffer_width);
-            break;
-
-        case idtype_globalid_z:
-            expectedResults = compute_expected_global_id_z(buffer_width, buffer_height, buffer_width);
-            break;
-
-        case idtype_globalsize_x:
-            expectedResults = compute_expected_global_size_x(buffer_width, buffer_height, buffer_width);
-            break;
-
-        case idtype_globalsize_y:
-            expectedResults = compute_expected_global_size_y(buffer_width, buffer_height, buffer_width);
-            break;
-
-        case idtype_globalsize_z:
-            expectedResults = compute_expected_global_size_z(buffer_width, buffer_height, buffer_width);
-            break;
-
-        case idtype_localsize_x:
-            expectedResults = compute_expected_local_size_x(buffer_width, buffer_height, buffer_width, kernel.getWorkgroupSize().x);
-            break;
-
-        case idtype_localsize_y:
-            expectedResults = compute_expected_local_size_y(buffer_width, buffer_height, buffer_width, kernel.getWorkgroupSize().y);
-            break;
-
-        case idtype_localsize_z:
-            expectedResults = compute_expected_local_size_z(buffer_width, buffer_height, buffer_width);
-            break;
-
-        case idtype_groupid_x:
-            expectedResults = compute_expected_group_id_x(buffer_width, buffer_height, buffer_width, kernel.getWorkgroupSize().x);
-            break;
-
-        case idtype_groupid_y:
-            expectedResults = compute_expected_group_id_y(buffer_width, buffer_height, buffer_width, kernel.getWorkgroupSize().y);
-            break;
-
-        case idtype_groupid_z:
-            expectedResults = compute_expected_group_id_z(buffer_width, buffer_height, buffer_width);
-            break;
-
-        case idtype_localid_x:
-            expectedResults = compute_expected_local_id_x(buffer_width, buffer_height, buffer_width, kernel.getWorkgroupSize().x);
-            break;
-
-        case idtype_localid_y:
-            expectedResults = compute_expected_local_id_y(buffer_width, buffer_height, buffer_width, kernel.getWorkgroupSize().y);
-            break;
-
-        case idtype_localid_z:
-            expectedResults = compute_expected_local_id_z(buffer_width, buffer_height, buffer_width);
-            break;
-
-        default:
-            throw std::runtime_error("unknown idtype requested");
-        }
+        auto expectedResults = compute_expected_results(idtype,
+                                                        buffer_width,
+                                                        buffer_height,
+                                                        kernel.getWorkgroupSize());
 
         invocationResult.mExecutionTime = invoke(module,
                                                  kernel,
