@@ -4,6 +4,234 @@
 
 #include "readlocalsize_kernel.hpp"
 
+namespace {
+    using namespace readlocalsize_kernel;
+
+    auto idtype_string_map = {
+            std::make_pair("global_size_x", idtype_globalsize_x),
+            std::make_pair("global_size_y", idtype_globalsize_y),
+            std::make_pair("global_size_z", idtype_globalsize_z),
+
+            std::make_pair("local_size_x", idtype_localsize_x),
+            std::make_pair("local_size_y", idtype_localsize_y),
+            std::make_pair("local_size_z", idtype_localsize_z),
+
+            std::make_pair("global_id_x", idtype_globalid_x),
+            std::make_pair("global_id_y", idtype_globalid_y),
+            std::make_pair("global_id_z", idtype_globalid_z),
+
+            std::make_pair("group_id_x", idtype_groupid_x),
+            std::make_pair("group_id_y", idtype_groupid_y),
+            std::make_pair("group_id_z", idtype_groupid_z),
+
+            std::make_pair("local_id_x", idtype_localid_x),
+            std::make_pair("local_id_y", idtype_localid_y),
+            std::make_pair("local_id_z", idtype_localid_z)
+    };
+
+    idtype_t idtype_from_string(const std::string& s) {
+        auto found = std::find_if(idtype_string_map.begin(), idtype_string_map.end(),
+                                  [&s](decltype(idtype_string_map)::const_reference item) {
+                                      return item.first == s;
+                                  });
+        if (found == idtype_string_map.end()) {
+            found = idtype_string_map.begin();
+        }
+        return found->second;
+    }
+
+    std::vector<std::int32_t> compute_expected_global_id_x(int width, int height, int pitch) {
+        std::vector<std::int32_t> expected(pitch * height);
+
+        auto rowIter = expected.begin();
+        for (int i = 0; i < height; ++i) {
+            std::iota(rowIter, std::next(rowIter, width), 0);
+            rowIter = std::next(rowIter, pitch);
+        }
+
+        return expected;
+    }
+
+    std::vector<std::int32_t> compute_expected_global_id_y(int width, int height, int pitch) {
+        std::vector<std::int32_t> expected(pitch * height);
+
+        auto rowIter = expected.begin();
+        for (int i = 0; i < height; ++i) {
+            std::fill_n(rowIter, width, i);
+            rowIter = std::next(rowIter, pitch);
+        }
+
+        return expected;
+    }
+
+    std::vector<std::int32_t> compute_expected_global_id_z(int width, int height, int pitch) {
+        std::vector<std::int32_t> expected(pitch * height);
+
+        auto rowIter = expected.begin();
+        for (int i = 0; i < height; ++i) {
+            std::fill_n(rowIter, width, 0);
+            rowIter = std::next(rowIter, pitch);
+        }
+
+        return expected;
+    }
+
+    std::vector<std::int32_t> compute_expected_global_size_x(int width, int height, int pitch) {
+        std::vector<std::int32_t> expected(pitch * height);
+
+        auto rowIter = expected.begin();
+        for (int i = 0; i < height; ++i) {
+            std::fill_n(rowIter, width, width);
+            rowIter = std::next(rowIter, pitch);
+        }
+
+        return expected;
+    }
+
+    std::vector<std::int32_t> compute_expected_global_size_y(int width, int height, int pitch) {
+        std::vector<std::int32_t> expected(pitch * height);
+
+        auto rowIter = expected.begin();
+        for (int i = 0; i < height; ++i) {
+            std::fill_n(rowIter, width, height);
+            rowIter = std::next(rowIter, pitch);
+        }
+
+        return expected;
+    }
+
+    std::vector<std::int32_t> compute_expected_global_size_z(int width, int height, int pitch) {
+        std::vector<std::int32_t> expected(pitch * height);
+
+        auto rowIter = expected.begin();
+        for (int i = 0; i < height; ++i) {
+            std::fill_n(rowIter, width, 1);
+            rowIter = std::next(rowIter, pitch);
+        }
+
+        return expected;
+    }
+
+    std::vector<std::int32_t> compute_expected_group_id_x(int width, int height, int pitch, int group_width) {
+        std::vector<std::int32_t> expected(pitch * height);
+
+        const int num_groups = (width + group_width - 1) / group_width;
+        auto rowIter = expected.begin();
+        for (int i = 0; i < height; ++i) {
+            for (int g = 0; g < num_groups; ++g) {
+                std::fill_n(std::next(rowIter, g*group_width), group_width, g);
+            }
+
+            rowIter = std::next(rowIter, pitch);
+        }
+
+        return expected;
+    }
+
+    std::vector<std::int32_t> compute_expected_group_id_y(int width, int height, int pitch, int group_height) {
+        std::vector<std::int32_t> expected(pitch * height);
+
+        auto rowIter = expected.begin();
+        for (int i = 0; i < height; ++i) {
+            std::fill_n(rowIter, width, i / group_height);
+            rowIter = std::next(rowIter, pitch);
+        }
+
+        return expected;
+    }
+
+    std::vector<std::int32_t> compute_expected_group_id_z(int width, int height, int pitch) {
+        std::vector<std::int32_t> expected(pitch * height);
+
+        auto rowIter = expected.begin();
+        for (int i = 0; i < height; ++i) {
+            std::fill_n(rowIter, width, 0);
+            rowIter = std::next(rowIter, pitch);
+        }
+
+        return expected;
+    }
+
+    std::vector<std::int32_t> compute_expected_local_id_x(int width, int height, int pitch, int group_width) {
+        std::vector<std::int32_t> expected(pitch * height);
+
+        const int num_groups = (width + group_width - 1) / group_width;
+        auto rowIter = expected.begin();
+        for (int i = 0; i < height; ++i) {
+            for (int g = 0; g < num_groups; ++g) {
+                auto start = std::next(rowIter, g*group_width);
+                auto end = std::next(start, group_width);
+                std::iota(start, end, 0);
+            }
+
+            rowIter = std::next(rowIter, pitch);
+        }
+
+        return expected;
+    }
+
+    std::vector<std::int32_t> compute_expected_local_id_y(int width, int height, int pitch, int group_height) {
+        std::vector<std::int32_t> expected(pitch * height);
+
+        auto rowIter = expected.begin();
+        for (int i = 0; i < height; ++i) {
+            std::fill_n(rowIter, width, i % group_height);
+            rowIter = std::next(rowIter, pitch);
+        }
+
+        return expected;
+    }
+
+    std::vector<std::int32_t> compute_expected_local_id_z(int width, int height, int pitch) {
+        std::vector<std::int32_t> expected(pitch * height);
+
+        auto rowIter = expected.begin();
+        for (int i = 0; i < height; ++i) {
+            std::fill_n(rowIter, width, 0);
+            rowIter = std::next(rowIter, pitch);
+        }
+
+        return expected;
+    }
+
+    std::vector<std::int32_t> compute_expected_local_size_x(int width, int height, int pitch, int group_width) {
+        std::vector<std::int32_t> expected(pitch * height);
+
+        auto rowIter = expected.begin();
+        for (int i = 0; i < height; ++i) {
+            std::fill_n(rowIter, width, group_width);
+            rowIter = std::next(rowIter, pitch);
+        }
+
+        return expected;
+    }
+
+    std::vector<std::int32_t> compute_expected_local_size_y(int width, int height, int pitch, int group_height) {
+        std::vector<std::int32_t> expected(pitch * height);
+
+        auto rowIter = expected.begin();
+        for (int i = 0; i < height; ++i) {
+            std::fill_n(rowIter, width, group_height);
+            rowIter = std::next(rowIter, pitch);
+        }
+
+        return expected;
+    }
+
+    std::vector<std::int32_t> compute_expected_local_size_z(int width, int height, int pitch) {
+        std::vector<std::int32_t> expected(pitch * height);
+
+        auto rowIter = expected.begin();
+        for (int i = 0; i < height; ++i) {
+            std::fill_n(rowIter, width, 1);
+            rowIter = std::next(rowIter, pitch);
+        }
+
+        return expected;
+    }
+
+}
+
 namespace readlocalsize_kernel {
 
     clspv_utils::execution_time_t
@@ -59,21 +287,80 @@ namespace readlocalsize_kernel {
     {
         test_utils::InvocationResult    invocationResult;
 
-        invocationResult.mVariation = "global_id_x";
+        invocationResult.mVariation = (args.empty() ? std::string("global_id_x") : args[0]);
 
-        int buffer_height   = 64;
-        int buffer_width    = 64;
+        const idtype_t idtype = idtype_from_string(invocationResult.mVariation);
+        const int buffer_height   = 64;
+        const int buffer_width    = 64;
 
         // allocate data buffer
         const std::size_t buffer_size = buffer_width * buffer_height * sizeof(std::int32_t);
         vulkan_utils::storage_buffer dst_buffer(info, buffer_size);
 
-        std::vector<std::int32_t> expectedResults(buffer_height * buffer_width);
-        auto rowIter = expectedResults.begin();
-        for (int i = 0; i < buffer_height; ++i) {
-            auto nextRow = std::next(rowIter, buffer_width);
-            std::iota(rowIter, nextRow, 0);
-            rowIter = nextRow;
+        std::vector<std::int32_t> expectedResults;
+        switch (idtype) {
+        case idtype_globalid_x:
+            expectedResults = compute_expected_global_id_x(buffer_width, buffer_height, buffer_width);
+            break;
+
+        case idtype_globalid_y:
+            expectedResults = compute_expected_global_id_y(buffer_width, buffer_height, buffer_width);
+            break;
+
+        case idtype_globalid_z:
+            expectedResults = compute_expected_global_id_z(buffer_width, buffer_height, buffer_width);
+            break;
+
+        case idtype_globalsize_x:
+            expectedResults = compute_expected_global_size_x(buffer_width, buffer_height, buffer_width);
+            break;
+
+        case idtype_globalsize_y:
+            expectedResults = compute_expected_global_size_y(buffer_width, buffer_height, buffer_width);
+            break;
+
+        case idtype_globalsize_z:
+            expectedResults = compute_expected_global_size_z(buffer_width, buffer_height, buffer_width);
+            break;
+
+        case idtype_localsize_x:
+            expectedResults = compute_expected_local_size_x(buffer_width, buffer_height, buffer_width, kernel.getWorkgroupSize().x);
+            break;
+
+        case idtype_localsize_y:
+            expectedResults = compute_expected_local_size_y(buffer_width, buffer_height, buffer_width, kernel.getWorkgroupSize().y);
+            break;
+
+        case idtype_localsize_z:
+            expectedResults = compute_expected_local_size_z(buffer_width, buffer_height, buffer_width);
+            break;
+
+        case idtype_groupid_x:
+            expectedResults = compute_expected_group_id_x(buffer_width, buffer_height, buffer_width, kernel.getWorkgroupSize().x);
+            break;
+
+        case idtype_groupid_y:
+            expectedResults = compute_expected_group_id_y(buffer_width, buffer_height, buffer_width, kernel.getWorkgroupSize().y);
+            break;
+
+        case idtype_groupid_z:
+            expectedResults = compute_expected_group_id_z(buffer_width, buffer_height, buffer_width);
+            break;
+
+        case idtype_localid_x:
+            expectedResults = compute_expected_local_id_x(buffer_width, buffer_height, buffer_width, kernel.getWorkgroupSize().x);
+            break;
+
+        case idtype_localid_y:
+            expectedResults = compute_expected_local_id_y(buffer_width, buffer_height, buffer_width, kernel.getWorkgroupSize().y);
+            break;
+
+        case idtype_localid_z:
+            expectedResults = compute_expected_local_id_z(buffer_width, buffer_height, buffer_width);
+            break;
+
+        default:
+            throw std::runtime_error("unknown idtype requested");
         }
 
         invocationResult.mExecutionTime = invoke(module,
@@ -84,7 +371,7 @@ namespace readlocalsize_kernel {
                                                  buffer_width,
                                                  buffer_height,
                                                  buffer_width,
-                                                 idtype_globalid_x);
+                                                 idtype);
 
         test_utils::check_results<std::int32_t,std::int32_t>(expectedResults.data(),
                                                              dst_buffer.mem,

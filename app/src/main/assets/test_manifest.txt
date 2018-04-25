@@ -66,7 +66,21 @@ module shaders_cl/TestComparisons
 test TestGreaterThanOrEqualTo testGtEq 32 32
 #
 module shaders_small_cl/localsize
-test ReadLocalSize readLocalSize 1 1
+test ReadLocalSize readLocalSize 32 32 global_id_x
+test ReadLocalSize readLocalSize 32 32 global_id_y
+test ReadLocalSize readLocalSize 32 32 global_id_z
+test ReadLocalSize readLocalSize 32 32 group_id_x
+test ReadLocalSize readLocalSize 32 32 group_id_y
+test ReadLocalSize readLocalSize 32 32 group_id_z
+test ReadLocalSize readLocalSize 32 32 local_id_x
+test ReadLocalSize readLocalSize 32 32 local_id_y
+test ReadLocalSize readLocalSize 32 32 local_id_z
+test ReadLocalSize readLocalSize 32 32 global_size_x
+test ReadLocalSize readLocalSize 32 32 global_size_y
+test ReadLocalSize readLocalSize 32 32 global_size_z
+test ReadLocalSize readLocalSize 32 32 local_size_x
+test ReadLocalSize readLocalSize 32 32 local_size_y
+test ReadLocalSize readLocalSize 32 32 local_size_z
 #
 module shaders_small_cl/Fills
 test FillWithColorKernel fill 32 32 -w 64 -h 64
