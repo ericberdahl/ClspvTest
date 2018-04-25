@@ -2,7 +2,7 @@
 layout (local_size_x = 2, local_size_y = 2, local_size_z = 2) in;
 layout (local_size_x_id = 0, local_size_y_id = 1, local_size_z_id = 2) in;
 
-layout (constant_id = 3) const int LOCAL_SIZE = 1;
+layout (constant_id = 3) const uint LOCAL_SIZE = 1;
 
 layout (set = 1, binding = 0) buffer arg0 {
 	int inIndices[];
