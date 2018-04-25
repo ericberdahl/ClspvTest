@@ -126,11 +126,10 @@ namespace test_utils {
 
     typedef std::vector<ModuleResult> ModuleResultSet;
 
-    typedef void (*test_kernel_fn)(clspv_utils::kernel&                 kernel,
-                                   vk::ArrayProxy<const vk::Sampler>    samplers,
-                                   const std::vector<std::string>&      args,
-                                   bool                                 verbose,
-                                   InvocationResultSet&                 resultSet);
+    typedef void (*test_kernel_fn)(clspv_utils::kernel&             kernel,
+                                   const std::vector<std::string>&  args,
+                                   bool                             verbose,
+                                   InvocationResultSet&             resultSet);
 
     struct kernel_test_map {
         std::string                         entry;
@@ -349,14 +348,12 @@ namespace test_utils {
     void test_kernel_invocations(clspv_utils::kernel&               kernel,
                                  const test_kernel_fn*              first,
                                  const test_kernel_fn*              last,
-                                 vk::ArrayProxy<const vk::Sampler>  samplers,
                                  const std::vector<std::string>&    args,
                                  bool                               verbose,
                                  InvocationResultSet&               resultSet);
 
     KernelResult test_kernel(clspv_utils::kernel_module&        module,
-                             const kernel_test_map&             kernelTest,
-                             vk::ArrayProxy<const vk::Sampler>  samplers);
+                             const kernel_test_map&             kernelTest);
 
     ModuleResult test_module(clspv_utils::device_t&                 device,
                              const std::string&                     moduleName,

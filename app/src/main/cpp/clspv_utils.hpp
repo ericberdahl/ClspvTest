@@ -100,7 +100,8 @@ namespace clspv_utils {
     class kernel_module {
     public:
         kernel_module(device_t&             device,
-                      const std::string&    moduleName);
+                      const std::string&    moduleName,
+                      vk::ArrayProxy<const vk::Sampler> samplersHack);
 
         ~kernel_module();
 
@@ -113,11 +114,14 @@ namespace clspv_utils {
 
         layout_t                    createLayout(const std::string& entryPoint) const;
 
+        vk::ArrayProxy<const vk::Sampler>   getLiteralSamplersHack() const { return mSamplers; }
+
     private:
         std::reference_wrapper<device_t>    mDevice;
         std::string                         mName;
         vk::UniqueShaderModule              mShaderModule;
         details::spv_map                    mSpvMap;
+        std::vector<vk::Sampler>            mSamplers;
     };
 
     class kernel {
@@ -158,8 +162,6 @@ namespace clspv_utils {
 
                     ~kernel_invocation();
 
-        void    addLiteralSamplers(vk::ArrayProxy<const vk::Sampler> samplers);
-
         void    addStorageBufferArgument(vk::Buffer buf);
         void    addUniformBufferArgument(vk::Buffer buf);
         void    addReadOnlyImageArgument(vk::ImageView image);
@@ -175,9 +177,11 @@ namespace clspv_utils {
         execution_time_t    run(const WorkgroupDimensions& num_workgroups);
 
     private:
-        void        fillCommandBuffer(const WorkgroupDimensions&    num_workgroups);
-        void        updateDescriptorSets();
-        void        submitCommand();
+        void    addLiteralSamplers(vk::ArrayProxy<const vk::Sampler> samplers);
+
+        void    fillCommandBuffer(const WorkgroupDimensions&    num_workgroups);
+        void    updateDescriptorSets();
+        void    submitCommand();
 
         const device_t& getDevice() const { return mKernel.get().getModule().getDevice(); }
 

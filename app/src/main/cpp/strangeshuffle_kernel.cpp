@@ -7,12 +7,11 @@
 namespace strangeshuffle_kernel {
 
     clspv_utils::execution_time_t
-    invoke(clspv_utils::kernel&                 kernel,
-           vk::ArrayProxy<const vk::Sampler>    samplers,
-           vk::Buffer                           index_buffer,
-           vk::Buffer                           source_buffer,
-           vk::Buffer                           destination_buffer,
-           std::size_t                          num_elements)
+    invoke(clspv_utils::kernel& kernel,
+           vk::Buffer           index_buffer,
+           vk::Buffer           source_buffer,
+           vk::Buffer           destination_buffer,
+           std::size_t          num_elements)
     {
         if (0 != (num_elements % 2)) {
             throw std::runtime_error("num_elements must be even");
@@ -23,7 +22,6 @@ namespace strangeshuffle_kernel {
 
         clspv_utils::kernel_invocation invocation(kernel);
 
-        invocation.addLiteralSamplers(samplers);
         invocation.addStorageBufferArgument(index_buffer);
         invocation.addStorageBufferArgument(source_buffer);
         invocation.addStorageBufferArgument(destination_buffer);
@@ -32,7 +30,6 @@ namespace strangeshuffle_kernel {
     }
 
     void test(clspv_utils::kernel&              kernel,
-              vk::ArrayProxy<const vk::Sampler> samplers,
               const std::vector<std::string>&   args,
               bool                              verbose,
               test_utils::InvocationResultSet&  resultSet) {
@@ -58,7 +55,6 @@ namespace strangeshuffle_kernel {
         });
 
         invocationResult.mExecutionTime = invoke(kernel,
-                                                 samplers,
                                                  *index_buffer.buf,
                                                  *src_buffer.buf,
                                                  *dst_buffer.buf,

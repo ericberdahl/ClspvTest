@@ -9,18 +9,16 @@ namespace test_utils {
     void test_kernel_invocations(clspv_utils::kernel&               kernel,
                                  const test_kernel_fn*              first,
                                  const test_kernel_fn*              last,
-                                 vk::ArrayProxy<const vk::Sampler>  samplers,
                                  const std::vector<std::string>&    args,
                                  bool                               verbose,
                                  InvocationResultSet&               resultSet) {
         for (; first != last; ++first) {
-            (*first)(kernel, samplers, args, verbose, resultSet);
+            (*first)(kernel, args, verbose, resultSet);
         }
     }
 
-    KernelResult test_kernel(clspv_utils::kernel_module&        module,
-                             const kernel_test_map&             kernelTest,
-                             vk::ArrayProxy<const vk::Sampler>  samplers) {
+    KernelResult test_kernel(clspv_utils::kernel_module&    module,
+                             const kernel_test_map&         kernelTest) {
         KernelResult kernelResult;
         kernelResult.mEntryName = kernelTest.entry;
         kernelResult.mSkipped = false;
@@ -33,7 +31,6 @@ namespace test_utils {
                 kernelResult.mIterations = kernelTest.iterations;
                 for (unsigned int i = kernelTest.iterations; i > 0; --i) {
                     kernelTest.test(kernel,
-                                    samplers,
                                     kernelTest.args,
                                     kernelTest.verbose,
                                     kernelResult.mInvocations);
@@ -70,7 +67,7 @@ namespace test_utils {
         moduleResult.mModuleName = moduleName;
 
         try {
-            clspv_utils::kernel_module module(device, moduleName);
+            clspv_utils::kernel_module module(device, moduleName, samplers);
             moduleResult.mLoadedCorrectly = true;
 
             std::vector<std::string> entryPoints(module.getEntryPoints());
@@ -102,9 +99,7 @@ namespace test_utils {
 
                         moduleResult.mKernels.push_back(std::move(kernelResult));
                     } else {
-                        KernelResult kernelResult = test_kernel(module,
-                                                                epTest,
-                                                                samplers);
+                        KernelResult kernelResult = test_kernel(module, epTest);
 
                         moduleResult.mKernels.push_back(kernelResult);
                     }

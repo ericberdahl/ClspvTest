@@ -15,26 +15,23 @@
 namespace fill_kernel {
 
     clspv_utils::execution_time_t
-    invoke(clspv_utils::kernel&                 kernel,
-           vk::ArrayProxy<const vk::Sampler>    samplers,
-           vk::Buffer                           dst_buffer,
-           int                                  pitch,
-           int                                  device_format,
-           int                                  offset_x,
-           int                                  offset_y,
-           int                                  width,
-           int                                  height,
-           const gpu_types::float4&             color);
+    invoke(clspv_utils::kernel&     kernel,
+           vk::Buffer               dst_buffer,
+           int                      pitch,
+           int                      device_format,
+           int                      offset_x,
+           int                      offset_y,
+           int                      width,
+           int                      height,
+           const gpu_types::float4& color);
 
     void test_series(clspv_utils::kernel&               kernel,
-                     vk::ArrayProxy<const vk::Sampler>  samplers,
                      const std::vector<std::string>&    args,
                      bool                               verbose,
                      test_utils::InvocationResultSet&   resultSet);
 
     template <typename PixelType>
     void test(clspv_utils::kernel&              kernel,
-              vk::ArrayProxy<const vk::Sampler> samplers,
               const std::vector<std::string>&   args,
               bool                              verbose,
               test_utils::InvocationResultSet&  resultSet) {
@@ -70,7 +67,6 @@ namespace fill_kernel {
         vulkan_utils::fillDeviceMemory(dst_buffer.mem, buffer_width * buffer_height, src_value);
 
         invocationResult.mExecutionTime = invoke(kernel,
-                                                 samplers,
                                                  *dst_buffer.buf, // dst_buffer
                                                  buffer_width,   // pitch
                                                  pixels::traits<PixelType>::device_pixel_format, // device_format

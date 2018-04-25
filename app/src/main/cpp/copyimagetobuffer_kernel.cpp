@@ -7,17 +7,16 @@
 namespace copyimagetobuffer_kernel {
 
     clspv_utils::execution_time_t
-    invoke(clspv_utils::kernel&                 kernel,
-           vk::ArrayProxy<const vk::Sampler>    samplers,
-           vk::ImageView                        src_image,
-           vk::Buffer                           dst_buffer,
-           int                                  dst_offset,
-           int                                  dst_pitch,
-           cl_channel_order                     dst_channel_order,
-           cl_channel_type                      dst_channel_type,
-           bool                                 swap_components,
-           int                                  width,
-           int                                  height)
+    invoke(clspv_utils::kernel& kernel,
+           vk::ImageView        src_image,
+           vk::Buffer           dst_buffer,
+           int                  dst_offset,
+           int                  dst_pitch,
+           cl_channel_order     dst_channel_order,
+           cl_channel_type      dst_channel_type,
+           bool                 swap_components,
+           int                  width,
+           int                  height)
     {
         struct scalar_args {
             int inDestOffset;       // offset 0
@@ -56,7 +55,6 @@ namespace copyimagetobuffer_kernel {
 
         clspv_utils::kernel_invocation invocation(kernel);
 
-        invocation.addLiteralSamplers(samplers);
         invocation.addReadOnlyImageArgument(src_image);
         invocation.addStorageBufferArgument(dst_buffer);
         invocation.addPodArgument(scalars);
@@ -65,7 +63,6 @@ namespace copyimagetobuffer_kernel {
     }
 
     void test_matrix(clspv_utils::kernel&               kernel,
-                     vk::ArrayProxy<const vk::Sampler>  samplers,
                      const std::vector<std::string>&    args,
                      bool                               verbose,
                      test_utils::InvocationResultSet&   resultSet)
@@ -84,7 +81,6 @@ namespace copyimagetobuffer_kernel {
 
         test_utils::test_kernel_invocations(kernel,
                                             std::begin(tests), std::end(tests),
-                                            samplers,
                                             args,
                                             verbose,
                                             resultSet);

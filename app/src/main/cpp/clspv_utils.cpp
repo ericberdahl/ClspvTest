@@ -485,11 +485,14 @@ namespace clspv_utils {
     }
 
     kernel_module::kernel_module(device_t&          device,
-                                 const std::string& moduleName) :
+                                 const std::string& moduleName,
+                                 vk::ArrayProxy<const vk::Sampler> samplersHack) :
             mDevice(device),
             mName(moduleName),
             mShaderModule(),
-            mSpvMap() {
+            mSpvMap(),
+            mSamplers(samplersHack.begin(), samplersHack.end())
+    {
         const std::string spvFilename = moduleName + ".spv";
         mShaderModule = create_shader(device.mDevice, spvFilename.c_str());
 
@@ -589,6 +592,8 @@ namespace clspv_utils {
                 .setQueryCount(kQueryIndex_Count);
 
         mQueryPool = device.mDevice.createQueryPoolUnique(poolCreateInfo);
+
+        addLiteralSamplers(kernel.getModule().getLiteralSamplersHack());
     }
 
     kernel_invocation::~kernel_invocation() {

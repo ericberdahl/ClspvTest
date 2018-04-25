@@ -307,13 +307,12 @@ namespace {
 namespace readlocalsize_kernel {
 
     clspv_utils::execution_time_t
-    invoke(clspv_utils::kernel&                 kernel,
-           vk::ArrayProxy<const vk::Sampler>    samplers,
-           vk::Buffer                           outLocalSizes,
-           int                                  inWidth,
-           int                                  inHeight,
-           int                                  inPitch,
-           idtype_t                             inIdType) {
+    invoke(clspv_utils::kernel& kernel,
+           vk::Buffer           outLocalSizes,
+           int                  inWidth,
+           int                  inHeight,
+           int                  inPitch,
+           idtype_t             inIdType) {
         struct scalar_args {
             int width;  // offset 0
             int height; // offset 4
@@ -339,7 +338,6 @@ namespace readlocalsize_kernel {
 
         clspv_utils::kernel_invocation invocation(kernel);
 
-        invocation.addLiteralSamplers(samplers);
         invocation.addStorageBufferArgument(outLocalSizes);
         invocation.addPodArgument(scalars);
 
@@ -347,7 +345,6 @@ namespace readlocalsize_kernel {
     }
 
     void test(clspv_utils::kernel&              kernel,
-              vk::ArrayProxy<const vk::Sampler> samplers,
               const std::vector<std::string>&   args,
               bool                              verbose,
               test_utils::InvocationResultSet&  resultSet)
@@ -373,7 +370,6 @@ namespace readlocalsize_kernel {
                                                         kernel.getWorkgroupSize());
 
         invocationResult.mExecutionTime = invoke(kernel,
-                                                 samplers,
                                                  *dst_buffer.buf,
                                                  buffer_width,
                                                  buffer_height,
