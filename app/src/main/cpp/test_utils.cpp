@@ -6,8 +6,7 @@
 
 namespace test_utils {
 
-    void test_kernel_invocations(const clspv_utils::kernel_module&  module,
-                                 const clspv_utils::kernel&         kernel,
+    void test_kernel_invocations(clspv_utils::kernel&               kernel,
                                  const test_kernel_fn*              first,
                                  const test_kernel_fn*              last,
                                  const sample_info&                 info,
@@ -16,11 +15,11 @@ namespace test_utils {
                                  bool                               verbose,
                                  InvocationResultSet&               resultSet) {
         for (; first != last; ++first) {
-            (*first)(module, kernel, info, samplers, args, verbose, resultSet);
+            (*first)(kernel, info, samplers, args, verbose, resultSet);
         }
     }
 
-    KernelResult test_kernel(const clspv_utils::kernel_module&  module,
+    KernelResult test_kernel(clspv_utils::kernel_module&        module,
                              const kernel_test_map&             kernelTest,
                              const sample_info&                 info,
                              vk::ArrayProxy<const vk::Sampler>  samplers) {
@@ -35,8 +34,7 @@ namespace test_utils {
 			if (kernelTest.test) {
                 kernelResult.mIterations = kernelTest.iterations;
                 for (unsigned int i = kernelTest.iterations; i > 0; --i) {
-                    kernelTest.test(module,
-                                    kernel,
+                    kernelTest.test(kernel,
                                     info,
                                     samplers,
                                     kernelTest.args,

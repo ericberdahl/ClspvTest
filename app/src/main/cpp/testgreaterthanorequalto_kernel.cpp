@@ -7,13 +7,12 @@
 namespace testgreaterthanorequalto_kernel {
 
     clspv_utils::execution_time_t
-    invoke(const clspv_utils::kernel_module&   module,
-           const clspv_utils::kernel&          kernel,
-           const sample_info&                  info,
-           vk::ArrayProxy<const vk::Sampler>   samplers,
-           vk::Buffer                          dst_buffer,
-           int                                 width,
-           int                                 height)
+    invoke(clspv_utils::kernel&                 kernel,
+           const sample_info&                   info,
+           vk::ArrayProxy<const vk::Sampler>    samplers,
+           vk::Buffer                           dst_buffer,
+           int                                  width,
+           int                                  height)
     {
         struct scalar_args {
             int inWidth;            // offset 0
@@ -42,13 +41,12 @@ namespace testgreaterthanorequalto_kernel {
         return invocation.run(info.graphics_queue, kernel, num_workgroups);
     }
 
-    void test_all(const clspv_utils::kernel_module&    module,
-                  const clspv_utils::kernel&           kernel,
-                  const sample_info&                   info,
-                  vk::ArrayProxy<const vk::Sampler>    samplers,
-                  const std::vector<std::string>&      args,
-                  bool                                 verbose,
-                  test_utils::InvocationResultSet&     resultSet)
+    void test_all(clspv_utils::kernel&              kernel,
+                  const sample_info&                info,
+                  vk::ArrayProxy<const vk::Sampler> samplers,
+                  const std::vector<std::string>&   args,
+                  bool                              verbose,
+                  test_utils::InvocationResultSet&  resultSet)
     {
         test_utils::InvocationResult invocationResult;
 
@@ -79,7 +77,7 @@ namespace testgreaterthanorequalto_kernel {
             return (x >= 0 && y >= 0 && x < buffer_width && y < buffer_height ? 1.0f : 0.0f);
         });
 
-        invocationResult.mExecutionTime = invoke(module, kernel,
+        invocationResult.mExecutionTime = invoke(kernel,
                                                  info,
                                                  samplers,
                                                  *dstBuffer.buf,

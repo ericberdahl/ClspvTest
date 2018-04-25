@@ -7,18 +7,17 @@
 namespace fill_kernel {
 
     clspv_utils::execution_time_t
-    invoke(const clspv_utils::kernel_module&   module,
-           const clspv_utils::kernel&          kernel,
-           const sample_info&                  info,
-           vk::ArrayProxy<const vk::Sampler>   samplers,
-           vk::Buffer dst_buffer,
-           int pitch,
-           int device_format,
-           int offset_x,
-           int offset_y,
-           int width,
-           int height,
-           const gpu_types::float4 &color) {
+    invoke(clspv_utils::kernel&                 kernel,
+           const sample_info&                   info,
+           vk::ArrayProxy<const vk::Sampler>    samplers,
+           vk::Buffer                           dst_buffer,
+           int                                  pitch,
+           int                                  device_format,
+           int                                  offset_x,
+           int                                  offset_y,
+           int                                  width,
+           int                                  height,
+           const gpu_types::float4&             color) {
         struct scalar_args {
             int inPitch;        // offset 0
             int inDeviceFormat; // DevicePixelFormat offset 4
@@ -61,20 +60,18 @@ namespace fill_kernel {
         return invocation.run(info.graphics_queue, kernel, num_workgroups);
     }
 
-    void test_series(const clspv_utils::kernel_module&   module,
-                     const clspv_utils::kernel&          kernel,
-                     const sample_info&                  info,
-                     vk::ArrayProxy<const vk::Sampler>   samplers,
-                     const std::vector<std::string>&     args,
-                     bool                                verbose,
-                     test_utils::InvocationResultSet&    resultSet) {
+    void test_series(clspv_utils::kernel&               kernel,
+                     const sample_info&                 info,
+                     vk::ArrayProxy<const vk::Sampler>  samplers,
+                     const std::vector<std::string>&    args,
+                     bool                               verbose,
+                     test_utils::InvocationResultSet&   resultSet) {
         const test_utils::test_kernel_fn tests[] = {
                 test<gpu_types::float4>,
                 test<gpu_types::half4>,
         };
 
-        test_utils::test_kernel_invocations(module,
-                                            kernel,
+        test_utils::test_kernel_invocations(kernel,
                                             std::begin(tests), std::end(tests),
                                             info,
                                             samplers,

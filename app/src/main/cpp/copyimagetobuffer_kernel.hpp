@@ -16,22 +16,20 @@
 namespace copyimagetobuffer_kernel {
 
     clspv_utils::execution_time_t
-    invoke(const clspv_utils::kernel_module&   module,
-           const clspv_utils::kernel&          kernel,
-           const sample_info&                  info,
-           vk::ArrayProxy<const vk::Sampler>   samplers,
-           vk::ImageView                       src_image,
-           vk::Buffer                          dst_buffer,
-           int                                 dst_offset,
-           int                                 dst_pitch,
-           cl_channel_order                    dst_channel_order,
-           cl_channel_type                     dst_channel_type,
-           bool                                swap_components,
-           int                                 width,
-           int                                 height);
+    invoke(clspv_utils::kernel&                 kernel,
+           const sample_info&                   info,
+           vk::ArrayProxy<const vk::Sampler>    samplers,
+           vk::ImageView                        src_image,
+           vk::Buffer                           dst_buffer,
+           int                                  dst_offset,
+           int                                  dst_pitch,
+           cl_channel_order                     dst_channel_order,
+           cl_channel_type                      dst_channel_type,
+           bool                                 swap_components,
+           int                                  width,
+           int                                  height);
 
-    void test_matrix(const clspv_utils::kernel_module&  module,
-                     const clspv_utils::kernel&         kernel,
+    void test_matrix(clspv_utils::kernel&               kernel,
                      const sample_info&                 info,
                      vk::ArrayProxy<const vk::Sampler>  samplers,
                      const std::vector<std::string>&    args,
@@ -39,13 +37,12 @@ namespace copyimagetobuffer_kernel {
                      test_utils::InvocationResultSet&   resultSet);
 
     template <typename BufferPixelType, typename ImagePixelType>
-    void test(const clspv_utils::kernel_module&     module,
-              const clspv_utils::kernel&            kernel,
-              const sample_info&                    info,
-              vk::ArrayProxy<const vk::Sampler>     samplers,
-              const std::vector<std::string>&       args,
-              bool                                  verbose,
-              test_utils::InvocationResultSet&      resultSet)
+    void test(clspv_utils::kernel&              kernel,
+              const sample_info&                info,
+              vk::ArrayProxy<const vk::Sampler> samplers,
+              const std::vector<std::string>&   args,
+              bool                              verbose,
+              test_utils::InvocationResultSet&  resultSet)
     {
         test_utils::InvocationResult invocationResult;
         invocationResult.mVariation = "<src:";
@@ -71,7 +68,7 @@ namespace copyimagetobuffer_kernel {
         test_utils::copy_pixel_buffer<ImagePixelType, BufferPixelType>(srcImage.mem, dst_buffer.mem, buffer_length);
         test_utils::invert_pixel_buffer<BufferPixelType>(dst_buffer.mem, buffer_length);
 
-        invocationResult.mExecutionTime = invoke(module, kernel,
+        invocationResult.mExecutionTime = invoke(kernel,
                                                  info,
                                                  samplers,
                                                  *srcImage.view,
@@ -94,8 +91,7 @@ namespace copyimagetobuffer_kernel {
     }
 
     template <typename ImagePixelType>
-    void test_series(const clspv_utils::kernel_module&  module,
-                     const clspv_utils::kernel&         kernel,
+    void test_series(clspv_utils::kernel&               kernel,
                      const sample_info&                 info,
                      vk::ArrayProxy<const vk::Sampler>  samplers,
                      const std::vector<std::string>&    args,
@@ -112,7 +108,7 @@ namespace copyimagetobuffer_kernel {
                 test<gpu_types::float4, ImagePixelType>,
         };
 
-        test_utils::test_kernel_invocations(module, kernel,
+        test_utils::test_kernel_invocations(kernel,
                                             std::begin(tests), std::end(tests),
                                             info,
                                             samplers,

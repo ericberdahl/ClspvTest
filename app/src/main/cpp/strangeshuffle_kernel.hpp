@@ -16,8 +16,7 @@
 namespace strangeshuffle_kernel {
 
     clspv_utils::execution_time_t
-    invoke(const clspv_utils::kernel_module&    module,
-           const clspv_utils::kernel&           kernel,
+    invoke(clspv_utils::kernel&                 kernel,
            const sample_info&                   info,
            vk::ArrayProxy<const vk::Sampler>    samplers,
            vk::Buffer                           index_buffer,
@@ -25,13 +24,12 @@ namespace strangeshuffle_kernel {
            vk::Buffer                           destination_buffer,
            std::size_t                          num_elements);
 
-    void test(const clspv_utils::kernel_module&      module,
-              const clspv_utils::kernel&             kernel,
-              const sample_info&                     info,
-              vk::ArrayProxy<const vk::Sampler>      samplers,
-              const std::vector<std::string>&        args,
-              bool                                   verbose,
-              test_utils::InvocationResultSet&       resultSet);
+    void test(clspv_utils::kernel&              kernel,
+              const sample_info&                info,
+              vk::ArrayProxy<const vk::Sampler> samplers,
+              const std::vector<std::string>&   args,
+              bool                              verbose,
+              test_utils::InvocationResultSet&  resultSet);
 }
 
 #endif //CLSPVTEST_STRANGESHUFFLE_KERNEL_HPP

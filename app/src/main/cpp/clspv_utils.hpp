@@ -117,7 +117,7 @@ namespace clspv_utils {
 
     class kernel {
     public:
-        kernel(const kernel_module&         module,
+        kernel(kernel_module&               module,
                std::string                  entryPoint,
                const WorkgroupDimensions&   workgroup_sizes);
 
@@ -135,11 +135,11 @@ namespace clspv_utils {
         void                updatePipeline(vk::ArrayProxy<int32_t> otherSpecConstants) const;
 
     private:
-        const kernel_module*        mModule;
-        std::string                 mEntryPoint;
-        WorkgroupDimensions         mWorkgroupSizes;
+        std::reference_wrapper<kernel_module>   mModule;
+        std::string                             mEntryPoint;
+        WorkgroupDimensions                     mWorkgroupSizes;
         // TODO remove const hack on mPipeline
-        mutable details::pipeline   mPipeline;
+        mutable details::pipeline               mPipeline;
     };
 
     class kernel_invocation {

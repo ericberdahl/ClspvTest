@@ -7,20 +7,19 @@
 namespace copybuffertoimage_kernel {
 
     clspv_utils::execution_time_t
-    invoke(const clspv_utils::kernel_module&   module,
-           const clspv_utils::kernel&          kernel,
-           const sample_info&                  info,
-           vk::ArrayProxy<const vk::Sampler>   samplers,
-           vk::Buffer                          src_buffer,
-           vk::ImageView                       dst_image,
-           int                                 src_offset,
-           int                                 src_pitch,
-           cl_channel_order                    src_channel_order,
-           cl_channel_type                     src_channel_type,
-           bool                                swap_components,
-           bool                                premultiply,
-           int                                 width,
-           int                                 height)
+    invoke(clspv_utils::kernel&                 kernel,
+           const sample_info&                   info,
+           vk::ArrayProxy<const vk::Sampler>    samplers,
+           vk::Buffer                           src_buffer,
+           vk::ImageView                        dst_image,
+           int                                  src_offset,
+           int                                  src_pitch,
+           cl_channel_order                     src_channel_order,
+           cl_channel_type                      src_channel_type,
+           bool                                 swap_components,
+           bool                                 premultiply,
+           int                                  width,
+           int                                  height)
     {
         struct scalar_args {
             int inSrcOffset;        // offset 0
@@ -71,13 +70,12 @@ namespace copybuffertoimage_kernel {
         return invocation.run(info.graphics_queue, kernel, num_workgroups);
     }
 
-    void test_matrix(const clspv_utils::kernel_module&   module,
-                     const clspv_utils::kernel&          kernel,
-                     const sample_info&                  info,
-                     vk::ArrayProxy<const vk::Sampler>   samplers,
-                     const std::vector<std::string>&     args,
-                     bool                                verbose,
-                     test_utils::InvocationResultSet&    resultSet)
+    void test_matrix(clspv_utils::kernel&               kernel,
+                     const sample_info&                 info,
+                     vk::ArrayProxy<const vk::Sampler>  samplers,
+                     const std::vector<std::string>&    args,
+                     bool                               verbose,
+                     test_utils::InvocationResultSet&   resultSet)
     {
         const test_utils::test_kernel_fn tests[] = {
                 test_series<gpu_types::float4>,
@@ -91,7 +89,7 @@ namespace copybuffertoimage_kernel {
                 test_series<gpu_types::uchar>,
         };
 
-        test_utils::test_kernel_invocations(module, kernel,
+        test_utils::test_kernel_invocations(kernel,
                                             std::begin(tests), std::end(tests),
                                             info,
                                             samplers,

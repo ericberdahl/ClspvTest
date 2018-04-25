@@ -16,24 +16,22 @@
 namespace copybuffertoimage_kernel {
 
     clspv_utils::execution_time_t
-    invoke(const clspv_utils::kernel_module&   module,
-           const clspv_utils::kernel&          kernel,
-           const sample_info&                  info,
-           vk::ArrayProxy<const vk::Sampler>   samplers,
-           vk::Buffer                          src_buffer,
-           vk::ImageView                       dst_image,
-           int                                 src_offset,
-           int                                 src_pitch,
-           cl_channel_order                    src_channel_order,
-           cl_channel_type                     src_channel_type,
-           bool                                swap_components,
-           bool                                premultiply,
-           int                                 width,
-           int                                 height);
+    invoke(clspv_utils::kernel&                 kernel,
+           const sample_info&                   info,
+           vk::ArrayProxy<const vk::Sampler>    samplers,
+           vk::Buffer                           src_buffer,
+           vk::ImageView                        dst_image,
+           int                                  src_offset,
+           int                                  src_pitch,
+           cl_channel_order                     src_channel_order,
+           cl_channel_type                      src_channel_type,
+           bool                                 swap_components,
+           bool                                 premultiply,
+           int                                  width,
+           int                                  height);
 
     template <typename BufferPixelType, typename ImagePixelType>
-    void test(const clspv_utils::kernel_module& module,
-              const clspv_utils::kernel&        kernel,
+    void test(clspv_utils::kernel&              kernel,
               const sample_info&                info,
               vk::ArrayProxy<const vk::Sampler> samplers,
               const std::vector<std::string>&   args,
@@ -64,7 +62,7 @@ namespace copybuffertoimage_kernel {
         test_utils::copy_pixel_buffer<BufferPixelType, ImagePixelType>(srcBuffer.mem, dstImage.mem, buffer_length);
         test_utils::invert_pixel_buffer<ImagePixelType>(dstImage.mem, buffer_length);
 
-        invocationResult.mExecutionTime = invoke(module, kernel,
+        invocationResult.mExecutionTime = invoke(kernel,
                                                  info,
                                                  samplers,
                                                  *srcBuffer.buf,
@@ -87,8 +85,7 @@ namespace copybuffertoimage_kernel {
         resultSet.push_back(std::move(invocationResult));
     }
 
-    void test_matrix(const clspv_utils::kernel_module&  module,
-                     const clspv_utils::kernel&         kernel,
+    void test_matrix(clspv_utils::kernel&               kernel,
                      const sample_info&                 info,
                      vk::ArrayProxy<const vk::Sampler>  samplers,
                      const std::vector<std::string>&    args,
@@ -96,13 +93,12 @@ namespace copybuffertoimage_kernel {
                      test_utils::InvocationResultSet&   resultSet);
 
     template <typename ImagePixelType>
-    void test_series(const clspv_utils::kernel_module&   module,
-                     const clspv_utils::kernel&          kernel,
-                     const sample_info&                  info,
-                     vk::ArrayProxy<const vk::Sampler>   samplers,
-                     const std::vector<std::string>&     args,
-                     bool                                verbose,
-                     test_utils::InvocationResultSet&    resultSet)
+    void test_series(clspv_utils::kernel&               kernel,
+                     const sample_info&                 info,
+                     vk::ArrayProxy<const vk::Sampler>  samplers,
+                     const std::vector<std::string>&    args,
+                     bool                               verbose,
+                     test_utils::InvocationResultSet&   resultSet)
     {
         const test_utils::test_kernel_fn tests[] = {
                 test<gpu_types::uchar, ImagePixelType>,
@@ -114,7 +110,7 @@ namespace copybuffertoimage_kernel {
                 test<gpu_types::float4, ImagePixelType>,
         };
 
-        test_utils::test_kernel_invocations(module, kernel,
+        test_utils::test_kernel_invocations(kernel,
                                             std::begin(tests), std::end(tests),
                                             info,
                                             samplers,

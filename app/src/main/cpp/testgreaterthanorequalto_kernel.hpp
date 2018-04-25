@@ -16,21 +16,19 @@
 namespace testgreaterthanorequalto_kernel {
 
     clspv_utils::execution_time_t
-    invoke(const clspv_utils::kernel_module&   module,
-           const clspv_utils::kernel&          kernel,
+    invoke(const clspv_utils::kernel&          kernel,
            const sample_info&                  info,
            vk::ArrayProxy<const vk::Sampler>   samplers,
            vk::Buffer                          dst_buffer,
            int                                 width,
            int                                 height);
 
-    void test_all(const clspv_utils::kernel_module&    module,
-                  const clspv_utils::kernel&           kernel,
-                  const sample_info&                   info,
-                  vk::ArrayProxy<const vk::Sampler>    samplers,
-                  const std::vector<std::string>&      args,
-                  bool                                 verbose,
-                  test_utils::InvocationResultSet&     resultSet);
+    void test_all(clspv_utils::kernel&              kernel,
+                  const sample_info&                info,
+                  vk::ArrayProxy<const vk::Sampler> samplers,
+                  const std::vector<std::string>&   args,
+                  bool                              verbose,
+                  test_utils::InvocationResultSet&  resultSet);
 
 }
 

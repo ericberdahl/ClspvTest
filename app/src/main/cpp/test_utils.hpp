@@ -127,8 +127,7 @@ namespace test_utils {
 
     typedef std::vector<ModuleResult> ModuleResultSet;
 
-    typedef void (*test_kernel_fn)(const clspv_utils::kernel_module&    module,
-                                   const clspv_utils::kernel&           kernel,
+    typedef void (*test_kernel_fn)(clspv_utils::kernel&                 kernel,
                                    const sample_info&                   info,
                                    vk::ArrayProxy<const vk::Sampler>    samplers,
                                    const std::vector<std::string>&      args,
@@ -349,8 +348,7 @@ namespace test_utils {
         });
     }
 
-    void test_kernel_invocations(const clspv_utils::kernel_module&  module,
-                                 const clspv_utils::kernel&         kernel,
+    void test_kernel_invocations(clspv_utils::kernel&               kernel,
                                  const test_kernel_fn*              first,
                                  const test_kernel_fn*              last,
                                  const sample_info&                 info,
@@ -359,7 +357,7 @@ namespace test_utils {
                                  bool                               verbose,
                                  InvocationResultSet&               resultSet);
 
-    KernelResult test_kernel(const clspv_utils::kernel_module&  module,
+    KernelResult test_kernel(clspv_utils::kernel_module&        module,
                              const kernel_test_map&             kernelTest,
                              const sample_info&                 info,
                              vk::ArrayProxy<const vk::Sampler>  samplers);

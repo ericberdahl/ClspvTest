@@ -551,10 +551,10 @@ namespace clspv_utils {
         return result;
     }
 
-    kernel::kernel(const kernel_module&         module,
+    kernel::kernel(kernel_module&               module,
                    std::string                  entryPoint,
                    const WorkgroupDimensions&   workgroup_sizes) :
-            mModule(&module),
+            mModule(module),
             mEntryPoint(entryPoint),
             mWorkgroupSizes(workgroup_sizes),
             mPipeline() {
@@ -565,7 +565,7 @@ namespace clspv_utils {
     }
 
     void kernel::updatePipeline(vk::ArrayProxy<int32_t> otherSpecConstants) const {
-        mPipeline = mModule->createPipeline(mEntryPoint, mWorkgroupSizes, otherSpecConstants);
+        mPipeline = mModule.get().createPipeline(mEntryPoint, mWorkgroupSizes, otherSpecConstants);
     }
 
     void kernel::bindCommand(vk::CommandBuffer command) const {

@@ -16,8 +16,7 @@
 namespace fill_kernel {
 
     clspv_utils::execution_time_t
-    invoke(const clspv_utils::kernel_module&    module,
-           const clspv_utils::kernel&           kernel,
+    invoke(clspv_utils::kernel&                 kernel,
            const sample_info&                   info,
            vk::ArrayProxy<const vk::Sampler>    samplers,
            vk::Buffer                           dst_buffer,
@@ -29,22 +28,20 @@ namespace fill_kernel {
            int                                  height,
            const gpu_types::float4&             color);
 
-    void test_series(const clspv_utils::kernel_module&   module,
-                     const clspv_utils::kernel&          kernel,
-                     const sample_info&                  info,
-                     vk::ArrayProxy<const vk::Sampler>   samplers,
-                     const std::vector<std::string>&     args,
-                     bool                                verbose,
-                     test_utils::InvocationResultSet&    resultSet);
+    void test_series(clspv_utils::kernel&               kernel,
+                     const sample_info&                 info,
+                     vk::ArrayProxy<const vk::Sampler>  samplers,
+                     const std::vector<std::string>&    args,
+                     bool                               verbose,
+                     test_utils::InvocationResultSet&   resultSet);
 
     template <typename PixelType>
-    void test(const clspv_utils::kernel_module&      module,
-              const clspv_utils::kernel&             kernel,
-              const sample_info&                     info,
-              vk::ArrayProxy<const vk::Sampler>      samplers,
-              const std::vector<std::string>&        args,
-              bool                                   verbose,
-              test_utils::InvocationResultSet&       resultSet) {
+    void test(clspv_utils::kernel&              kernel,
+              const sample_info&                info,
+              vk::ArrayProxy<const vk::Sampler> samplers,
+              const std::vector<std::string>&   args,
+              bool                              verbose,
+              test_utils::InvocationResultSet&  resultSet) {
         test_utils::InvocationResult invocationResult;
 
         int buffer_height = 64;
@@ -75,8 +72,7 @@ namespace fill_kernel {
         const PixelType src_value = pixels::traits<PixelType>::translate((gpu_types::float4){ 0.0f, 0.0f, 0.0f, 0.0f });
         vulkan_utils::fillDeviceMemory(dst_buffer.mem, buffer_width * buffer_height, src_value);
 
-        invocationResult.mExecutionTime = invoke(module,
-                                                 kernel,
+        invocationResult.mExecutionTime = invoke(kernel,
                                                  info,
                                                  samplers,
                                                  *dst_buffer.buf, // dst_buffer
