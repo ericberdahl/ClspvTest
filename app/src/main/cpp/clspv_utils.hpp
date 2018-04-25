@@ -89,25 +89,32 @@ namespace clspv_utils {
         vk::DescriptorSet                           mArgumentsDescriptor;
     };
 
+    struct device_t {
+        vk::Device                          mDevice;
+        vk::DescriptorPool                  mDescriptorPool;
+        vk::CommandPool                     mCommandPool;
+        vk::PhysicalDeviceMemoryProperties  mMemoryProperties;
+    };
+
     class kernel_module {
     public:
-        kernel_module(vk::Device            device,
-                      vk::DescriptorPool    pool,
+        kernel_module(device_t&             device,
                       const std::string&    moduleName);
 
         ~kernel_module();
 
         std::string                 getName() const { return mName; }
         std::vector<std::string>    getEntryPoints() const;
-        vk::Device                  getDevice() const { return mDevice; }
         vk::ShaderModule            getShaderModule() const { return *mShaderModule; }
+
+        device_t&                   getDevice() { return mDevice.get(); }
+        const device_t&             getDevice() const { return mDevice.get(); }
 
         layout_t                    createLayout(const std::string& entryPoint) const;
 
     private:
+        std::reference_wrapper<device_t>    mDevice;
         std::string                         mName;
-        vk::Device                          mDevice;
-        vk::DescriptorPool                  mDescriptorPool;
         vk::UniqueShaderModule              mShaderModule;
         details::spv_map                    mSpvMap;
     };
@@ -143,11 +150,9 @@ namespace clspv_utils {
 
     class kernel_invocation {
     public:
-        kernel_invocation(kernel&                                   kernel,
-                          vk::CommandPool                           cmdPool,
-                          const vk::PhysicalDeviceMemoryProperties& memoryProperties);
+        explicit    kernel_invocation(kernel& kernel);
 
-        ~kernel_invocation();
+                    ~kernel_invocation();
 
         void    addLiteralSamplers(vk::ArrayProxy<const vk::Sampler> samplers);
 
@@ -171,7 +176,7 @@ namespace clspv_utils {
         void        updateDescriptorSets();
         void        submitCommand(vk::Queue queue);
 
-        vk::Device  getDevice() const { return mKernel.get().getModule().getDevice(); }
+        const device_t& getDevice() const { return mKernel.get().getModule().getDevice(); }
 
     private:
         enum QueryIndex {
@@ -194,7 +199,6 @@ namespace clspv_utils {
     private:
         std::reference_wrapper<kernel>              mKernel;
         vk::UniqueCommandBuffer                     mCommand;
-        vk::PhysicalDeviceMemoryProperties          mMemoryProperties;
         vk::UniqueQueryPool                         mQueryPool;
 
         std::vector<vk::Sampler>                    mLiteralSamplers;

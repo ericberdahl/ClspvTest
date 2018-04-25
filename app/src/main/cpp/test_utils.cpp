@@ -65,7 +65,8 @@ namespace test_utils {
         return kernelResult;
     }
 
-    ModuleResult test_module(const std::string&             moduleName,
+    ModuleResult test_module(clspv_utils::device_t&         device,
+                             const std::string&             moduleName,
                      const std::vector<kernel_test_map>&    kernelTests,
                      const sample_info&                     info,
                      vk::ArrayProxy<const vk::Sampler>      samplers) {
@@ -73,7 +74,7 @@ namespace test_utils {
         moduleResult.mModuleName = moduleName;
 
         try {
-            clspv_utils::kernel_module module(*info.device, *info.desc_pool, moduleName);
+            clspv_utils::kernel_module module(device, moduleName);
             moduleResult.mLoadedCorrectly = true;
 
             std::vector<std::string> entryPoints(module.getEntryPoints());

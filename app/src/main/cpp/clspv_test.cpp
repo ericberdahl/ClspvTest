@@ -386,8 +386,15 @@ void run_manifest(const manifest_t&                     manifest,
                   const sample_info&                    info,
                   vk::ArrayProxy<const vk::Sampler>     samplers,
                   test_utils::ModuleResultSet&          resultSet) {
+    clspv_utils::device_t device = {
+            *info.device,
+            *info.desc_pool,
+            *info.cmd_pool,
+            info.memory_properties
+    };
+
     for (auto m : manifest.tests) {
-        resultSet.push_back(test_utils::test_module(m.name, m.kernelTests, info, samplers));
+        resultSet.push_back(test_utils::test_module(device, m.name, m.kernelTests, info, samplers));
     }
 }
 

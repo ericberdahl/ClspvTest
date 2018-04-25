@@ -483,16 +483,14 @@ namespace clspv_utils {
     {
     }
 
-    kernel_module::kernel_module(vk::Device         device,
-                                 vk::DescriptorPool pool,
+    kernel_module::kernel_module(device_t&          device,
                                  const std::string& moduleName) :
-            mName(moduleName),
             mDevice(device),
-            mDescriptorPool(pool),
+            mName(moduleName),
             mShaderModule(),
             mSpvMap() {
         const std::string spvFilename = moduleName + ".spv";
-        mShaderModule = create_shader(mDevice, spvFilename.c_str());
+        mShaderModule = create_shader(device.mDevice, spvFilename.c_str());
 
         const std::string mapFilename = moduleName + ".spvmap";
         mSpvMap = create_spv_map(mapFilename.c_str());
@@ -512,7 +510,8 @@ namespace clspv_utils {
     }
 
     layout_t kernel_module::createLayout(const std::string& entryPoint) const {
-        return create_layout_for_entry(mDevice, mDescriptorPool, mSpvMap, entryPoint);
+        auto device = mDevice.get();
+        return create_layout_for_entry(device.mDevice, device.mDescriptorPool, mSpvMap, entryPoint);
     }
 
     kernel::kernel(kernel_module&               module,
@@ -558,7 +557,7 @@ namespace clspv_utils {
                 .setPName(mEntryPoint.c_str())
                 .setPSpecializationInfo(&specializationInfo);
 
-        mPipeline = mModule.get().getDevice().createComputePipelineUnique(vk::PipelineCache(), createInfo);
+        mPipeline = mModule.get().getDevice().mDevice.createComputePipelineUnique(vk::PipelineCache(), createInfo);
     }
 
     void kernel::bindCommand(vk::CommandBuffer command) const {
@@ -573,25 +572,22 @@ namespace clspv_utils {
                                 nullptr);
     }
 
-    kernel_invocation::kernel_invocation(kernel&                                    kernel,
-                                         vk::CommandPool                            cmdPool,
-                                         const vk::PhysicalDeviceMemoryProperties&  memoryProperties) :
+    kernel_invocation::kernel_invocation(kernel& kernel) :
             mKernel(kernel),
             mCommand(),
-            mMemoryProperties(memoryProperties),
             mLiteralSamplers(),
             mDescriptorArguments(),
             mSpecConstantArguments()
     {
         auto device = getDevice();
 
-        mCommand = allocate_command_buffer(device, cmdPool);
+        mCommand = allocate_command_buffer(device.mDevice, device.mCommandPool);
 
         vk::QueryPoolCreateInfo poolCreateInfo;
         poolCreateInfo.setQueryType(vk::QueryType::eTimestamp)
                 .setQueryCount(kQueryIndex_Count);
 
-        mQueryPool = device.createQueryPoolUnique(poolCreateInfo);
+        mQueryPool = device.mDevice.createQueryPoolUnique(poolCreateInfo);
     }
 
     kernel_invocation::~kernel_invocation() {
@@ -651,7 +647,8 @@ namespace clspv_utils {
     }
 
     void kernel_invocation::addPodArgument(const void* pod, std::size_t sizeofPod) {
-        vulkan_utils::uniform_buffer scalar_args(getDevice(), mMemoryProperties, sizeofPod);
+        auto dev = getDevice();
+        vulkan_utils::uniform_buffer scalar_args(dev.mDevice, dev.mMemoryProperties, sizeofPod);
 
         vulkan_utils::copyToDeviceMemory(scalar_args.mem, pod, sizeofPod);
         addUniformBufferArgument(*scalar_args.buf);
@@ -790,7 +787,7 @@ namespace clspv_utils {
         //
         // Do the actual descriptor set updates
         //
-        getDevice().updateDescriptorSets(writeSets, nullptr);
+        getDevice().mDevice.updateDescriptorSets(writeSets, nullptr);
     }
 
     void kernel_invocation::fillCommandBuffer(const WorkgroupDimensions& num_workgroups) {
@@ -849,7 +846,7 @@ namespace clspv_utils {
         auto end = std::chrono::high_resolution_clock::now();
 
         uint64_t timestamps[kQueryIndex_Count];
-        getDevice().getQueryPoolResults(*mQueryPool,
+        getDevice().mDevice.getQueryPoolResults(*mQueryPool,
                                         kQueryIndex_FirstIndex,
                                         kQueryIndex_Count,
                                         sizeof(uint64_t),
