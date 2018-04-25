@@ -48,22 +48,21 @@ test StrangeShuffle strangeShuffle 1024 1
 end
 #
 module shaders_cl/localsize
-test ReadLocalSize readLocalSize 1 1
-#
-module shaders_cl/Fills
-test FillWithColorKernel fill 32 32 -w 64 -h 64
-test FillWithColorKernel fill 32 32 -w 1080 -h 720
-#
-module shaders_cl/Memory
-test CopyBufferToImageKernel copyBufferToImage 32 32
-test CopyImageToBufferKernel copyImageToBuffer 32 32
-#
-module shaders_cl/ReadConstantData
-test ReadConstantArray readConstantData 32 1
-test ReadConstantStruct readConstantData 32 1
-#
-module shaders_cl/TestComparisons
-test TestGreaterThanOrEqualTo testGtEq 32 32
+test ReadLocalSize readLocalSize 32 32 global_id_x
+test ReadLocalSize readLocalSize 32 32 global_id_y
+test ReadLocalSize readLocalSize 32 32 global_id_z
+test ReadLocalSize readLocalSize 32 32 group_id_x
+test ReadLocalSize readLocalSize 32 32 group_id_y
+test ReadLocalSize readLocalSize 32 32 group_id_z
+test ReadLocalSize readLocalSize 32 32 local_id_x
+test ReadLocalSize readLocalSize 32 32 local_id_y
+test ReadLocalSize readLocalSize 32 32 local_id_z
+test ReadLocalSize readLocalSize 32 32 global_size_x
+test ReadLocalSize readLocalSize 32 32 global_size_y
+test ReadLocalSize readLocalSize 32 32 global_size_z
+test ReadLocalSize readLocalSize 32 32 local_size_x
+test ReadLocalSize readLocalSize 32 32 local_size_y
+test ReadLocalSize readLocalSize 32 32 local_size_z
 #
 module shaders_small_cl/localsize
 test ReadLocalSize readLocalSize 32 32 global_id_x
@@ -82,21 +81,40 @@ test ReadLocalSize readLocalSize 32 32 local_size_x
 test ReadLocalSize readLocalSize 32 32 local_size_y
 test ReadLocalSize readLocalSize 32 32 local_size_z
 #
+module shaders_cl/Fills
+test FillWithColorKernel fill<float4> 32 32 -w 64 -h 64
+test FillWithColorKernel fill<float4> 32 32 -w 1080 -h 720
+test FillWithColorKernel fill<half4> 32 32 -w 64 -h 64
+test FillWithColorKernel fill<half4> 32 32 -w 1080 -h 720
+#
 module shaders_small_cl/Fills
-test FillWithColorKernel fill 32 32 -w 64 -h 64
-test FillWithColorKernel fill 32 32 -w 1080 -h 720
+test FillWithColorKernel fill<float4> 32 32 -w 64 -h 64
+test FillWithColorKernel fill<float4> 32 32 -w 1080 -h 720
+test FillWithColorKernel fill<half4> 32 32 -w 64 -h 64
+test FillWithColorKernel fill<half4> 32 32 -w 1080 -h 720
+#
+module shaders/GL_Fills_reduced
+test main fill<float4> 32 32 -w 64 -h 64
+test main fill<float4> 32 32 -w 1080 -h 720
+#
+module shaders_cl/Memory
+test CopyBufferToImageKernel copyBufferToImage 32 32
+test CopyImageToBufferKernel copyImageToBuffer 32 32
 #
 module shaders_small_cl/Memory
 test CopyBufferToImageKernel copyBufferToImage 32 32
 skip CopyImageToBufferKernel copyImageToBuffer 32 32   # crashes Adreno driver
 #
+module shaders_cl/ReadConstantData
+test ReadConstantArray readConstantData 32 1
+test ReadConstantStruct readConstantData 32 1
+#
 module shaders_small_cl/ReadConstantData
 test ReadConstantArray readConstantData 32 1
 test ReadConstantStruct readConstantData 32 1
 #
-module shaders_small_cl/TestComparisons
+module shaders_cl/TestComparisons
 test TestGreaterThanOrEqualTo testGtEq 32 32
 #
-module shaders/GL_Fills_reduced
-test main fill<float4> 32 32 -w 64 -h 64
-test main fill<float4> 32 32 -w 1080 -h 720
+module shaders_small_cl/TestComparisons
+test TestGreaterThanOrEqualTo testGtEq 32 32
