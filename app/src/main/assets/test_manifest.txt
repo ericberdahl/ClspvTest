@@ -40,11 +40,14 @@
 # Stops processing the manifest. Everything after the end verb is ignored by the manifest parser
 #
 vkValidation none
-module shaders/GL_LocalMemory
-test main strangeShuffle 1024 1
-
 module shaders_cl/LocalMemory
 test StrangeShuffle strangeShuffle 1024 1
+
+module shaders_small_cl/LocalMemory
+test StrangeShuffle strangeShuffle 1024 1
+
+module shaders/GL_LocalMemory
+test main strangeShuffle 1024 1
 end
 #
 module shaders_cl/localsize
