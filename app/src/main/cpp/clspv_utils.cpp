@@ -242,6 +242,31 @@ namespace clspv_utils {
             return device.createPipelineLayoutUnique(createInfo);
         }
 
+        layout_t create_layout_for_entry(vk::Device                device,
+                                         vk::DescriptorPool        descriptorPool,
+                                         const details::spv_map&   spvMap,
+                                         const std::string&        entryPoint)  {
+            layout_t result;
+
+            result.mDescriptorLayouts = create_descriptor_layouts(device, spvMap, entryPoint);
+
+            result.mPipelineLayout = create_pipeline_layout(device, result.mDescriptorLayouts);
+            result.mDescriptors = allocate_descriptor_sets(device, descriptorPool,
+                                                           result.mDescriptorLayouts);
+
+
+            if (-1 != spvMap.samplers_desc_set) {
+                result.mLiteralSamplerDescriptor = *result.mDescriptors[spvMap.samplers_desc_set];
+            }
+
+            const auto kernel_arg_map = spvMap.findKernel(entryPoint);
+            if (kernel_arg_map && -1 != kernel_arg_map->descriptor_set) {
+                result.mArgumentsDescriptor = *result.mDescriptors[kernel_arg_map->descriptor_set];
+            }
+
+            return result;
+        }
+
         std::vector<std::string> validate_sampler(const details::spv_map::sampler& sampler) {
             std::vector<std::string> result;
 
@@ -450,17 +475,6 @@ namespace clspv_utils {
             return (kernel == kernels.end() ? nullptr : &(*kernel));
         }
 
-        void pipeline::reset() {
-            mPipeline.reset();
-
-            mArgumentsDescriptor = nullptr;
-            mLiteralSamplerDescriptor = nullptr;
-            mDescriptors.clear();
-
-            mPipelineLayout.reset();
-            mDescriptorLayouts.clear();
-        }
-
     } // namespace details
 
     execution_time_t::execution_time_t() :
@@ -497,30 +511,28 @@ namespace clspv_utils {
         return result;
     }
 
-    details::pipeline kernel_module::createPipeline(const std::string&          entryPoint,
-                                                    const WorkgroupDimensions&  workGroupSizes_a,
-                                                    vk::ArrayProxy<int32_t>     otherSpecConstants) const {
-        details::pipeline result;
+    layout_t kernel_module::createLayout(const std::string& entryPoint) const {
+        return create_layout_for_entry(mDevice, mDescriptorPool, mSpvMap, entryPoint);
+    }
 
-        result.mDescriptorLayouts = create_descriptor_layouts(mDevice, mSpvMap, entryPoint);
+    kernel::kernel(kernel_module&               module,
+                   std::string                  entryPoint,
+                   const WorkgroupDimensions&   workgroup_sizes) :
+            mModule(module),
+            mEntryPoint(entryPoint),
+            mWorkgroupSizes(workgroup_sizes),
+            mLayout(module.createLayout(entryPoint)),
+            mPipeline() {
+        updatePipeline(nullptr);
+    }
 
-        result.mPipelineLayout = create_pipeline_layout(mDevice, result.mDescriptorLayouts);
-        result.mDescriptors = allocate_descriptor_sets(mDevice, mDescriptorPool,
-                                                       result.mDescriptorLayouts);
+    kernel::~kernel() {
+    }
 
-
-        if (-1 != mSpvMap.samplers_desc_set) {
-            result.mLiteralSamplerDescriptor = *result.mDescriptors[mSpvMap.samplers_desc_set];
-        }
-
-        const auto kernel_arg_map = mSpvMap.findKernel(entryPoint);
-        if (kernel_arg_map && -1 != kernel_arg_map->descriptor_set) {
-            result.mArgumentsDescriptor = *result.mDescriptors[kernel_arg_map->descriptor_set];
-        }
-
+    void kernel::updatePipeline(vk::ArrayProxy<int32_t> otherSpecConstants) {
         std::vector<int32_t> specConstants = {
-                workGroupSizes_a.x,
-                workGroupSizes_a.y,
+                mWorkgroupSizes.x,
+                mWorkgroupSizes.y,
                 1
         };
         std::copy(otherSpecConstants.begin(), otherSpecConstants.end(), std::back_inserter(specConstants));
@@ -540,41 +552,22 @@ namespace clspv_utils {
                 .setPData(specConstants.data());
 
         vk::ComputePipelineCreateInfo createInfo;
-        createInfo.setLayout(*result.mPipelineLayout)
+        createInfo.setLayout(*mLayout.mPipelineLayout)
                 .stage.setStage(vk::ShaderStageFlagBits::eCompute)
-                .setModule(*mShaderModule)
-                .setPName(entryPoint.c_str())
+                .setModule(mModule.get().getShaderModule())
+                .setPName(mEntryPoint.c_str())
                 .setPSpecializationInfo(&specializationInfo);
 
-        result.mPipeline = mDevice.createComputePipelineUnique(vk::PipelineCache(), createInfo);
-
-        return result;
-    }
-
-    kernel::kernel(kernel_module&               module,
-                   std::string                  entryPoint,
-                   const WorkgroupDimensions&   workgroup_sizes) :
-            mModule(module),
-            mEntryPoint(entryPoint),
-            mWorkgroupSizes(workgroup_sizes),
-            mPipeline() {
-        updatePipeline(nullptr);
-    }
-
-    kernel::~kernel() {
-    }
-
-    void kernel::updatePipeline(vk::ArrayProxy<int32_t> otherSpecConstants) {
-        mPipeline = mModule.get().createPipeline(mEntryPoint, mWorkgroupSizes, otherSpecConstants);
+        mPipeline = mModule.get().getDevice().createComputePipelineUnique(vk::PipelineCache(), createInfo);
     }
 
     void kernel::bindCommand(vk::CommandBuffer command) const {
-        command.bindPipeline(vk::PipelineBindPoint::eCompute, *mPipeline.mPipeline);
+        command.bindPipeline(vk::PipelineBindPoint::eCompute, *mPipeline);
 
-        auto regular = vulkan_utils::extractUniques(mPipeline.mDescriptors);
+        auto regular = vulkan_utils::extractUniques(mLayout.mDescriptors);
 
         command.bindDescriptorSets(vk::PipelineBindPoint::eCompute,
-                                *mPipeline.mPipelineLayout,
+                                *mLayout.mPipelineLayout,
                                 0,
                                 regular,
                                 nullptr);

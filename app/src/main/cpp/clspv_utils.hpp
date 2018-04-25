@@ -58,17 +58,6 @@ namespace clspv_utils {
             int                     samplers_desc_set   = -1;
             std::vector<kernel>     kernels;
         };
-
-        struct pipeline {
-            void    reset();
-
-            std::vector<vk::UniqueDescriptorSetLayout>  mDescriptorLayouts;
-            vk::UniquePipelineLayout                    mPipelineLayout;
-            std::vector<vk::UniqueDescriptorSet>        mDescriptors;
-            vk::DescriptorSet                           mLiteralSamplerDescriptor;
-            vk::DescriptorSet                           mArgumentsDescriptor;
-            vk::UniquePipeline                          mPipeline;
-        };
     } // namespace details
 
     struct WorkgroupDimensions {
@@ -92,6 +81,14 @@ namespace clspv_utils {
         vulkan_timestamps_t             timestamps;
     };
 
+    struct layout_t {
+        std::vector<vk::UniqueDescriptorSetLayout>  mDescriptorLayouts;
+        vk::UniquePipelineLayout                    mPipelineLayout;
+        std::vector<vk::UniqueDescriptorSet>        mDescriptors;
+        vk::DescriptorSet                           mLiteralSamplerDescriptor;
+        vk::DescriptorSet                           mArgumentsDescriptor;
+    };
+
     class kernel_module {
     public:
         kernel_module(vk::Device            device,
@@ -103,10 +100,9 @@ namespace clspv_utils {
         std::string                 getName() const { return mName; }
         std::vector<std::string>    getEntryPoints() const;
         vk::Device                  getDevice() const { return mDevice; }
+        vk::ShaderModule            getShaderModule() const { return *mShaderModule; }
 
-        details::pipeline           createPipeline(const std::string&           entryPoint,
-                                                   const WorkgroupDimensions&   workGroupSizes,
-                                                   vk::ArrayProxy<int32_t>      otherSpecConstants) const;
+        layout_t                    createLayout(const std::string& entryPoint) const;
 
     private:
         std::string                         mName;
@@ -132,8 +128,8 @@ namespace clspv_utils {
         kernel_module&          getModule() { return mModule; }
         const kernel_module&    getModule() const { return mModule; }
 
-        vk::DescriptorSet   getLiteralSamplerDescSet() const { return mPipeline.mLiteralSamplerDescriptor; }
-        vk::DescriptorSet   getArgumentDescSet() const { return mPipeline.mArgumentsDescriptor; }
+        vk::DescriptorSet   getLiteralSamplerDescSet() const { return mLayout.mLiteralSamplerDescriptor; }
+        vk::DescriptorSet   getArgumentDescSet() const { return mLayout.mArgumentsDescriptor; }
 
         void                updatePipeline(vk::ArrayProxy<int32_t> otherSpecConstants);
 
@@ -141,7 +137,8 @@ namespace clspv_utils {
         std::reference_wrapper<kernel_module>   mModule;
         std::string                             mEntryPoint;
         WorkgroupDimensions                     mWorkgroupSizes;
-        details::pipeline                       mPipeline;
+        layout_t                                mLayout;
+        vk::UniquePipeline                      mPipeline;
     };
 
     class kernel_invocation {
