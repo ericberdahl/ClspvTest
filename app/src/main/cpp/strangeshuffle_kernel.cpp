@@ -22,7 +22,8 @@ namespace strangeshuffle_kernel {
         const clspv_utils::WorkgroupDimensions workgroup_sizes = kernel.getWorkgroupSize();
         const clspv_utils::WorkgroupDimensions num_workgroups(((num_elements/2) + workgroup_sizes.x - 1)/workgroup_sizes.x);
 
-        clspv_utils::kernel_invocation invocation(*info.device, *info.cmd_pool,
+        clspv_utils::kernel_invocation invocation(kernel,
+                                                  *info.cmd_pool,
                                                   info.memory_properties);
 
         invocation.addLiteralSamplers(samplers);
@@ -30,7 +31,7 @@ namespace strangeshuffle_kernel {
         invocation.addStorageBufferArgument(source_buffer);
         invocation.addStorageBufferArgument(destination_buffer);
         invocation.addLocalArraySizeArgument(2 * workgroup_sizes.x);
-        return invocation.run(info.graphics_queue, kernel, num_workgroups);
+        return invocation.run(info.graphics_queue, num_workgroups);
     }
 
     void test(clspv_utils::kernel&              kernel,

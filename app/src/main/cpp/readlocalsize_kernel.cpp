@@ -338,14 +338,15 @@ namespace readlocalsize_kernel {
                 (scalars.width + workgroup_sizes.x - 1) / workgroup_sizes.x,
                 (scalars.height + workgroup_sizes.y - 1) / workgroup_sizes.y);
 
-        clspv_utils::kernel_invocation invocation(*info.device, *info.cmd_pool,
-                                              info.memory_properties);
+        clspv_utils::kernel_invocation invocation(kernel,
+                                                  *info.cmd_pool,
+                                                  info.memory_properties);
 
         invocation.addLiteralSamplers(samplers);
         invocation.addStorageBufferArgument(outLocalSizes);
         invocation.addPodArgument(scalars);
 
-        return invocation.run(info.graphics_queue, kernel, num_workgroups);
+        return invocation.run(info.graphics_queue, num_workgroups);
     }
 
     void test(clspv_utils::kernel&              kernel,

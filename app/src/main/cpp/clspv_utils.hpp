@@ -102,6 +102,7 @@ namespace clspv_utils {
 
         std::string                 getName() const { return mName; }
         std::vector<std::string>    getEntryPoints() const;
+        vk::Device                  getDevice() const { return mDevice; }
 
         details::pipeline           createPipeline(const std::string&           entryPoint,
                                                    const WorkgroupDimensions&   workGroupSizes,
@@ -128,23 +129,24 @@ namespace clspv_utils {
         std::string         getEntryPoint() const { return mEntryPoint; }
         WorkgroupDimensions getWorkgroupSize() const { return mWorkgroupSizes; }
 
+        kernel_module&          getModule() { return mModule; }
+        const kernel_module&    getModule() const { return mModule; }
+
         vk::DescriptorSet   getLiteralSamplerDescSet() const { return mPipeline.mLiteralSamplerDescriptor; }
         vk::DescriptorSet   getArgumentDescSet() const { return mPipeline.mArgumentsDescriptor; }
 
-        // TODO remove const hack on updatePipeline
-        void                updatePipeline(vk::ArrayProxy<int32_t> otherSpecConstants) const;
+        void                updatePipeline(vk::ArrayProxy<int32_t> otherSpecConstants);
 
     private:
         std::reference_wrapper<kernel_module>   mModule;
         std::string                             mEntryPoint;
         WorkgroupDimensions                     mWorkgroupSizes;
-        // TODO remove const hack on mPipeline
-        mutable details::pipeline               mPipeline;
+        details::pipeline                       mPipeline;
     };
 
     class kernel_invocation {
     public:
-        kernel_invocation(vk::Device                                device,
+        kernel_invocation(kernel&                                   kernel,
                           vk::CommandPool                           cmdPool,
                           const vk::PhysicalDeviceMemoryProperties& memoryProperties);
 
@@ -165,15 +167,14 @@ namespace clspv_utils {
         void    addPodArgument(const T& pod);
 
         execution_time_t    run(vk::Queue                   queue,
-                                const kernel&               kern,
                                 const WorkgroupDimensions&  num_workgroups);
 
     private:
-        void        fillCommandBuffer(const kernel&                 kern,
-                                      const WorkgroupDimensions&    num_workgroups);
-        void        updateDescriptorSets(vk::DescriptorSet literalSamplerSet,
-                                         vk::DescriptorSet argumentSet);
+        void        fillCommandBuffer(const WorkgroupDimensions&    num_workgroups);
+        void        updateDescriptorSets();
         void        submitCommand(vk::Queue queue);
+
+        vk::Device  getDevice() const { return mKernel.get().getModule().getDevice(); }
 
     private:
         enum QueryIndex {
@@ -194,7 +195,7 @@ namespace clspv_utils {
         };
 
     private:
-        vk::Device                                  mDevice;
+        std::reference_wrapper<kernel>              mKernel;
         vk::UniqueCommandBuffer                     mCommand;
         vk::PhysicalDeviceMemoryProperties          mMemoryProperties;
         vk::UniqueQueryPool                         mQueryPool;

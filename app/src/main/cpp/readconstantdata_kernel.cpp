@@ -26,14 +26,15 @@ namespace readconstantdata_kernel {
         const clspv_utils::WorkgroupDimensions num_workgroups(
                 (width + workgroup_sizes.x - 1) / workgroup_sizes.x);
 
-        clspv_utils::kernel_invocation invocation(*info.device, *info.cmd_pool,
+        clspv_utils::kernel_invocation invocation(kernel,
+                                                  *info.cmd_pool,
                                                   info.memory_properties);
 
         invocation.addLiteralSamplers(samplers);
         invocation.addStorageBufferArgument(dst_buffer);
         invocation.addPodArgument(scalars);
 
-        return invocation.run(info.graphics_queue, kernel, num_workgroups);
+        return invocation.run(info.graphics_queue, num_workgroups);
     }
 
     void test_all(clspv_utils::kernel&              kernel,
