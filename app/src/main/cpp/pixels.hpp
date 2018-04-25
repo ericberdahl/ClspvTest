@@ -41,6 +41,41 @@ namespace pixels {
     };
 
     template<>
+    struct traits<std::int32_t> {
+        typedef std::int32_t component_t;
+        typedef std::int32_t pixel_t;
+
+        static constexpr const int num_components = 1;
+        static constexpr const char *const type_name = "int32_t";
+
+        static const cl_channel_order cl_pixel_order = CL_R;
+        static const cl_channel_type cl_pixel_type = CL_SIGNED_INT32;
+        static const VkFormat vk_pixel_type = VK_FORMAT_R32_SINT;
+
+        static pixel_t translate(float pixel) {
+            return (pixel_t) (pixel * std::numeric_limits<component_t>::max());
+        }
+
+        static pixel_t translate(component_t pixel) { return pixel; }
+
+        template<typename T>
+        static pixel_t translate(const gpu_types::vec2<T> &pixel) {
+            return translate(pixel.x);
+        }
+
+        template<typename T>
+        static pixel_t translate(const gpu_types::vec4<T> &pixel) {
+            return translate(pixel.x);
+        }
+
+        static std::string toString(pixel_t pixel) {
+            std::ostringstream stream;
+            stream << "{ " << pixel << " }";
+            return stream.str();
+        }
+    };
+
+    template<>
     struct traits<float> {
         typedef float component_t;
         typedef float pixel_t;

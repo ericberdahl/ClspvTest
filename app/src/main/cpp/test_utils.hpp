@@ -47,6 +47,13 @@ namespace test_utils {
         };
 
         template<>
+        struct pixel_comparator<std::int32_t> {
+            static bool is_equal(std::int32_t l, std::int32_t r) {
+                return l == r;
+            }
+        };
+
+        template<>
         struct pixel_comparator<float> {
             static bool is_equal(float l, float r) {
                 const int ulp = 2;
