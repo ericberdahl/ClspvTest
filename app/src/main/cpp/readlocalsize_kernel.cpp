@@ -366,8 +366,10 @@ namespace readlocalsize_kernel {
         const int buffer_width    = 64;
 
         // allocate data buffer
-        const std::size_t buffer_size = buffer_width * buffer_height * sizeof(std::int32_t);
+        auto num_elements = buffer_width * buffer_height;
+        const std::size_t buffer_size = num_elements * sizeof(std::int32_t);
         vulkan_utils::storage_buffer dst_buffer(info, buffer_size);
+        test_utils::fill_random_pixels<std::int32_t>(dst_buffer.mem, num_elements);
 
         auto expectedResults = compute_expected_results(idtype,
                                                         buffer_width,
