@@ -17,6 +17,14 @@
 namespace clspv_utils {
 
     namespace {
+        int sampler_descriptor_set(const details::spv_map& spv_map) {
+            return (spv_map.samplers.empty() ? -1 : spv_map.samplers[0].descriptor_set);
+        }
+
+        int kernel_descriptor_set(const details::spv_map::kernel& kernel) {
+            return (kernel.args.empty() ? -1 : kernel.args[0].descriptor_set);
+        }
+
         const auto kArgKind_DescriptorType_Map = {
                 std::make_pair(details::spv_map::arg::kind_pod_ubo, vk::DescriptorType::eUniformBuffer),
                 std::make_pair(details::spv_map::arg::kind_pod, vk::DescriptorType::eStorageBuffer),
@@ -26,7 +34,7 @@ namespace clspv_utils {
                 std::make_pair(details::spv_map::arg::kind_sampler, vk::DescriptorType::eSampler)
         };
 
-        vk::DescriptorType findDescriptorType(details::spv_map::arg::kind_t argKind) {
+        vk::DescriptorType find_descriptor_type(details::spv_map::arg::kind_t argKind) {
             auto found = std::find_if(std::begin(kArgKind_DescriptorType_Map),
                                       std::end(kArgKind_DescriptorType_Map),
                                       [argKind](decltype(kArgKind_DescriptorType_Map)::const_reference p) {
@@ -49,7 +57,7 @@ namespace clspv_utils {
                 std::make_pair("local", details::spv_map::arg::kind_local)
         };
 
-        details::spv_map::arg::kind_t findArgKind(const std::string &argType) {
+        details::spv_map::arg::kind_t find_arg_kind(const std::string &argType) {
             auto found = std::find_if(std::begin(kSpvMapArgType_ArgKind_Map),
                                       std::end(kSpvMapArgType_ArgKind_Map),
                                       [&argType](decltype(kSpvMapArgType_ArgKind_Map)::const_reference p) {
@@ -215,7 +223,7 @@ namespace clspv_utils {
                 // ignore any argument not in offset 0
                 if (0 != ka.offset) continue;
 
-                descriptorTypes.push_back(findDescriptorType(ka.kind));
+                descriptorTypes.push_back(find_descriptor_type(ka.kind));
             }
 
             result.push_back(create_descriptor_set_layout(device, descriptorTypes));
@@ -234,42 +242,96 @@ namespace clspv_utils {
             return device.createPipelineLayoutUnique(createInfo);
         }
 
-        void validate_sampler(const details::spv_map::sampler& sampler) {
+        std::vector<std::string> validate_sampler(const details::spv_map::sampler& sampler) {
+            std::vector<std::string> result;
+
             if (sampler.opencl_flags == 0) {
-                throw std::runtime_error("sampler in spvmap missing OpenCL flags");
+                result.push_back("sampler missing OpenCL flags");
             }
             if (sampler.descriptor_set < 0) {
-                throw std::runtime_error("sampler in spvmap missing descriptorSet");
+                result.push_back("sampler missing descriptorSet");
             }
             if (sampler.binding < 0) {
-                throw std::runtime_error("sampler in spvmap missing binding");
+                result.push_back("sampler missing binding");
             }
+
+            return result;
         }
 
-        void validate_kernel_arg(const details::spv_map::arg& arg) {
+        std::vector<std::string> validate_kernel_arg(const details::spv_map::arg& arg) {
+            std::vector<std::string> result;
+
             if (arg.kind == details::spv_map::arg::kind_unknown) {
-                throw std::runtime_error("known argument kind encountered in spvmap");
+                result.push_back("kernel argument kind unknown");
             }
             if (arg.ordinal < 0) {
-                throw std::runtime_error("argOrdinal missing from kernel argument in spvmap");
+                result.push_back("kernel argument missing ordinal");
             }
 
             if (arg.kind == details::spv_map::arg::kind_local) {
                 if (arg.spec_constant < 0) {
-                    throw std::runtime_error("local argument in spvmap missing arrayNumElemSpecId");
+                    result.push_back("kernel argument missing spec constant");
                 }
             }
             else {
                 if (arg.descriptor_set < 0) {
-                    throw std::runtime_error("argument in spvmap missing descriptorSet");
+                    result.push_back("kernel argument missing descriptorSet");
                 }
                 if (arg.binding < 0) {
-                    throw std::runtime_error("argument in spvmap missing binding");
+                    result.push_back("kernel argument missing binding");
                 }
                 if (arg.offset < 0) {
-                    throw std::runtime_error("argument in spvmap missing offset");
+                    result.push_back("kernel argument missing offset");
                 }
             }
+
+            return result;
+        }
+
+        std::vector<std::string> validate_kernel(const details::spv_map::kernel& kernel) {
+            std::vector<std::string> result;
+            std::vector<std::string> tempErrors;
+
+            if (kernel.name.empty()) {
+                result.push_back("kernel has no name");
+            }
+
+            const int arg_ds = kernel_descriptor_set(kernel);
+            for (auto& ka : kernel.args) {
+                tempErrors = validate_kernel_arg(ka);
+                result.insert(result.end(), tempErrors.begin(), tempErrors.end());
+                tempErrors.clear();
+
+                if (ka.kind != details::spv_map::arg::kind_local && ka.descriptor_set != arg_ds) {
+                    result.push_back("kernel arg descriptor_sets don't match");
+                }
+            }
+
+            return result;
+        }
+
+        std::vector<std::string> validate_spvmap(const details::spv_map& spvmap) {
+            std::vector<std::string> result;
+            std::vector<std::string> tempErrors;
+
+            for (auto& k : spvmap.kernels) {
+                tempErrors = validate_kernel(k);
+                result.insert(result.end(), tempErrors.begin(), tempErrors.end());
+                tempErrors.clear();
+            }
+
+            const int sampler_ds = sampler_descriptor_set(spvmap);
+            for (auto& s : spvmap.samplers) {
+                tempErrors = validate_sampler(s);
+                result.insert(result.end(), tempErrors.begin(), tempErrors.end());
+                tempErrors.clear();
+
+                if (s.descriptor_set != sampler_ds) {
+                    result.push_back("sampler descriptor_sets don't match");
+                }
+            }
+
+            return result;
         }
 
         details::spv_map::sampler parse_spvmap_sampler(key_value_t tag, std::istream& in) {
@@ -286,8 +348,6 @@ namespace clspv_utils {
                     result.binding = std::atoi(tag.second.c_str());
                 }
             }
-
-            validate_sampler(result);
 
             return result;
         }
@@ -307,7 +367,7 @@ namespace clspv_utils {
                 } else if ("offset" == tag.first) {
                     result.offset = std::atoi(tag.second.c_str());
                 } else if ("argKind" == tag.first) {
-                    result.kind = findArgKind(tag.second);
+                    result.kind = find_arg_kind(tag.second);
                 } else if ("arrayElemSize" == tag.first) {
                     // arrayElemSize is ignored by clspvtest
                 } else if ("arrayNumElemSpecId" == tag.first) {
@@ -315,8 +375,6 @@ namespace clspv_utils {
                 }
 
             }
-
-            validate_kernel_arg(result);
 
             return result;
         }
@@ -365,6 +423,15 @@ namespace clspv_utils {
                     }
                     kernel->args[kernel_arg.ordinal] = kernel_arg;
                 }
+            }
+
+            auto validationErrors = validate_spvmap(result);
+            if (!validationErrors.empty()) {
+                std::ostringstream os;
+                for (auto& s : validationErrors) {
+                    os << s << std::endl;
+                }
+                throw std::runtime_error(os.str());
             }
 
             return result;
