@@ -7,40 +7,46 @@
 namespace readlocalsize_kernel {
 
     clspv_utils::execution_time_t
-    invoke(const clspv_utils::kernel_module&   module,
-           const clspv_utils::kernel&          kernel,
-           const sample_info&                  info,
-           vk::ArrayProxy<const vk::Sampler>   samplers,
-           std::tuple<int, int, int>&          outLocalSizes) {
+    invoke(const clspv_utils::kernel_module&    module,
+           const clspv_utils::kernel&           kernel,
+           const sample_info&                   info,
+           vk::ArrayProxy<const vk::Sampler>    samplers,
+           vk::Buffer                           outLocalSizes,
+           int                                  inWidth,
+           int                                  inHeight,
+           int                                  inPitch,
+           idtype_t                             inIdType) {
         struct scalar_args {
-            int outWorkgroupX;  // offset 0
-            int outWorkgroupY;  // offset 4
-            int outWorkgroupZ;  // offset 8
+            int width;  // offset 0
+            int height; // offset 4
+            int pitch;  // offset 8
+            int idtype; // offset 12
         };
-        static_assert(0 == offsetof(scalar_args, outWorkgroupX), "outWorkgroupX offset incorrect");
-        static_assert(4 == offsetof(scalar_args, outWorkgroupY), "outWorkgroupY offset incorrect");
-        static_assert(8 == offsetof(scalar_args, outWorkgroupZ), "outWorkgroupZ offset incorrect");
+        static_assert(0 == offsetof(scalar_args, width), "width offset incorrect");
+        static_assert(4 == offsetof(scalar_args, height), "height offset incorrect");
+        static_assert(8 == offsetof(scalar_args, pitch), "pitch offset incorrect");
+        static_assert(12 == offsetof(scalar_args, idtype), "idtype offset incorrect");
 
-        vulkan_utils::storage_buffer outArgs(info, sizeof(scalar_args));
+        const scalar_args scalars = {
+                inWidth,
+                inHeight,
+                inPitch,
+                inIdType
+        };
 
-        // The localsize kernel needs only a single workgroup with a single workitem
-        const clspv_utils::WorkgroupDimensions num_workgroups(1, 1);
+        const clspv_utils::WorkgroupDimensions workgroup_sizes = kernel.getWorkgroupSize();
+        const clspv_utils::WorkgroupDimensions num_workgroups(
+                (scalars.width + workgroup_sizes.x - 1) / workgroup_sizes.x,
+                (scalars.height + workgroup_sizes.y - 1) / workgroup_sizes.y);
 
         clspv_utils::kernel_invocation invocation(*info.device, *info.cmd_pool,
                                               info.memory_properties);
 
         invocation.addLiteralSamplers(samplers);
-        invocation.addStorageBufferArgument(*outArgs.buf);
+        invocation.addStorageBufferArgument(outLocalSizes);
+        invocation.addPodArgument(scalars);
 
-        auto result = invocation.run(info.graphics_queue, kernel, num_workgroups);
-
-        scalar_args outScalars;
-        vulkan_utils::copyFromDeviceMemory(&outScalars, outArgs.mem, sizeof(outScalars));
-        outLocalSizes = std::make_tuple(outScalars.outWorkgroupX,
-                                        outScalars.outWorkgroupY,
-                                        outScalars.outWorkgroupZ);
-
-        return result;
+        return invocation.run(info.graphics_queue, kernel, num_workgroups);
     }
 
     void test(const clspv_utils::kernel_module&  module,
@@ -53,29 +59,40 @@ namespace readlocalsize_kernel {
     {
         test_utils::InvocationResult    invocationResult;
 
-        const clspv_utils::WorkgroupDimensions expected = kernel.getWorkgroupSize();
+        invocationResult.mVariation = "global_id_x";
 
-        std::tuple<int, int, int> observed;
-        invocationResult.mExecutionTime = invoke(module, kernel, info, samplers, observed);
+        int buffer_height   = 64;
+        int buffer_width    = 64;
 
-        const bool success = (expected.x == std::get<0>(observed) &&
-                              expected.y == std::get<1>(observed) &&
-                              1 == std::get<2>(observed));
+        // allocate data buffer
+        const std::size_t buffer_size = buffer_width * buffer_height * sizeof(std::int32_t);
+        vulkan_utils::storage_buffer dst_buffer(info, buffer_size);
 
-        if (success) {
-            ++invocationResult.mNumCorrect;
-        } else {
-            ++invocationResult.mNumErrors;
-            if (verbose) {
-                std::ostringstream os;
-                os << (success ? "CORRECT" : "INCORRECT")
-                   << ": workgroup_size expected{x=" << expected.x << ", y=" << expected.y
-                   << ", z=1}"
-                   << " observed{x=" << std::get<0>(observed) << ", y=" << std::get<1>(observed)
-                   << ", z=" << std::get<2>(observed) << "}";
-                invocationResult.mMessages.push_back(os.str());
-            }
+        std::vector<std::int32_t> expectedResults(buffer_height * buffer_width);
+        auto rowIter = expectedResults.begin();
+        for (int i = 0; i < buffer_height; ++i) {
+            auto nextRow = std::next(rowIter, buffer_width);
+            std::iota(rowIter, nextRow, 0);
+            rowIter = nextRow;
         }
+
+        invocationResult.mExecutionTime = invoke(module,
+                                                 kernel,
+                                                 info,
+                                                 samplers,
+                                                 *dst_buffer.buf,
+                                                 buffer_width,
+                                                 buffer_height,
+                                                 buffer_width,
+                                                 idtype_globalid_x);
+
+        test_utils::check_results<std::int32_t,std::int32_t>(expectedResults.data(),
+                                                             dst_buffer.mem,
+                                                             buffer_width,
+                                                             buffer_height,
+                                                             buffer_width,
+                                                             verbose,
+                                                             invocationResult);
 
         resultSet.push_back(std::move(invocationResult));
     };
