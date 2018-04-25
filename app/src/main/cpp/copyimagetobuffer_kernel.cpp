@@ -8,7 +8,6 @@ namespace copyimagetobuffer_kernel {
 
     clspv_utils::execution_time_t
     invoke(clspv_utils::kernel&                 kernel,
-           const sample_info&                   info,
            vk::ArrayProxy<const vk::Sampler>    samplers,
            vk::ImageView                        src_image,
            vk::Buffer                           dst_buffer,
@@ -62,11 +61,10 @@ namespace copyimagetobuffer_kernel {
         invocation.addStorageBufferArgument(dst_buffer);
         invocation.addPodArgument(scalars);
 
-        return invocation.run(info.graphics_queue, num_workgroups);
+        return invocation.run(num_workgroups);
     }
 
     void test_matrix(clspv_utils::kernel&               kernel,
-                     const sample_info&                 info,
                      vk::ArrayProxy<const vk::Sampler>  samplers,
                      const std::vector<std::string>&    args,
                      bool                               verbose,
@@ -86,7 +84,6 @@ namespace copyimagetobuffer_kernel {
 
         test_utils::test_kernel_invocations(kernel,
                                             std::begin(tests), std::end(tests),
-                                            info,
                                             samplers,
                                             args,
                                             verbose,

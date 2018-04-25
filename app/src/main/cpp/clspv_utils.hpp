@@ -91,9 +91,10 @@ namespace clspv_utils {
 
     struct device_t {
         vk::Device                          mDevice;
+        vk::PhysicalDeviceMemoryProperties  mMemoryProperties;
         vk::DescriptorPool                  mDescriptorPool;
         vk::CommandPool                     mCommandPool;
-        vk::PhysicalDeviceMemoryProperties  mMemoryProperties;
+        vk::Queue                           mComputeQueue;
     };
 
     class kernel_module {
@@ -171,13 +172,12 @@ namespace clspv_utils {
         template <typename T>
         void    addPodArgument(const T& pod);
 
-        execution_time_t    run(vk::Queue                   queue,
-                                const WorkgroupDimensions&  num_workgroups);
+        execution_time_t    run(const WorkgroupDimensions& num_workgroups);
 
     private:
         void        fillCommandBuffer(const WorkgroupDimensions&    num_workgroups);
         void        updateDescriptorSets();
-        void        submitCommand(vk::Queue queue);
+        void        submitCommand();
 
         const device_t& getDevice() const { return mKernel.get().getModule().getDevice(); }
 

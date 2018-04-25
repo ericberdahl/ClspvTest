@@ -8,7 +8,6 @@
 #include "clspv_utils.hpp"
 #include "gpu_types.hpp"
 #include "test_utils.hpp"
-#include "util.hpp"
 #include "vulkan_utils.hpp"
 
 #include <vulkan/vulkan.h>
@@ -17,7 +16,6 @@ namespace fill_kernel {
 
     clspv_utils::execution_time_t
     invoke(clspv_utils::kernel&                 kernel,
-           const sample_info&                   info,
            vk::ArrayProxy<const vk::Sampler>    samplers,
            vk::Buffer                           dst_buffer,
            int                                  pitch,
@@ -29,7 +27,6 @@ namespace fill_kernel {
            const gpu_types::float4&             color);
 
     void test_series(clspv_utils::kernel&               kernel,
-                     const sample_info&                 info,
                      vk::ArrayProxy<const vk::Sampler>  samplers,
                      const std::vector<std::string>&    args,
                      bool                               verbose,
@@ -37,7 +34,6 @@ namespace fill_kernel {
 
     template <typename PixelType>
     void test(clspv_utils::kernel&              kernel,
-              const sample_info&                info,
               vk::ArrayProxy<const vk::Sampler> samplers,
               const std::vector<std::string>&   args,
               bool                              verbose,
@@ -74,7 +70,6 @@ namespace fill_kernel {
         vulkan_utils::fillDeviceMemory(dst_buffer.mem, buffer_width * buffer_height, src_value);
 
         invocationResult.mExecutionTime = invoke(kernel,
-                                                 info,
                                                  samplers,
                                                  *dst_buffer.buf, // dst_buffer
                                                  buffer_width,   // pitch

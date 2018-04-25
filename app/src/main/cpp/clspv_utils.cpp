@@ -11,8 +11,9 @@
 #include <limits>
 #include <memory>
 
-#include "clspv_utils.hpp"
 #include "util.hpp"
+
+#include "clspv_utils.hpp"
 
 namespace clspv_utils {
 
@@ -818,18 +819,17 @@ namespace clspv_utils {
         mCommand->end();
     }
 
-    void kernel_invocation::submitCommand(vk::Queue queue) {
+    void kernel_invocation::submitCommand() {
         vk::CommandBuffer rawCommand = *mCommand;
         vk::SubmitInfo submitInfo;
         submitInfo.setCommandBufferCount(1)
                 .setPCommandBuffers(&rawCommand);
 
-        queue.submit(submitInfo, nullptr);
+        getDevice().mComputeQueue.submit(submitInfo, nullptr);
 
     }
 
-    execution_time_t kernel_invocation::run(vk::Queue                   queue,
-                                            const WorkgroupDimensions&  num_workgroups) {
+    execution_time_t kernel_invocation::run(const WorkgroupDimensions& num_workgroups) {
         // HACK re-create the pipeline if the invocation includes spec constant arguments.
         // TODO factor the pipeline recreation better, possibly along with an overhaul of kernel
         // management
@@ -841,8 +841,8 @@ namespace clspv_utils {
         fillCommandBuffer(num_workgroups);
 
         auto start = std::chrono::high_resolution_clock::now();
-        submitCommand(queue);
-        queue.waitIdle();
+        submitCommand();
+        getDevice().mComputeQueue.waitIdle();
         auto end = std::chrono::high_resolution_clock::now();
 
         uint64_t timestamps[kQueryIndex_Count];

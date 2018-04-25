@@ -7,7 +7,6 @@
 
 #include "clspv_utils.hpp"
 #include "test_utils.hpp"
-#include "util.hpp"
 
 #include <vulkan/vulkan.hpp>
 
@@ -38,7 +37,6 @@ namespace readlocalsize_kernel {
 
     clspv_utils::execution_time_t
     invoke(clspv_utils::kernel&                 kernel,
-           const sample_info&                   info,
            vk::ArrayProxy<const vk::Sampler>    samplers,
            vk::Buffer                           outLocalSizes,
            int                                  inWidth,
@@ -48,7 +46,6 @@ namespace readlocalsize_kernel {
 
 
     void test(clspv_utils::kernel&              kernel,
-              const sample_info&                info,
               vk::ArrayProxy<const vk::Sampler> samplers,
               const std::vector<std::string>&   args,
               bool                              verbose,

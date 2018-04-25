@@ -8,7 +8,6 @@ namespace copybuffertoimage_kernel {
 
     clspv_utils::execution_time_t
     invoke(clspv_utils::kernel&                 kernel,
-           const sample_info&                   info,
            vk::ArrayProxy<const vk::Sampler>    samplers,
            vk::Buffer                           src_buffer,
            vk::ImageView                        dst_image,
@@ -66,11 +65,10 @@ namespace copybuffertoimage_kernel {
         invocation.addWriteOnlyImageArgument(dst_image);
         invocation.addPodArgument(scalars);
 
-        return invocation.run(info.graphics_queue, num_workgroups);
+        return invocation.run(num_workgroups);
     }
 
     void test_matrix(clspv_utils::kernel&               kernel,
-                     const sample_info&                 info,
                      vk::ArrayProxy<const vk::Sampler>  samplers,
                      const std::vector<std::string>&    args,
                      bool                               verbose,
@@ -90,7 +88,6 @@ namespace copybuffertoimage_kernel {
 
         test_utils::test_kernel_invocations(kernel,
                                             std::begin(tests), std::end(tests),
-                                            info,
                                             samplers,
                                             args,
                                             verbose,

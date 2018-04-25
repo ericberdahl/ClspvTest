@@ -388,13 +388,14 @@ void run_manifest(const manifest_t&                     manifest,
                   test_utils::ModuleResultSet&          resultSet) {
     clspv_utils::device_t device = {
             *info.device,
+            info.memory_properties,
             *info.desc_pool,
             *info.cmd_pool,
-            info.memory_properties
+            info.graphics_queue
     };
 
     for (auto m : manifest.tests) {
-        resultSet.push_back(test_utils::test_module(device, m.name, m.kernelTests, info, samplers));
+        resultSet.push_back(test_utils::test_module(device, m.name, m.kernelTests, samplers));
     }
 }
 

@@ -8,7 +8,6 @@ namespace testgreaterthanorequalto_kernel {
 
     clspv_utils::execution_time_t
     invoke(clspv_utils::kernel&                 kernel,
-           const sample_info&                   info,
            vk::ArrayProxy<const vk::Sampler>    samplers,
            vk::Buffer                           dst_buffer,
            int                                  width,
@@ -37,11 +36,10 @@ namespace testgreaterthanorequalto_kernel {
         invocation.addStorageBufferArgument(dst_buffer);
         invocation.addPodArgument(scalars);
 
-        return invocation.run(info.graphics_queue, num_workgroups);
+        return invocation.run(num_workgroups);
     }
 
     void test_all(clspv_utils::kernel&              kernel,
-                  const sample_info&                info,
                   vk::ArrayProxy<const vk::Sampler> samplers,
                   const std::vector<std::string>&   args,
                   bool                              verbose,
@@ -78,7 +76,6 @@ namespace testgreaterthanorequalto_kernel {
         });
 
         invocationResult.mExecutionTime = invoke(kernel,
-                                                 info,
                                                  samplers,
                                                  *dstBuffer.buf,
                                                  buffer_width,

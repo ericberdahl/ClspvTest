@@ -9,7 +9,6 @@
 #include "fp_utils.hpp"
 #include "gpu_types.hpp"
 #include "pixels.hpp"
-#include "util.hpp"
 
 #include <cmath>
 #include <random>
@@ -128,7 +127,6 @@ namespace test_utils {
     typedef std::vector<ModuleResult> ModuleResultSet;
 
     typedef void (*test_kernel_fn)(clspv_utils::kernel&                 kernel,
-                                   const sample_info&                   info,
                                    vk::ArrayProxy<const vk::Sampler>    samplers,
                                    const std::vector<std::string>&      args,
                                    bool                                 verbose,
@@ -351,7 +349,6 @@ namespace test_utils {
     void test_kernel_invocations(clspv_utils::kernel&               kernel,
                                  const test_kernel_fn*              first,
                                  const test_kernel_fn*              last,
-                                 const sample_info&                 info,
                                  vk::ArrayProxy<const vk::Sampler>  samplers,
                                  const std::vector<std::string>&    args,
                                  bool                               verbose,
@@ -359,13 +356,11 @@ namespace test_utils {
 
     KernelResult test_kernel(clspv_utils::kernel_module&        module,
                              const kernel_test_map&             kernelTest,
-                             const sample_info&                 info,
                              vk::ArrayProxy<const vk::Sampler>  samplers);
 
     ModuleResult test_module(clspv_utils::device_t&                 device,
                              const std::string&                     moduleName,
                              const std::vector<kernel_test_map>&    kernelTests,
-                             const sample_info&                     info,
                              vk::ArrayProxy<const vk::Sampler>      samplers);
     
 }

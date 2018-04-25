@@ -8,7 +8,6 @@
 #include "clspv_utils.hpp"
 #include "gpu_types.hpp"
 #include "test_utils.hpp"
-#include "util.hpp"
 #include "vulkan_utils.hpp"
 
 #include <vulkan/vulkan.hpp>
@@ -17,7 +16,6 @@ namespace copyimagetobuffer_kernel {
 
     clspv_utils::execution_time_t
     invoke(clspv_utils::kernel&                 kernel,
-           const sample_info&                   info,
            vk::ArrayProxy<const vk::Sampler>    samplers,
            vk::ImageView                        src_image,
            vk::Buffer                           dst_buffer,
@@ -30,7 +28,6 @@ namespace copyimagetobuffer_kernel {
            int                                  height);
 
     void test_matrix(clspv_utils::kernel&               kernel,
-                     const sample_info&                 info,
                      vk::ArrayProxy<const vk::Sampler>  samplers,
                      const std::vector<std::string>&    args,
                      bool                               verbose,
@@ -38,7 +35,6 @@ namespace copyimagetobuffer_kernel {
 
     template <typename BufferPixelType, typename ImagePixelType>
     void test(clspv_utils::kernel&              kernel,
-              const sample_info&                info,
               vk::ArrayProxy<const vk::Sampler> samplers,
               const std::vector<std::string>&   args,
               bool                              verbose,
@@ -71,7 +67,6 @@ namespace copyimagetobuffer_kernel {
         test_utils::invert_pixel_buffer<BufferPixelType>(dst_buffer.mem, buffer_length);
 
         invocationResult.mExecutionTime = invoke(kernel,
-                                                 info,
                                                  samplers,
                                                  *srcImage.view,
                                                  *dst_buffer.buf,
@@ -94,7 +89,6 @@ namespace copyimagetobuffer_kernel {
 
     template <typename ImagePixelType>
     void test_series(clspv_utils::kernel&               kernel,
-                     const sample_info&                 info,
                      vk::ArrayProxy<const vk::Sampler>  samplers,
                      const std::vector<std::string>&    args,
                      bool                               verbose,
@@ -112,7 +106,6 @@ namespace copyimagetobuffer_kernel {
 
         test_utils::test_kernel_invocations(kernel,
                                             std::begin(tests), std::end(tests),
-                                            info,
                                             samplers,
                                             args,
                                             verbose,

@@ -9,19 +9,17 @@ namespace test_utils {
     void test_kernel_invocations(clspv_utils::kernel&               kernel,
                                  const test_kernel_fn*              first,
                                  const test_kernel_fn*              last,
-                                 const sample_info&                 info,
                                  vk::ArrayProxy<const vk::Sampler>  samplers,
                                  const std::vector<std::string>&    args,
                                  bool                               verbose,
                                  InvocationResultSet&               resultSet) {
         for (; first != last; ++first) {
-            (*first)(kernel, info, samplers, args, verbose, resultSet);
+            (*first)(kernel, samplers, args, verbose, resultSet);
         }
     }
 
     KernelResult test_kernel(clspv_utils::kernel_module&        module,
                              const kernel_test_map&             kernelTest,
-                             const sample_info&                 info,
                              vk::ArrayProxy<const vk::Sampler>  samplers) {
         KernelResult kernelResult;
         kernelResult.mEntryName = kernelTest.entry;
@@ -35,7 +33,6 @@ namespace test_utils {
                 kernelResult.mIterations = kernelTest.iterations;
                 for (unsigned int i = kernelTest.iterations; i > 0; --i) {
                     kernelTest.test(kernel,
-                                    info,
                                     samplers,
                                     kernelTest.args,
                                     kernelTest.verbose,
@@ -68,7 +65,6 @@ namespace test_utils {
     ModuleResult test_module(clspv_utils::device_t&         device,
                              const std::string&             moduleName,
                      const std::vector<kernel_test_map>&    kernelTests,
-                     const sample_info&                     info,
                      vk::ArrayProxy<const vk::Sampler>      samplers) {
         ModuleResult moduleResult;
         moduleResult.mModuleName = moduleName;
@@ -108,7 +104,6 @@ namespace test_utils {
                     } else {
                         KernelResult kernelResult = test_kernel(module,
                                                                 epTest,
-                                                                info,
                                                                 samplers);
 
                         moduleResult.mKernels.push_back(kernelResult);
