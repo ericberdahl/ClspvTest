@@ -2,6 +2,12 @@
 // Created by Eric Berdahl on 10/22/17.
 //
 
+#include "clspv_utils.hpp"
+
+#include "getline_crlf_savvy.hpp"
+#include "opencl_types.hpp"
+#include "util.hpp"
+
 #include <algorithm>
 #include <cassert>
 #include <cstdio>
@@ -10,11 +16,6 @@
 #include <iostream>
 #include <limits>
 #include <memory>
-
-#include "opencl_types.hpp"
-#include "util.hpp"
-
-#include "clspv_utils.hpp"
 
 namespace clspv_utils {
 
@@ -442,7 +443,11 @@ namespace clspv_utils {
             while (!in.eof()) {
                 // read one line
                 std::string line;
-                std::getline(in, line);
+
+                // spvmap files may have been generated on a system which uses different line ending
+                // conventions than the system on which the consumer runs. Safer to fetch lines
+                // using a function which recognizes multiple line endings.
+                crlf_savvy::getline(in, line);
 
                 std::istringstream in_line(line);
                 auto tag = read_key_value_pair(in_line);

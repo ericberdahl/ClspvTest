@@ -48,6 +48,7 @@ add_library(native-activity SHARED
     testgreaterthanorequalto_kernel.cpp
     clspv_test.cpp
     clspv_utils.cpp
+    getline_crlf_savvy.cpp
     gpu_types.cpp
     test_manifest.cpp
     test_result_logging.cpp
