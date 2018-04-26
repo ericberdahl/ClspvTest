@@ -18,32 +18,19 @@
  */
 
 #include "clspv_utils.hpp"
-#include "copybuffertoimage_kernel.hpp"
-#include "copyimagetobuffer_kernel.hpp"
-#include "fill_kernel.hpp"
-#include "fp_utils.hpp"
-#include "gpu_types.hpp"
-#include "half.hpp"
-#include "pixels.hpp"
-#include "readconstantdata_kernel.hpp"
-#include "readlocalsize_kernel.hpp"
-#include "strangeshuffle_kernel.hpp"
-#include "testgreaterthanorequalto_kernel.hpp"
+#include "test_manifest.hpp"
+#include "test_result_logging.hpp"
 #include "test_utils.hpp"
 #include "util_init.hpp"
 #include "vulkan_utils.hpp"
 
+#include <vulkan/vulkan.hpp>
+
 #include <algorithm>
 #include <cassert>
 #include <fstream>
-#include <functional>
 #include <iostream>
-#include <limits>
-#include <memory>
-#include <iterator>
 #include <string>
-
-#include <vulkan/vulkan.hpp>
 
 /* ============================================================================================== */
 
@@ -165,415 +152,8 @@ void my_init_descriptor_pool(struct sample_info &info) {
 
 /* ============================================================================================== */
 
-struct test_map_t {
-    const char*                 name;
-    test_utils::test_kernel_fn  test_fn;
-};
-
-const test_map_t test_map[] = {
-        { "readLocalSize",      readlocalsize_kernel::test },
-        { "fill",               fill_kernel::test_series },
-        { "fill<float4>",       fill_kernel::test<gpu_types::float4> },
-        { "fill<half4>",        fill_kernel::test<gpu_types::half4> },
-        { "copyImageToBuffer",  copyimagetobuffer_kernel::test_matrix },
-        { "copyBufferToImage",  copybuffertoimage_kernel::test_matrix },
-        { "readConstantData",   readconstantdata_kernel::test_all },
-        { "testGtEq",           testgreaterthanorequalto_kernel::test_all },
-        { "strangeShuffle",     strangeshuffle_kernel::test },
-};
-
-test_utils::test_kernel_fn lookup_test_fn(const std::string& testName) {
-    test_utils::test_kernel_fn result = nullptr;
-
-    auto found = std::find_if(std::begin(test_map), std::end(test_map), [&testName](const test_map_t& entry){ return testName == entry.name; });
-    if (found != std::end(test_map)) {
-        result = found->test_fn;
-    }
-
-    return result;
-}
-
-struct manifest_t {
-    bool                                        use_validation_layer = true;
-    std::vector<test_utils::module_test_bundle> tests;
-};
-
-manifest_t read_manifest(std::istream& in) {
-    manifest_t      result;
-    unsigned int    iterations  = 1;
-    bool            verbose     = false;
-
-    test_utils::module_test_bundle* currentModule = NULL;
-    while (!in.eof()) {
-        std::string line;
-        std::getline(in, line);
-
-        std::istringstream in_line(line);
-
-        std::string op;
-        in_line >> op;
-        if (op.empty() || op[0] == '#') {
-            // line is either blank or a comment, skip it
-        }
-        else if (op == "module") {
-            // add module to list of modules to load
-            test_utils::module_test_bundle moduleEntry;
-            in_line >> moduleEntry.name;
-
-            result.tests.push_back(moduleEntry);
-            currentModule = &result.tests.back();
-        }
-        else if (op == "test") {
-            // test kernel in module
-            if (currentModule) {
-                test_utils::kernel_test_map testEntry;
-                testEntry.verbose = verbose;
-                testEntry.iterations = iterations;
-
-                std::string testName;
-                in_line >> testEntry.entry
-                        >> testName
-                        >> testEntry.workgroupSize.x
-                        >> testEntry.workgroupSize.y;
-
-                while (!in_line.eof()) {
-                    std::string arg;
-                    in_line >> arg;
-
-                    // comment delimiter halts collection of test arguments
-                    if (arg[0] == '#') break;
-
-                    testEntry.args.push_back(arg);
-                }
-
-                testEntry.test = lookup_test_fn(testName);
-
-                bool lineIsGood = true;
-
-                if (!testEntry.test) {
-                    LOGE("%s: cannot find test '%s' from command '%s'",
-                         __func__,
-                         testName.c_str(),
-                         line.c_str());
-                    lineIsGood = false;
-                }
-                if (1 > testEntry.workgroupSize.x || 1 > testEntry.workgroupSize.y) {
-                    LOGE("%s: bad workgroup dimensions {%d,%d} from command '%s'",
-                         __func__,
-                         testEntry.workgroupSize.x,
-                         testEntry.workgroupSize.y,
-                         line.c_str());
-                    lineIsGood = false;
-                }
-
-                if (lineIsGood) {
-                    currentModule->kernelTests.push_back(testEntry);
-                }
-            }
-            else {
-                LOGE("%s: no module for test '%s'", __func__, line.c_str());
-            }
-        }
-        else if (op == "skip") {
-            // skip kernel in module
-            if (currentModule) {
-                test_utils::kernel_test_map skipEntry;
-                skipEntry.workgroupSize = clspv_utils::WorkgroupDimensions(0, 0);
-
-                in_line >> skipEntry.entry;
-
-                currentModule->kernelTests.push_back(skipEntry);
-            }
-            else {
-                LOGE("%s: no module for skip '%s'", __func__, line.c_str());
-            }
-        }
-        else if (op == "vkValidation") {
-            // turn vulkan validation layers on/off
-            std::string on_off;
-            in_line >> on_off;
-
-            if (on_off == "all") {
-                result.use_validation_layer = true;
-            }
-            else if (on_off == "none") {
-                result.use_validation_layer = false;
-            }
-            else {
-                LOGE("%s: unrecognized vkValidation token '%s'", __func__, on_off.c_str());
-            }
-        }
-        else if (op == "verbosity") {
-            // set verbosity of tests
-            std::string verbose_level;
-            in_line >> verbose_level;
-
-            if (verbose_level == "full") {
-                verbose = true;
-            }
-            else if (verbose_level == "silent") {
-                verbose = false;
-            }
-            else {
-                LOGE("%s: unrecognized verbose level '%s'", __func__, verbose_level.c_str());
-            }
-        }
-        else if (op == "iterations") {
-            // set number of iterations for tests
-            int iterations_requested;
-            in_line >> iterations_requested;
-
-            if (0 >= iterations_requested) {
-                LOGE("%s: illegal iteration count requested '%d'", __func__, iterations_requested);
-            }
-            else  {
-                iterations = iterations_requested;
-            }
-        }
-        else if (op == "end") {
-            // terminate reading the manifest
-            break;
-        }
-        else {
-            LOGE("%s: ignoring ill-formed line '%s'", __func__, line.c_str());
-        }
-    }
-
-    return result;
-}
-
-manifest_t read_manifest(const std::string& inManifest) {
-    std::istringstream is(inManifest);
-    return read_manifest(is);
-}
-
-void run_manifest(const manifest_t&             manifest,
-                  const sample_info&            info,
-                  test_utils::ModuleResultSet&  resultSet) {
-    clspv_utils::device_t device = {
-            *info.device,
-            info.memory_properties,
-            *info.desc_pool,
-            *info.cmd_pool,
-            info.graphics_queue
-    };
-
-    for (auto m : manifest.tests) {
-        resultSet.push_back(test_utils::test_module(device, m.name, m.kernelTests));
-    }
-}
-
-std::pair<unsigned int, unsigned int> countResults(const test_utils::InvocationResult& ir) {
-    // an invocation passes if it generates at least one correct value and no incorrect values
-    return (ir.mNumCorrect > 0 && ir.mNumErrors == 0 ? std::make_pair(1, 0) : std::make_pair(0, 1));
-};
-
-std::pair<unsigned int, unsigned int> countResults(const test_utils::KernelResult& kr) {
-    // a kernel's results are the aggregate sum of its invocations
-    return std::accumulate(kr.mInvocations.begin(), kr.mInvocations.end(),
-                           std::make_pair(0, 0),
-                           [](std::pair<unsigned int, unsigned int> r, const test_utils::InvocationResult& ir) {
-                               auto addend = countResults(ir);
-                               r.first += addend.first;
-                               r.second += addend.second;
-                               return r;
-                           });
-};
-
-std::pair<unsigned int, unsigned int> countResults(const test_utils::ModuleResult& mr) {
-    // a module's results are the aggregate sum of its kernels, combined with the result of its own
-    // loading (i.e. whether it loaded correctly or not)
-    return std::accumulate(mr.mKernels.begin(), mr.mKernels.end(),
-                           mr.mLoadedCorrectly ? std::make_pair(1, 0) : std::make_pair(0, 1),
-                           [](std::pair<unsigned int, unsigned int> r, const test_utils::KernelResult& kr) {
-                               auto addend = countResults(kr);
-                               r.first += addend.first;
-                               r.second += addend.second;
-                               return r;
-                           });
-};
-
-std::pair<unsigned int, unsigned int> countResults(const test_utils::ModuleResultSet& moduleResultSet) {
-    return std::accumulate(moduleResultSet.begin(), moduleResultSet.end(),
-                           std::make_pair(0, 0),
-                           [](std::pair<unsigned int, unsigned int> r, const test_utils::ModuleResult& mr) {
-                               auto addend = countResults(mr);
-                               r.first += addend.first;
-                               r.second += addend.second;
-                               return r;
-                           });
-};
-
-void logPhysicalDeviceInfo(const sample_info& info) {
-    const vk::PhysicalDeviceProperties props = info.gpu.getProperties();
-    std::ostringstream os;
-    os << "PhysicalDevice {" << std::endl
-       << "   apiVersion:" << props.apiVersion << std::endl
-       << "   driverVersion:" << props.driverVersion << std::endl
-       << "   vendorID:" << props.vendorID << std::endl
-       << "   deviceID:" << props.deviceID << std::endl
-       << "   deviceName:" << props.deviceName << std::endl
-       << "}";
-    LOGI("%s", os.str().c_str());
-}
-
-struct execution_times {
-    double wallClockTime_s      = 0.0;
-    double executionTime_ns     = 0.0;
-    double hostBarrierTime_ns   = 0.0;
-    double gpuBarrierTime_ns    = 0.0;
-};
-
-execution_times measureInvocationTime(const sample_info& info, const test_utils::InvocationResult& ir) {
-    auto& timestamps = ir.mExecutionTime.timestamps;
-
-    execution_times result;
-    result.wallClockTime_s = ir.mExecutionTime.cpu_duration.count();
-    result.executionTime_ns = vulkan_utils::timestamp_delta_ns(timestamps.host_barrier, timestamps.execution, info.physical_device_properties, info.graphics_queue_family_properties);
-    result.hostBarrierTime_ns = vulkan_utils::timestamp_delta_ns(timestamps.start, timestamps.host_barrier, info.physical_device_properties, info.graphics_queue_family_properties);
-    result.gpuBarrierTime_ns = vulkan_utils::timestamp_delta_ns(timestamps.execution, timestamps.gpu_barrier, info.physical_device_properties, info.graphics_queue_family_properties);
-
-    return result;
-}
-
-void logResults(const sample_info& info, const test_utils::InvocationResult& ir) {
-    const execution_times times = measureInvocationTime(info, ir);
-
-    std::ostringstream os;
-    os << (ir.mNumCorrect > 0 && ir.mNumErrors == 0 ? "PASS" : "FAIL");
-
-    if (!ir.mVariation.empty()) {
-        os << " variation:" << ir.mVariation << "";
-    }
-
-    os << " correctValues:" << ir.mNumCorrect
-       << " incorrectValues:" << ir.mNumErrors
-       << " wallClockTime:" << times.wallClockTime_s * 1000.0f << "ms"
-       << " executionTime:" << times.executionTime_ns/1000.0f << "µs"
-       << " hostBarrierTime:" << times.hostBarrierTime_ns/1000.0f << "µs"
-       << " gpuBarrierTime:" << times.gpuBarrierTime_ns/1000.0f << "µs";
-
-    LOGI("      %s", os.str().c_str());
-
-    for (auto err : ir.mMessages) {
-        LOGD("         %s", err.c_str());
-    }
-}
-
-void logSummaryStats(const sample_info& info, const test_utils::InvocationResultSet& resultSet) {
-    std::vector<execution_times> times;
-    times.reserve(resultSet.size());
-    transform(resultSet.begin(), resultSet.end(), std::back_inserter(times),
-              [&info](const test_utils::InvocationResult& ir) {
-                  return measureInvocationTime(info, ir);
-              });
-    auto num_times = times.size();
-
-    execution_times mean = accumulate(times.begin(), times.end(), execution_times(),
-                                      [&info](execution_times accum, const execution_times& t) {
-                                          accum.wallClockTime_s += t.wallClockTime_s;
-                                          accum.executionTime_ns += t.executionTime_ns;
-                                          accum.hostBarrierTime_ns += t.hostBarrierTime_ns;
-                                          accum.gpuBarrierTime_ns += t.gpuBarrierTime_ns;
-                                          return accum;
-                                      });
-    mean.wallClockTime_s /= num_times;
-    mean.executionTime_ns /= num_times;
-    mean.hostBarrierTime_ns /= num_times;
-    mean.gpuBarrierTime_ns /= num_times;
-
-    std::ostringstream os;
-    os << "AVERAGE "
-       << " wallClockTime:" << mean.wallClockTime_s * 1000.0f << "ms"
-       << " executionTime:" << mean.executionTime_ns/1000.0f << "µs"
-       << " hostBarrierTime:" << mean.hostBarrierTime_ns/1000.0f << "µs"
-       << " gpuBarrierTime:" << mean.gpuBarrierTime_ns/1000.0f << "µs";
-
-    LOGI("      %s", os.str().c_str());
-
-    if (num_times > 1) {
-        execution_times variance = accumulate(times.begin(), times.end(), execution_times(),
-                                              [mean](execution_times accum, const execution_times& t) {
-                                                  accum.wallClockTime_s += pow(mean.wallClockTime_s - t.wallClockTime_s, 2);
-                                                  accum.executionTime_ns += pow(mean.executionTime_ns - t.executionTime_ns, 2);
-                                                  accum.hostBarrierTime_ns += pow(mean.hostBarrierTime_ns - t.hostBarrierTime_ns, 2);
-                                                  accum.gpuBarrierTime_ns += pow(mean.gpuBarrierTime_ns - t.gpuBarrierTime_ns, 2);
-                                                  return accum;
-                                              });
-        variance.wallClockTime_s /= (num_times - 1);
-        variance.executionTime_ns /= (num_times - 1);
-        variance.hostBarrierTime_ns /= (num_times - 1);
-        variance.gpuBarrierTime_ns /= (num_times - 1);
-
-        os.clear();
-        os.str("");
-        os << "STD_DEVIATION "
-           << " wallClockTime:" << sqrt(variance.wallClockTime_s) * 1000.0f << "ms"
-           << " executionTime:" << sqrt(variance.executionTime_ns)/1000.0f << "µs"
-           << " hostBarrierTime:" << sqrt(variance.hostBarrierTime_ns)/1000.0f << "µs"
-           << " gpuBarrierTime:" << sqrt(variance.gpuBarrierTime_ns)/1000.0f << "µs";
-
-        LOGI("      %s", os.str().c_str());
-
-    }
-}
-
-void logResults(const sample_info& info, const test_utils::KernelResult& kr) {
-    std::ostringstream os;
-
-    os << "Kernel:" << kr.mEntryName;
-    if (kr.mSkipped) {
-        os << " SKIPPED";
-    }
-    else if (!kr.mCompiledCorrectly) {
-        os << " COMPILE-FAILURE";
-    }
-    if (!kr.mExceptionString.empty()) {
-    	os << " " << kr.mExceptionString;
-    }
-    LOGI("   %s", os.str().c_str());
-
-    for (auto ir : kr.mInvocations) {
-        logResults(info, ir);
-    }
-
-    if (kr.mIterations > 1) {
-        logSummaryStats(info, kr.mInvocations);
-    }
-}
-
-void logResults(const sample_info& info, const test_utils::ModuleResult& mr) {
-    std::ostringstream os;
-    os << "Module:" << mr.mModuleName;
-    if (!mr.mExceptionString.empty()) {
-        os << " loadException:" << mr.mExceptionString;
-    }
-    LOGI("%s", os.str().c_str());
-
-    for (auto kr : mr.mKernels) {
-        logResults(info, kr);
-    }
-}
-
-void logResults(const sample_info& info, const test_utils::ModuleResultSet& moduleResultSet) {
-    logPhysicalDeviceInfo(info);
-
-    for (auto mr : moduleResultSet) {
-        logResults(info, mr);
-    }
-
-    auto results = countResults(moduleResultSet);
-
-    std::ostringstream os;
-    os << "Overall Summary"
-       << " pass:" << results.first << " fail:" << results.second;
-    LOGI("%s", os.str().c_str());
-}
-
-/* ============================================================================================== */
-
 int sample_main(int argc, char *argv[]) {
-    const auto manifest = read_manifest(read_asset_file("test_manifest.txt"));
+    const auto manifest = test_manifest::read(read_asset_file("test_manifest.txt"));
 
     struct sample_info info = {};
     init_global_layer_properties(info);
@@ -597,15 +177,24 @@ int sample_main(int argc, char *argv[]) {
     init_command_pool(info);
     my_init_descriptor_pool(info);
 
-    test_utils::ModuleResultSet moduleResultSet;
-    run_manifest(manifest, info, moduleResultSet);
+    clspv_utils::device_t device = {
+            *info.device,
+            info.memory_properties,
+            *info.desc_pool,
+            *info.cmd_pool,
+            info.graphics_queue
+    };
 
-    logResults(info, moduleResultSet);
+    test_utils::ModuleResultSet moduleResultSet;
+    test_manifest::run(manifest, device, moduleResultSet);
+
+    test_result_logging::logResults(info, moduleResultSet);
 
     //
     // Clean up
     //
 
+    device.mSamplerCache.clear();
     info.desc_pool.reset();
     info.cmd_pool.reset();
     info.device->waitIdle();

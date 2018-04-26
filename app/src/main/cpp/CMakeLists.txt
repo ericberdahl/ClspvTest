@@ -49,6 +49,8 @@ add_library(native-activity SHARED
     clspv_test.cpp
     clspv_utils.cpp
     gpu_types.cpp
+    test_manifest.cpp
+    test_result_logging.cpp
     test_utils.cpp
     vulkan_utils.cpp
     util.cpp
