@@ -164,40 +164,6 @@ void my_init_descriptor_pool(struct sample_info &info) {
     info.desc_pool = info.device->createDescriptorPoolUnique(createInfo);
 }
 
-vk::UniqueSampler create_compatible_sampler(vk::Device device, int opencl_flags) {
-    typedef std::pair<int,vk::SamplerAddressMode> address_mode_map;
-    const address_mode_map address_mode_translator[] = {
-            { CLK_ADDRESS_NONE, vk::SamplerAddressMode::eRepeat },
-            { CLK_ADDRESS_CLAMP_TO_EDGE, vk::SamplerAddressMode::eClampToEdge },
-            { CLK_ADDRESS_CLAMP, vk::SamplerAddressMode::eClampToBorder },
-            { CLK_ADDRESS_REPEAT, vk::SamplerAddressMode::eRepeat },
-            { CLK_ADDRESS_MIRRORED_REPEAT, vk::SamplerAddressMode::eMirroredRepeat }
-    };
-
-    const vk::Filter filter = ((opencl_flags & CLK_FILTER_MASK) == CLK_FILTER_LINEAR ?
-                             vk::Filter::eLinear :
-                             vk::Filter::eNearest);
-    const vk::Bool32 unnormalizedCoordinates = ((opencl_flags & CLK_NORMALIZED_COORDS_MASK) == CLK_NORMALIZED_COORDS_FALSE ? VK_TRUE : VK_FALSE);
-
-    const auto found_map = std::find_if(std::begin(address_mode_translator), std::end(address_mode_translator), [&opencl_flags](const address_mode_map& am) {
-        return (am.first == (opencl_flags & CLK_ADDRESS_MASK));
-    });
-    const vk::SamplerAddressMode addressMode = (found_map == std::end(address_mode_translator) ? vk::SamplerAddressMode::eRepeat : found_map->second);
-
-    vk::SamplerCreateInfo samplerCreateInfo;
-    samplerCreateInfo.setMagFilter(filter)
-            .setMinFilter(filter)
-            .setMipmapMode(vk::SamplerMipmapMode::eNearest)
-            .setAddressModeU(addressMode)
-            .setAddressModeV(addressMode)
-            .setAddressModeW(addressMode)
-            .setAnisotropyEnable(VK_FALSE)
-            .setCompareEnable(VK_FALSE)
-            .setUnnormalizedCoordinates(unnormalizedCoordinates);
-
-    return device.createSamplerUnique(samplerCreateInfo);
-}
-
 /* ============================================================================================== */
 
 struct test_map_t {
@@ -647,7 +613,7 @@ int sample_main(int argc, char *argv[]) {
     std::vector<vk::UniqueSampler> samplers;
     std::transform(std::begin(sampler_flags), std::end(sampler_flags),
                    std::back_inserter(samplers),
-                   std::bind(create_compatible_sampler, *info.device, std::placeholders::_1));
+                   std::bind(clspv_utils::createCompatibleSampler, *info.device, std::placeholders::_1));
 
     const auto rawSamplers = vulkan_utils::extractUniques(samplers);
 

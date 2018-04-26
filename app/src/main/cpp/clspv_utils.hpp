@@ -97,6 +97,8 @@ namespace clspv_utils {
         vk::Queue                           mComputeQueue;
     };
 
+    vk::UniqueSampler createCompatibleSampler(vk::Device device, int opencl_flags);
+
     class kernel_module {
     public:
         kernel_module(device_t&             device,
