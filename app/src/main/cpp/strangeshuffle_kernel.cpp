@@ -34,7 +34,7 @@ namespace strangeshuffle_kernel {
               bool                              verbose,
               test_utils::InvocationResultSet&  resultSet) {
         test_utils::InvocationResult invocationResult;
-        auto device = kernel.getDevice();
+        auto& device = kernel.getDevice();
 
         int buffer_width = 4096;
 

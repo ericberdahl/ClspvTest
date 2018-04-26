@@ -40,7 +40,7 @@ namespace copybuffertoimage_kernel {
         invocationResult.mVariation += pixels::traits<ImagePixelType>::type_name;
         invocationResult.mVariation += ">";
 
-        auto device = kernel.getDevice();
+        auto& device = kernel.getDevice();
 
         const int buffer_height = 64;
         const int buffer_width = 64;

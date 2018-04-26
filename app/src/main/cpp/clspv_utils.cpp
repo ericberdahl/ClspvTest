@@ -425,6 +425,13 @@ namespace clspv_utils {
 
             return result;
         }
+
+        vk::Sampler getCachedSampler(device_t& device, const details::spv_map::sampler& s) {
+            if (!device.mSamplerCache.count(s.opencl_flags)) {
+                device.mSamplerCache[s.opencl_flags] = createCompatibleSampler(device.mDevice, s.opencl_flags);
+            }
+            return *device.mSamplerCache[s.opencl_flags];
+        }
     } // anonymous namespace
 
     namespace details {
@@ -527,19 +534,26 @@ namespace clspv_utils {
     }
 
     kernel_module::kernel_module(device_t&          device,
-                                 const std::string& moduleName,
-                                 vk::ArrayProxy<const vk::Sampler> samplersHack) :
+                                 const std::string& moduleName) :
             mDevice(device),
             mName(moduleName),
             mShaderModule(),
             mSpvMap(),
-            mSamplers(samplersHack.begin(), samplersHack.end())
+            mSamplers()
     {
         const std::string spvFilename = moduleName + ".spv";
         mShaderModule = create_shader(device.mDevice, spvFilename.c_str());
 
         const std::string mapFilename = moduleName + ".spvmap";
         mSpvMap = create_spv_map(mapFilename.c_str());
+
+        std::transform(std::begin(mSpvMap.samplers),
+                       std::end(mSpvMap.samplers),
+                       std::back_inserter(mSamplers),
+                       std::bind(getCachedSampler, std::ref(device), std::placeholders::_1));
+
+        // TODO create the shared "literal sampler descriptor set"
+
     }
 
     kernel_module::~kernel_module() {
@@ -556,7 +570,7 @@ namespace clspv_utils {
     }
 
     layout_t kernel_module::createLayout(const std::string& entryPoint) const {
-        auto device = mDevice.get();
+        auto& device = mDevice.get();
         return create_layout_for_entry(device.mDevice, device.mDescriptorPool, mSpvMap, entryPoint);
     }
 
@@ -625,7 +639,7 @@ namespace clspv_utils {
             mDescriptorArguments(),
             mSpecConstantArguments()
     {
-        auto device = getDevice();
+        auto& device = getDevice();
 
         mCommand = allocate_command_buffer(device.mDevice, device.mCommandPool);
 
@@ -695,7 +709,7 @@ namespace clspv_utils {
     }
 
     void kernel_invocation::addPodArgument(const void* pod, std::size_t sizeofPod) {
-        auto dev = getDevice();
+        auto& dev = getDevice();
         vulkan_utils::uniform_buffer scalar_args(dev.mDevice, dev.mMemoryProperties, sizeofPod);
 
         vulkan_utils::copyToDeviceMemory(scalar_args.mem, pod, sizeofPod);

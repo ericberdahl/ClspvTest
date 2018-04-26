@@ -357,8 +357,7 @@ namespace test_utils {
 
     ModuleResult test_module(clspv_utils::device_t&                 device,
                              const std::string&                     moduleName,
-                             const std::vector<kernel_test_map>&    kernelTests,
-                             vk::ArrayProxy<const vk::Sampler>      samplers);
+                             const std::vector<kernel_test_map>&    kernelTests);
     
 }
 

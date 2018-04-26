@@ -38,7 +38,7 @@ namespace readconstantdata_kernel {
                   test_utils::InvocationResultSet&  resultSet)
     {
         test_utils::InvocationResult invocationResult;
-        auto device = kernel.getDevice();
+        auto& device = kernel.getDevice();
 
         const int buffer_height = 1;
         const int buffer_width = 64;

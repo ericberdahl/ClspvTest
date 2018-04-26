@@ -43,7 +43,7 @@ namespace testgreaterthanorequalto_kernel {
                   test_utils::InvocationResultSet&  resultSet)
     {
         test_utils::InvocationResult invocationResult;
-        auto device = kernel.getDevice();
+        auto& device = kernel.getDevice();
 
         const clspv_utils::WorkgroupDimensions workgroup_sizes = kernel.getWorkgroupSize();
 

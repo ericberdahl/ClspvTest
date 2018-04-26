@@ -350,7 +350,7 @@ namespace readlocalsize_kernel {
               test_utils::InvocationResultSet&  resultSet)
     {
         test_utils::InvocationResult    invocationResult;
-        auto device = kernel.getDevice();
+        auto& device = kernel.getDevice();
 
         invocationResult.mVariation = (args.empty() ? std::string("global_id_x") : args[0]);
 

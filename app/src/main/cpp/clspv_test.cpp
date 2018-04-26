@@ -24,7 +24,6 @@
 #include "fp_utils.hpp"
 #include "gpu_types.hpp"
 #include "half.hpp"
-#include "opencl_types.hpp"
 #include "pixels.hpp"
 #include "readconstantdata_kernel.hpp"
 #include "readlocalsize_kernel.hpp"
@@ -348,10 +347,9 @@ manifest_t read_manifest(const std::string& inManifest) {
     return read_manifest(is);
 }
 
-void run_manifest(const manifest_t&                     manifest,
-                  const sample_info&                    info,
-                  vk::ArrayProxy<const vk::Sampler>     samplers,
-                  test_utils::ModuleResultSet&          resultSet) {
+void run_manifest(const manifest_t&             manifest,
+                  const sample_info&            info,
+                  test_utils::ModuleResultSet&  resultSet) {
     clspv_utils::device_t device = {
             *info.device,
             info.memory_properties,
@@ -361,7 +359,7 @@ void run_manifest(const manifest_t&                     manifest,
     };
 
     for (auto m : manifest.tests) {
-        resultSet.push_back(test_utils::test_module(device, m.name, m.kernelTests, samplers));
+        resultSet.push_back(test_utils::test_module(device, m.name, m.kernelTests));
     }
 }
 
@@ -599,26 +597,8 @@ int sample_main(int argc, char *argv[]) {
     init_command_pool(info);
     my_init_descriptor_pool(info);
 
-    // This sample presumes that all OpenCL C kernels were compiled with the same samplermap file,
-    // whose contents and order are statically known to the application. Thus, the app can create
-    // a set of compatible samplers thusly.
-    const int sampler_flags[] = {
-            CLK_ADDRESS_CLAMP_TO_EDGE   | CLK_FILTER_LINEAR     | CLK_NORMALIZED_COORDS_FALSE,
-            CLK_ADDRESS_CLAMP_TO_EDGE   | CLK_FILTER_NEAREST    | CLK_NORMALIZED_COORDS_FALSE,
-            CLK_ADDRESS_NONE            | CLK_FILTER_NEAREST    | CLK_NORMALIZED_COORDS_FALSE,
-            CLK_ADDRESS_CLAMP_TO_EDGE   | CLK_FILTER_LINEAR     | CLK_NORMALIZED_COORDS_TRUE,
-            CLK_ADDRESS_CLAMP_TO_EDGE   | CLK_FILTER_NEAREST    | CLK_NORMALIZED_COORDS_TRUE,
-            CLK_ADDRESS_NONE            | CLK_FILTER_NEAREST    | CLK_NORMALIZED_COORDS_TRUE
-    };
-    std::vector<vk::UniqueSampler> samplers;
-    std::transform(std::begin(sampler_flags), std::end(sampler_flags),
-                   std::back_inserter(samplers),
-                   std::bind(clspv_utils::createCompatibleSampler, *info.device, std::placeholders::_1));
-
-    const auto rawSamplers = vulkan_utils::extractUniques(samplers);
-
     test_utils::ModuleResultSet moduleResultSet;
-    run_manifest(manifest, info, rawSamplers, moduleResultSet);
+    run_manifest(manifest, info, moduleResultSet);
 
     logResults(info, moduleResultSet);
 
@@ -626,7 +606,6 @@ int sample_main(int argc, char *argv[]) {
     // Clean up
     //
 
-    samplers.clear();
     info.desc_pool.reset();
     info.cmd_pool.reset();
     info.device->waitIdle();

@@ -6,6 +6,7 @@
 #define CLSPV_UTILS_HPP
 
 #include <chrono>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -90,11 +91,16 @@ namespace clspv_utils {
     };
 
     struct device_t {
+        device_t(const device_t&) = delete;
+        device_t& operator=(const device_t&) = delete;
+
         vk::Device                          mDevice;
         vk::PhysicalDeviceMemoryProperties  mMemoryProperties;
         vk::DescriptorPool                  mDescriptorPool;
         vk::CommandPool                     mCommandPool;
         vk::Queue                           mComputeQueue;
+
+        std::map<int,vk::UniqueSampler>     mSamplerCache;
     };
 
     vk::UniqueSampler createCompatibleSampler(vk::Device device, int opencl_flags);
@@ -102,8 +108,7 @@ namespace clspv_utils {
     class kernel_module {
     public:
         kernel_module(device_t&             device,
-                      const std::string&    moduleName,
-                      vk::ArrayProxy<const vk::Sampler> samplersHack);
+                      const std::string&    moduleName);
 
         ~kernel_module();
 
