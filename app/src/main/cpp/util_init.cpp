@@ -70,6 +70,8 @@ bool demo_check_layers(const std::vector<layer_properties> &layer_props, const s
 }
 
 void init_instance(struct sample_info &info, char const *const app_short_name) {
+    info.instance_extension_names.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
+
     vk::ApplicationInfo app_info;
     app_info.setPApplicationName(app_short_name)
             .setApplicationVersion(1)
