@@ -49,7 +49,7 @@ namespace strangeshuffle_kernel {
 
         test_utils::fill_random_pixels<gpu_types::float4>(src_buffer.mem, buffer_width);
         test_utils::fill_random_pixels<gpu_types::float4>(dst_buffer.mem, buffer_width);
-        vulkan_utils::withMap(index_buffer.mem, [buffer_width](void* mappedIndices) {
+        index_buffer.mem.mappedOp([buffer_width](void* mappedIndices) {
             int32_t* firstIndex = static_cast<int32_t*>(mappedIndices);
             std::iota(firstIndex, firstIndex + buffer_width, 0);
         });

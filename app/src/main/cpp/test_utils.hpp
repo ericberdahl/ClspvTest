@@ -165,8 +165,8 @@ namespace test_utils {
     }
 
     template <typename PixelType>
-    void invert_pixel_buffer(const vulkan_utils::device_memory& dstMem, std::size_t bufferSize) {
-        vulkan_utils::withMap(dstMem, [bufferSize](void* memMap) {
+    void invert_pixel_buffer(vulkan_utils::device_memory& dstMem, std::size_t bufferSize) {
+        dstMem.mappedOp([bufferSize](void* memMap) {
             auto dst_data = static_cast<typename pixels::traits<PixelType>::pixel_t*>(memMap);
             invert_pixel_buffer<PixelType>(dst_data, dst_data + bufferSize);
         });
@@ -181,23 +181,23 @@ namespace test_utils {
 
     template <typename SrcPixelType, typename DstPixelType, typename SrcIterator>
     void copy_pixel_buffer(SrcIterator first, SrcIterator last, const vulkan_utils::device_memory& dstMem) {
-        vulkan_utils::withMap(dstMem, [first, last](void* memMap) {
+        dstMem.mappedOp([first, last](void* memMap) {
             auto dst_data = static_cast<typename pixels::traits<DstPixelType>::pixel_t*>(memMap);
             copy_pixel_buffer<SrcPixelType, DstPixelType>(first, last, dst_data);
         });
     }
 
     template <typename SrcPixelType, typename DstPixelType, typename DstIterator>
-    void copy_pixel_buffer(const vulkan_utils::device_memory& srcMem, std::size_t bufferSize, DstIterator dst) {
-        vulkan_utils::withMap(srcMem, [bufferSize, dst](void* memMap) {
+    void copy_pixel_buffer(vulkan_utils::device_memory& srcMem, std::size_t bufferSize, DstIterator dst) {
+        srcMem.mappedOp([bufferSize, dst](void* memMap) {
             auto src_data = static_cast<typename pixels::traits<SrcPixelType>::pixel_t*>(memMap);
             copy_pixel_buffer<SrcPixelType, DstPixelType>(src_data, src_data + bufferSize, dst);
         });
     }
 
     template <typename SrcPixelType, typename DstPixelType>
-    void copy_pixel_buffer(const vulkan_utils::device_memory& srcMem, const vulkan_utils::device_memory& dstMem, std::size_t bufferSize) {
-        vulkan_utils::withMap(srcMem, dstMem, [bufferSize](void* srcMap, void* dstMap) {
+    void copy_pixel_buffer(vulkan_utils::device_memory& srcMem, vulkan_utils::device_memory& dstMem, std::size_t bufferSize) {
+        srcMem.mappedOp(dstMem, [bufferSize](void* srcMap, void* dstMap) {
             auto src_data = static_cast<typename pixels::traits<SrcPixelType>::pixel_t*>(srcMap);
             auto dst_data = static_cast<typename pixels::traits<DstPixelType>::pixel_t*>(dstMap);
 
@@ -217,8 +217,8 @@ namespace test_utils {
     }
 
     template <typename PixelType>
-    void fill_random_pixels(const vulkan_utils::device_memory& mem, std::size_t bufferSize) {
-        vulkan_utils::withMap(mem, [bufferSize](void* memMap) {
+    void fill_random_pixels(vulkan_utils::device_memory& mem, std::size_t bufferSize) {
+        mem.mappedOp([bufferSize](void* memMap) {
             auto data = static_cast<typename pixels::traits<PixelType>::pixel_t*>(memMap);
             fill_random_pixels<PixelType>(data, data + bufferSize);
         });
@@ -301,14 +301,14 @@ namespace test_utils {
     }
 
     template<typename ExpectedPixelType, typename ObservedPixelType>
-    void check_results(const vulkan_utils::device_memory&   expected,
-                       const vulkan_utils::device_memory&   observed,
-                       int                                  width,
-                       int                                  height,
-                       int                                  pitch,
-                       bool                                 verbose,
-                       InvocationResult&                    result) {
-        vulkan_utils::withMap(expected, observed, [width, height, pitch, verbose, &result](void* srcMap, void* dstMap) {
+    void check_results(vulkan_utils::device_memory& expected,
+                       vulkan_utils::device_memory& observed,
+                       int                          width,
+                       int                          height,
+                       int                          pitch,
+                       bool                         verbose,
+                       InvocationResult&            result) {
+        expected.mappedOp(observed, [width, height, pitch, verbose, &result](void* srcMap, void* dstMap) {
             auto src_pixels = static_cast<const ExpectedPixelType *>(srcMap);
             auto dst_pixels = static_cast<const ObservedPixelType *>(dstMap);
 
@@ -317,14 +317,14 @@ namespace test_utils {
     }
 
     template<typename ExpectedPixelType, typename ObservedPixelType>
-    void check_results(const ExpectedPixelType*             expected_pixels,
-                       const vulkan_utils::device_memory&   observed,
-                       int                                  width,
-                       int                                  height,
-                       int                                  pitch,
-                       bool                                 verbose,
-                       InvocationResult&                    result) {
-        vulkan_utils::withMap(observed, [expected_pixels, width, height, pitch, verbose, &result](void* dstMap) {
+    void check_results(const ExpectedPixelType*     expected_pixels,
+                       vulkan_utils::device_memory& observed,
+                       int                          width,
+                       int                          height,
+                       int                          pitch,
+                       bool                         verbose,
+                       InvocationResult&            result) {
+        observed.mappedOp([expected_pixels, width, height, pitch, verbose, &result](void* dstMap) {
             auto dst_pixels = static_cast<const ObservedPixelType *>(dstMap);
 
             check_results(expected_pixels, dst_pixels, width, height, pitch, verbose, result);
@@ -332,14 +332,14 @@ namespace test_utils {
     }
 
     template<typename ObservedPixelType>
-    void check_results(const vulkan_utils::device_memory&   observed,
-                       int                                  width,
-                       int                                  height,
-                       int                                  pitch,
-                       const gpu_types::float4&             expected,
-                       bool                                 verbose,
-                       InvocationResult&                    result) {
-        vulkan_utils::withMap(observed, [width, height, pitch, expected, verbose, &result](void* memMap) {
+    void check_results(vulkan_utils::device_memory& observed,
+                       int                          width,
+                       int                          height,
+                       int                          pitch,
+                       const gpu_types::float4&     expected,
+                       bool                         verbose,
+                       InvocationResult&            result) {
+        observed.mappedOp([width, height, pitch, expected, verbose, &result](void* memMap) {
             auto pixels = static_cast<const ObservedPixelType *>(memMap);
             check_results(pixels, width, height, pitch, expected, verbose, result);
         });

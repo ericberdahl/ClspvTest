@@ -72,18 +72,27 @@ namespace vulkan_utils {
         return device.allocateMemoryUnique(alloc_info);
     }
 
-    void copyFromDeviceMemory(void* dst, const device_memory& src, std::size_t numBytes)
+    void copyFromDeviceMemory(void* dst, device_memory& src, std::size_t numBytes)
     {
-        withMap(src, [dst, numBytes](void* src_ptr) {
+        src.mappedOp([dst, numBytes](void* src_ptr) {
             std::memcpy(dst, src_ptr, numBytes);
         });
     }
 
-    void copyToDeviceMemory(const device_memory& dst, const void* src, std::size_t numBytes)
+    void copyToDeviceMemory(device_memory& dst, const void* src, std::size_t numBytes)
     {
-        withMap(dst, [src, numBytes](void* dest_ptr) {
+        dst.mappedOp([src, numBytes](void* dest_ptr) {
             std::memcpy(dest_ptr, src, numBytes);
         });
+    }
+
+    device_memory::device_memory(vk::Device                                dev,
+                                 const vk::MemoryRequirements&             mem_reqs,
+                                 const vk::PhysicalDeviceMemoryProperties  mem_props)
+            : mDevice(dev),
+              mMemory(allocate_device_memory(dev, mem_reqs, mem_props)),
+              mMapped(false)
+    {
     }
 
     device_memory::device_memory(device_memory&& other) :
@@ -92,10 +101,8 @@ namespace vulkan_utils {
         swap(other);
     }
 
-    device_memory::~device_memory() {
-        if (!device || !mem) {
-            // LOGI("device_memory was reset");
-        }
+    device_memory::~device_memory()
+    {
     }
 
     device_memory& device_memory::operator=(device_memory&& other)
@@ -108,22 +115,47 @@ namespace vulkan_utils {
     {
         using std::swap;
 
-        swap(device, other.device);
-        swap(mem, other.mem);
+        swap(mDevice, other.mDevice);
+        swap(mMemory, other.mMemory);
+        swap(mMapped, other.mMapped);
     }
 
-    void device_memory::allocate(vk::Device                                 dev,
-                                 const vk::MemoryRequirements&              mem_reqs,
-                                 const vk::PhysicalDeviceMemoryProperties&  memory_properties) {
-        reset();
-
-        mem = allocate_device_memory(dev, mem_reqs, memory_properties);
-        device = dev;
+    void device_memory::bind(vk::Buffer buf, vk::DeviceSize memoryOffset) const
+    {
+        mDevice.bindBufferMemory(buf, *mMemory, memoryOffset);
     }
 
-    void device_memory::reset() {
-        mem.reset();
-        device = nullptr;
+    void device_memory::bind(vk::Image im, vk::DeviceSize memoryOffset) const
+    {
+        mDevice.bindImageMemory(im, *mMemory, memoryOffset);
+    }
+
+    void* device_memory::map()
+    {
+        if (mMapped) {
+            throw std::runtime_error("device_memory is already mapped");
+        }
+
+        void* memMap = mDevice.mapMemory(*mMemory, 0, VK_WHOLE_SIZE, vk::MemoryMapFlags());
+        mMapped = true;
+
+        const vk::MappedMemoryRange mappedRange(*mMemory, 0, VK_WHOLE_SIZE);
+        mDevice.invalidateMappedMemoryRanges(mappedRange);
+
+        return memMap;
+    }
+
+    void device_memory::unmap()
+    {
+        if (!mMapped) {
+            throw std::runtime_error("device_memory is not mapped");
+        }
+
+        const vk::MappedMemoryRange mappedRange(*mMemory, 0, VK_WHOLE_SIZE);
+        mDevice.flushMappedMemoryRanges(mappedRange);
+
+        mDevice.unmapMemory(*mMemory);
+        mMapped = false;
     }
 
     uniform_buffer::uniform_buffer(vk::Device dev, const vk::PhysicalDeviceMemoryProperties memoryProperties, vk::DeviceSize num_bytes) :
@@ -137,10 +169,10 @@ namespace vulkan_utils {
 
         buf = dev.createBufferUnique(buf_info);
 
-        mem.allocate(dev, dev.getBufferMemoryRequirements(*buf), memoryProperties);
+        mem = device_memory(dev, dev.getBufferMemoryRequirements(*buf), memoryProperties);
 
         // Bind the memory to the buffer object
-        dev.bindBufferMemory(*buf, *mem.mem, 0);
+        mem.bind(*buf, 0);
     }
 
     uniform_buffer::uniform_buffer(uniform_buffer&& other) :
@@ -177,10 +209,10 @@ namespace vulkan_utils {
 
         buf = dev.createBufferUnique(buf_info);
 
-        mem.allocate(dev, dev.getBufferMemoryRequirements(*buf), memoryProperties);
+        mem = device_memory(dev, dev.getBufferMemoryRequirements(*buf), memoryProperties);
 
         // Bind the memory to the buffer object
-        dev.bindBufferMemory(*buf, *mem.mem, 0);
+        mem.bind(*buf, 0);
     }
 
     storage_buffer::storage_buffer(storage_buffer&& other) :
@@ -259,10 +291,10 @@ namespace vulkan_utils {
         im = dev.createImageUnique(imageInfo);
 
         // Find out what we need in order to allocate memory for the image
-        mem.allocate(dev, dev.getImageMemoryRequirements(*im), memory_properties);
+        mem = device_memory(dev, dev.getImageMemoryRequirements(*im), memory_properties);
 
         // Bind the memory to the image object
-        dev.bindImageMemory(*im, *mem.mem, 0);
+        mem.bind(*im, 0);
 
         // Allocate the image view
         vk::ImageViewCreateInfo viewInfo;
@@ -279,7 +311,7 @@ namespace vulkan_utils {
     void image::reset() {
         view.reset();
         im.reset();
-        mem.reset();
+        mem = device_memory();
     }
 
     double timestamp_delta_ns(uint64_t                              startTimestamp,

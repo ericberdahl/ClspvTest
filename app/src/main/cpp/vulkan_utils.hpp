@@ -36,15 +36,13 @@ namespace vulkan_utils {
                                                   const vk::MemoryRequirements&             mem_reqs,
                                                   const vk::PhysicalDeviceMemoryProperties& mem_props);
 
-    struct device_memory {
+    class device_memory {
+    public:
         device_memory() {}
 
         device_memory(vk::Device                                dev,
                       const vk::MemoryRequirements&             mem_reqs,
-                      const vk::PhysicalDeviceMemoryProperties  mem_props)
-                : device_memory() {
-            allocate(dev, mem_reqs, mem_props);
-        };
+                      const vk::PhysicalDeviceMemoryProperties  mem_props);
 
         device_memory(const device_memory& other) = delete;
 
@@ -58,13 +56,51 @@ namespace vulkan_utils {
 
         void    swap(device_memory& other);
 
-        void    allocate(vk::Device                                 dev,
-                         const vk::MemoryRequirements&              mem_reqs,
-                         const vk::PhysicalDeviceMemoryProperties&  mem_props);
-        void    reset();
+        void    bind(vk::Image im, vk::DeviceSize memoryOffset) const;
+        void    bind(vk::Buffer buf, vk::DeviceSize memoryOffset) const;
 
-        vk::Device              device;
-        vk::UniqueDeviceMemory  mem;
+        template <typename Fn>
+        void mappedOp(Fn f) {
+            device_memory* const self = this;
+            auto unmapper = [self](void* ptr) {
+                self->unmap();
+            };
+
+            void* memMap = map();
+            std::unique_ptr<void, decltype(unmapper)> unmapper_ptr(memMap, unmapper);
+
+            f(memMap);
+        }
+
+        template <typename Fn>
+        void mappedOp(device_memory& extraMap, Fn f) {
+            device_memory* const self = this;
+            auto myUnmapper = [self](void* ptr) {
+                self->unmap();
+            };
+
+            device_memory* const extra = &extraMap;
+            auto extraUnmapper = [extra](void* ptr) {
+                extra->unmap();
+            };
+
+            void* myMemMap = map();
+            std::unique_ptr<void, decltype(myUnmapper)> myUnmapperPtr(myMemMap, myUnmapper);
+
+            void* extraMemMap = extraMap.map();
+            std::unique_ptr<void, decltype(extraUnmapper)> extraUnmapperPtr(extraMemMap, extraUnmapper);
+
+            f(myMemMap, extraMemMap);
+        }
+
+    private:
+        void*   map();
+        void    unmap();
+
+    private:
+        vk::Device              mDevice;
+        vk::UniqueDeviceMemory  mMemory;
+        bool                    mMapped;
     };
 
     inline void swap(device_memory& lhs, device_memory& rhs)
@@ -72,36 +108,13 @@ namespace vulkan_utils {
         lhs.swap(rhs);
     }
 
-    template <typename Fn>
-    void withMap(const device_memory& mem, Fn f) {
-        auto unmapper = [&mem](void* ptr) { mem.device.unmapMemory(*mem.mem); };
+    void copyToDeviceMemory(device_memory& dst, const void* src, std::size_t numBytes);
 
-        void* memMap = mem.device.mapMemory(*mem.mem, 0, VK_WHOLE_SIZE, vk::MemoryMapFlags());
-        std::unique_ptr<void, decltype(unmapper)> unmapper_ptr(memMap, unmapper);
-
-        const vk::MappedMemoryRange mappedRange(*mem.mem, 0, VK_WHOLE_SIZE);
-
-        mem.device.invalidateMappedMemoryRanges(mappedRange);
-        f(memMap);
-        mem.device.flushMappedMemoryRanges(mappedRange);
-    }
-
-    template <typename Fn>
-    void withMap(const device_memory& memA, const device_memory& memB, Fn f) {
-        withMap(memA, [&memB, f](void* memMapA) {
-            withMap(memB, [f, memMapA](void* memMapB) {
-               f(memMapA, memMapB);
-            });
-        });
-    }
-
-    void copyToDeviceMemory(const device_memory& dst, const void* src, std::size_t numBytes);
-
-    void copyFromDeviceMemory(void* dst, const device_memory& src, std::size_t numBytes);
+    void copyFromDeviceMemory(void* dst, device_memory& src, std::size_t numBytes);
 
     template <typename T>
-    void fillDeviceMemory(const device_memory& dst, std::size_t numElements, const T& element) {
-        withMap(dst, [numElements, &element](void* memMap) {
+    void fillDeviceMemory(device_memory& dst, std::size_t numElements, const T& element) {
+        dst.mappedOp([numElements, &element](void* memMap) {
             T* dest_ptr = static_cast<T*>(memMap);
             std::fill(dest_ptr, dest_ptr + numElements, element);
         });
