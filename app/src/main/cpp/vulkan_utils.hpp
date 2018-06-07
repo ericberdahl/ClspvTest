@@ -179,9 +179,7 @@ namespace vulkan_utils {
               const vk::PhysicalDeviceMemoryProperties  memoryProperties,
               uint32_t                                  width,
               uint32_t                                  height,
-              vk::Format                                format) : image() {
-            allocate(dev, memoryProperties, width, height, format);
-        };
+              vk::Format                                format);
 
         image(const image& other) = delete;
 
@@ -194,13 +192,6 @@ namespace vulkan_utils {
         image&  operator=(image&& other);
 
         void    swap(image& other);
-
-        void    allocate(vk::Device                                 dev,
-                         const vk::PhysicalDeviceMemoryProperties&  memory_properties,
-                         uint32_t                                   width,
-                         uint32_t                                   height,
-                         vk::Format                                 format);
-        void    reset();
 
         device_memory       mem;
         vk::UniqueImage     im;

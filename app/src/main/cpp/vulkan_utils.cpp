@@ -238,16 +238,56 @@ namespace vulkan_utils {
         swap(buf, other.buf);
     }
 
-    image::image(image&& other) :
-            image()
+    image::image(vk::Device                                dev,
+                 const vk::PhysicalDeviceMemoryProperties  memoryProperties,
+                 uint32_t                                  width,
+                 uint32_t                                  height,
+                 vk::Format                                format)
+            : image()
+    {
+        vk::ImageCreateInfo imageInfo;
+        imageInfo.setImageType(vk::ImageType::e2D)
+                .setFormat(format)
+                .setExtent(vk::Extent3D(width, height, 1))
+                .setMipLevels(1)
+                .setArrayLayers(1)
+                .setSamples(vk::SampleCountFlagBits::e1)
+                .setTiling(vk::ImageTiling::eLinear)
+                .setUsage(vk::ImageUsageFlagBits::eStorage |
+                          vk::ImageUsageFlagBits::eSampled |
+                          vk::ImageUsageFlagBits::eTransferDst |
+                          vk::ImageUsageFlagBits::eTransferSrc)
+                .setSharingMode(vk::SharingMode::eExclusive)
+                .setInitialLayout(vk::ImageLayout::ePreinitialized);
+
+        im = dev.createImageUnique(imageInfo);
+
+        // Find out what we need in order to allocate memory for the image
+        mem = device_memory(dev, dev.getImageMemoryRequirements(*im), memoryProperties);
+
+        // Bind the memory to the image object
+        mem.bind(*im, 0);
+
+        // Allocate the image view
+        vk::ImageViewCreateInfo viewInfo;
+        viewInfo.setImage(*im)
+                .setViewType(vk::ImageViewType::e2D)
+                .setFormat(format)
+                .subresourceRange.setAspectMask(vk::ImageAspectFlagBits::eColor)
+                .setLevelCount(1)
+                .setLayerCount(1);
+
+        view = dev.createImageViewUnique(viewInfo);
+    }
+
+    image::image(image&& other)
+            : image()
     {
         swap(other);
     }
 
-    image::~image() {
-        if (!im) {
-            // LOGI("image was reset");
-        }
+    image::~image()
+    {
     }
 
     image& image::operator=(image&& other)
@@ -263,55 +303,6 @@ namespace vulkan_utils {
         swap(mem, other.mem);
         swap(im, other.im);
         swap(view, other.view);
-    }
-
-    void image::allocate(vk::Device                                 dev,
-                         const vk::PhysicalDeviceMemoryProperties&  memory_properties,
-                         uint32_t                                   width,
-                         uint32_t                                   height,
-                         vk::Format                                 format)
-    {
-        reset();
-
-        vk::ImageCreateInfo imageInfo;
-        imageInfo.setImageType(vk::ImageType::e2D)
-                .setFormat(format)
-                .setExtent(vk::Extent3D(width, height, 1))
-                .setMipLevels(1)
-                .setArrayLayers(1)
-                .setSamples(vk::SampleCountFlagBits::e1)
-                .setTiling(vk::ImageTiling::eLinear)
-                .setUsage(vk::ImageUsageFlagBits::eStorage |
-                                  vk::ImageUsageFlagBits::eSampled |
-                                  vk::ImageUsageFlagBits::eTransferDst |
-                                  vk::ImageUsageFlagBits::eTransferSrc)
-                .setSharingMode(vk::SharingMode::eExclusive)
-                .setInitialLayout(vk::ImageLayout::ePreinitialized);
-
-        im = dev.createImageUnique(imageInfo);
-
-        // Find out what we need in order to allocate memory for the image
-        mem = device_memory(dev, dev.getImageMemoryRequirements(*im), memory_properties);
-
-        // Bind the memory to the image object
-        mem.bind(*im, 0);
-
-        // Allocate the image view
-        vk::ImageViewCreateInfo viewInfo;
-        viewInfo.setImage(*im)
-                .setViewType(vk::ImageViewType::e2D)
-                .setFormat(format)
-                .subresourceRange.setAspectMask(vk::ImageAspectFlagBits::eColor)
-                                 .setLevelCount(1)
-                                 .setLayerCount(1);
-
-        view = dev.createImageViewUnique(viewInfo);
-    }
-
-    void image::reset() {
-        view.reset();
-        im.reset();
-        mem = device_memory();
     }
 
     double timestamp_delta_ns(uint64_t                              startTimestamp,
