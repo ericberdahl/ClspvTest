@@ -103,14 +103,6 @@ namespace vulkan_utils {
 
     void copyFromDeviceMemory(void* dst, device_memory& src, std::size_t numBytes);
 
-    template <typename T>
-    void fillDeviceMemory(device_memory& dst, std::size_t numElements, const T& element) {
-        dst.mappedOp([numElements, &element](void* memMap) {
-            T* dest_ptr = static_cast<T*>(memMap);
-            std::fill(dest_ptr, dest_ptr + numElements, element);
-        });
-    }
-
     struct uniform_buffer {
         uniform_buffer () {}
 

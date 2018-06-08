@@ -58,7 +58,11 @@ namespace testgreaterthanorequalto_kernel {
 
         // initialize destination memory with unexpected value. the kernel should write either 0 or
         // 1. so, initialize thedestination with 2.
-        vulkan_utils::fillDeviceMemory(dstBuffer.mem, buffer_length, 2.0f);
+        {
+            auto dstBufferPtr = dstBuffer.mem.map();
+            float* fp = static_cast<float*>(dstBufferPtr.get());
+            std::fill(fp, fp + buffer_length, 2.0f);
+        }
 
         // set up expected results of the destination buffer
         int index = 0;
