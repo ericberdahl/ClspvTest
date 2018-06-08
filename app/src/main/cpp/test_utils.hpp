@@ -166,10 +166,9 @@ namespace test_utils {
 
     template <typename PixelType>
     void invert_pixel_buffer(vulkan_utils::device_memory& dstMem, std::size_t bufferSize) {
-        dstMem.mappedOp([bufferSize](void* memMap) {
-            auto dst_data = static_cast<typename pixels::traits<PixelType>::pixel_t*>(memMap);
-            invert_pixel_buffer<PixelType>(dst_data, dst_data + bufferSize);
-        });
+        auto memMap = dstMem.map();
+        auto dst_data = static_cast<typename pixels::traits<PixelType>::pixel_t*>(memMap.get());
+        invert_pixel_buffer<PixelType>(dst_data, dst_data + bufferSize);
     }
 
     template <typename SrcPixelType, typename DstPixelType, typename SrcIterator, typename DstIterator>
@@ -180,29 +179,27 @@ namespace test_utils {
     }
 
     template <typename SrcPixelType, typename DstPixelType, typename SrcIterator>
-    void copy_pixel_buffer(SrcIterator first, SrcIterator last, const vulkan_utils::device_memory& dstMem) {
-        dstMem.mappedOp([first, last](void* memMap) {
-            auto dst_data = static_cast<typename pixels::traits<DstPixelType>::pixel_t*>(memMap);
-            copy_pixel_buffer<SrcPixelType, DstPixelType>(first, last, dst_data);
-        });
+    void copy_pixel_buffer(SrcIterator first, SrcIterator last, vulkan_utils::device_memory& dstMem) {
+        auto memMap = dstMem.map();
+        auto dst_data = static_cast<typename pixels::traits<DstPixelType>::pixel_t*>(memMap.get());
+        copy_pixel_buffer<SrcPixelType, DstPixelType>(first, last, dst_data);
     }
 
     template <typename SrcPixelType, typename DstPixelType, typename DstIterator>
     void copy_pixel_buffer(vulkan_utils::device_memory& srcMem, std::size_t bufferSize, DstIterator dst) {
-        srcMem.mappedOp([bufferSize, dst](void* memMap) {
-            auto src_data = static_cast<typename pixels::traits<SrcPixelType>::pixel_t*>(memMap);
-            copy_pixel_buffer<SrcPixelType, DstPixelType>(src_data, src_data + bufferSize, dst);
-        });
+        auto memMap = srcMem.map();
+        auto src_data = static_cast<typename pixels::traits<SrcPixelType>::pixel_t*>(memMap.get());
+        copy_pixel_buffer<SrcPixelType, DstPixelType>(src_data, src_data + bufferSize, dst);
     }
 
     template <typename SrcPixelType, typename DstPixelType>
     void copy_pixel_buffer(vulkan_utils::device_memory& srcMem, vulkan_utils::device_memory& dstMem, std::size_t bufferSize) {
-        srcMem.mappedOp(dstMem, [bufferSize](void* srcMap, void* dstMap) {
-            auto src_data = static_cast<typename pixels::traits<SrcPixelType>::pixel_t*>(srcMap);
-            auto dst_data = static_cast<typename pixels::traits<DstPixelType>::pixel_t*>(dstMap);
+        auto srcMap = srcMem.map();
+        auto dstMap = dstMem.map();
+        auto src_data = static_cast<typename pixels::traits<SrcPixelType>::pixel_t*>(srcMap.get());
+        auto dst_data = static_cast<typename pixels::traits<DstPixelType>::pixel_t*>(dstMap.get());
 
-            copy_pixel_buffer<SrcPixelType, DstPixelType>(src_data, src_data + bufferSize, dst_data);
-        });
+        copy_pixel_buffer<SrcPixelType, DstPixelType>(src_data, src_data + bufferSize, dst_data);
     }
 
     template <typename PixelType, typename OutputIterator>
@@ -218,10 +215,9 @@ namespace test_utils {
 
     template <typename PixelType>
     void fill_random_pixels(vulkan_utils::device_memory& mem, std::size_t bufferSize) {
-        mem.mappedOp([bufferSize](void* memMap) {
-            auto data = static_cast<typename pixels::traits<PixelType>::pixel_t*>(memMap);
-            fill_random_pixels<PixelType>(data, data + bufferSize);
-        });
+        auto memMap = mem.map();
+        auto data = static_cast<typename pixels::traits<PixelType>::pixel_t*>(memMap.get());
+        fill_random_pixels<PixelType>(data, data + bufferSize);
     }
 
     template<typename ExpectedPixelType, typename ObservedPixelType>
@@ -308,12 +304,12 @@ namespace test_utils {
                        int                          pitch,
                        bool                         verbose,
                        InvocationResult&            result) {
-        expected.mappedOp(observed, [width, height, pitch, verbose, &result](void* srcMap, void* dstMap) {
-            auto src_pixels = static_cast<const ExpectedPixelType *>(srcMap);
-            auto dst_pixels = static_cast<const ObservedPixelType *>(dstMap);
+        auto srcMap = expected.map();
+        auto dstMap = observed.map();
+        auto src_pixels = static_cast<const ExpectedPixelType *>(srcMap.get());
+        auto dst_pixels = static_cast<const ObservedPixelType *>(dstMap.get());
 
-            check_results(src_pixels, dst_pixels, width, height, pitch, verbose, result);
-        });
+        check_results(src_pixels, dst_pixels, width, height, pitch, verbose, result);
     }
 
     template<typename ExpectedPixelType, typename ObservedPixelType>
@@ -323,12 +319,12 @@ namespace test_utils {
                        int                          height,
                        int                          pitch,
                        bool                         verbose,
-                       InvocationResult&            result) {
-        observed.mappedOp([expected_pixels, width, height, pitch, verbose, &result](void* dstMap) {
-            auto dst_pixels = static_cast<const ObservedPixelType *>(dstMap);
+                       InvocationResult&            result)
+    {
+        auto dstMap = observed.map();
+        auto dst_pixels = static_cast<const ObservedPixelType *>(dstMap.get());
 
-            check_results(expected_pixels, dst_pixels, width, height, pitch, verbose, result);
-        });
+        check_results(expected_pixels, dst_pixels, width, height, pitch, verbose, result);
     }
 
     template<typename ObservedPixelType>
@@ -338,11 +334,11 @@ namespace test_utils {
                        int                          pitch,
                        const gpu_types::float4&     expected,
                        bool                         verbose,
-                       InvocationResult&            result) {
-        observed.mappedOp([width, height, pitch, expected, verbose, &result](void* memMap) {
-            auto pixels = static_cast<const ObservedPixelType *>(memMap);
-            check_results(pixels, width, height, pitch, expected, verbose, result);
-        });
+                       InvocationResult&            result)
+    {
+        auto memMap = observed.map();
+        auto pixels = static_cast<const ObservedPixelType *>(memMap.get());
+        check_results(pixels, width, height, pitch, expected, verbose, result);
     }
 
     void test_kernel_invocations(clspv_utils::kernel&               kernel,
