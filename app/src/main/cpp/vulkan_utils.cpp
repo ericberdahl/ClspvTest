@@ -74,16 +74,14 @@ namespace vulkan_utils {
 
     void copyFromDeviceMemory(void* dst, device_memory& src, std::size_t numBytes)
     {
-        src.mappedOp([dst, numBytes](void* src_ptr) {
-            std::memcpy(dst, src_ptr, numBytes);
-        });
+        auto src_ptr = src.map();
+        std::memcpy(dst, src_ptr.get(), numBytes);
     }
 
     void copyToDeviceMemory(device_memory& dst, const void* src, std::size_t numBytes)
     {
-        dst.mappedOp([src, numBytes](void* dest_ptr) {
-            std::memcpy(dest_ptr, src, numBytes);
-        });
+        auto dest_ptr = dst.map();
+        std::memcpy(dest_ptr.get(), src, numBytes);
     }
 
     device_memory::device_memory(vk::Device                                dev,

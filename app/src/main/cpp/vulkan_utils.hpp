@@ -71,20 +71,6 @@ namespace vulkan_utils {
 
         mapped_ptr_t map();
 
-        template <typename Fn>
-        void mappedOp(Fn f) {
-            auto memMap = map();
-            f(memMap.get());
-        }
-
-        template <typename Fn>
-        void mappedOp(device_memory& extraMap, Fn f) {
-            auto myMemMap = map();
-            auto extraMemMap = extraMap.map();
-
-            f(myMemMap.get(), extraMemMap.get());
-        }
-
     private:
         void    unmap();
 
