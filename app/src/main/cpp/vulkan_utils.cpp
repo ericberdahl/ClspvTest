@@ -238,6 +238,14 @@ namespace vulkan_utils {
         swap(buf, other.buf);
     }
 
+    image::image()
+            : mem(),
+              im(),
+              view()
+    {
+        // this space intentionally left blank
+    }
+
     image::image(vk::Device                                dev,
                  const vk::PhysicalDeviceMemoryProperties  memoryProperties,
                  uint32_t                                  width,

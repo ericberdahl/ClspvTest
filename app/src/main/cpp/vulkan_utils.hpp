@@ -173,7 +173,7 @@ namespace vulkan_utils {
     }
 
     struct image {
-        image() {}
+        image();
 
         image(vk::Device                                dev,
               const vk::PhysicalDeviceMemoryProperties  memoryProperties,

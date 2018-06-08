@@ -15,11 +15,11 @@
 namespace strangeshuffle_kernel {
 
     clspv_utils::execution_time_t
-    invoke(clspv_utils::kernel& kernel,
-           vk::Buffer           index_buffer,
-           vk::Buffer           source_buffer,
-           vk::Buffer           destination_buffer,
-           std::size_t          num_elements);
+    invoke(clspv_utils::kernel&             kernel,
+           vulkan_utils::storage_buffer&    index_buffer,
+           vulkan_utils::storage_buffer&    source_buffer,
+           vulkan_utils::storage_buffer&    destination_buffer,
+           std::size_t                      num_elements);
 
     void test(clspv_utils::kernel&              kernel,
               const std::vector<std::string>&   args,

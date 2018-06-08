@@ -7,15 +7,15 @@
 namespace fill_kernel {
 
     clspv_utils::execution_time_t
-    invoke(clspv_utils::kernel&     kernel,
-           vk::Buffer               dst_buffer,
-           int                      pitch,
-           int                      device_format,
-           int                      offset_x,
-           int                      offset_y,
-           int                      width,
-           int                      height,
-           const gpu_types::float4& color) {
+    invoke(clspv_utils::kernel&             kernel,
+           vulkan_utils::storage_buffer&    dst_buffer,
+           int                              pitch,
+           int                              device_format,
+           int                              offset_x,
+           int                              offset_y,
+           int                              width,
+           int                              height,
+           const gpu_types::float4&         color) {
         struct scalar_args {
             int inPitch;        // offset 0
             int inDeviceFormat; // DevicePixelFormat offset 4

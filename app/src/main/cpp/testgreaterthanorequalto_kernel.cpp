@@ -7,10 +7,10 @@
 namespace testgreaterthanorequalto_kernel {
 
     clspv_utils::execution_time_t
-    invoke(clspv_utils::kernel& kernel,
-           vk::Buffer           dst_buffer,
-           int                  width,
-           int                  height)
+    invoke(clspv_utils::kernel&             kernel,
+           vulkan_utils::storage_buffer&    dst_buffer,
+           int                              width,
+           int                              height)
     {
         struct scalar_args {
             int inWidth;            // offset 0
@@ -73,7 +73,7 @@ namespace testgreaterthanorequalto_kernel {
         });
 
         invocationResult.mExecutionTime = invoke(kernel,
-                                                 *dstBuffer.buf,
+                                                 dstBuffer,
                                                  buffer_width,
                                                  buffer_height);
 

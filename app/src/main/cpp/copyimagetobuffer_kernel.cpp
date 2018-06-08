@@ -7,16 +7,16 @@
 namespace copyimagetobuffer_kernel {
 
     clspv_utils::execution_time_t
-    invoke(clspv_utils::kernel& kernel,
-           vk::ImageView        src_image,
-           vk::Buffer           dst_buffer,
-           int                  dst_offset,
-           int                  dst_pitch,
-           cl_channel_order     dst_channel_order,
-           cl_channel_type      dst_channel_type,
-           bool                 swap_components,
-           int                  width,
-           int                  height)
+    invoke(clspv_utils::kernel&             kernel,
+           vulkan_utils::image&             src_image,
+           vulkan_utils::storage_buffer&    dst_buffer,
+           int                              dst_offset,
+           int                              dst_pitch,
+           cl_channel_order                 dst_channel_order,
+           cl_channel_type                  dst_channel_type,
+           bool                             swap_components,
+           int                              width,
+           int                              height)
     {
         struct scalar_args {
             int inDestOffset;       // offset 0

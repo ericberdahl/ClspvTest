@@ -15,15 +15,15 @@
 namespace fill_kernel {
 
     clspv_utils::execution_time_t
-    invoke(clspv_utils::kernel&     kernel,
-           vk::Buffer               dst_buffer,
-           int                      pitch,
-           int                      device_format,
-           int                      offset_x,
-           int                      offset_y,
-           int                      width,
-           int                      height,
-           const gpu_types::float4& color);
+    invoke(clspv_utils::kernel&             kernel,
+           vulkan_utils::storage_buffer&    dst_buffer,
+           int                              pitch,
+           int                              device_format,
+           int                              offset_x,
+           int                              offset_y,
+           int                              width,
+           int                              height,
+           const gpu_types::float4&         color);
 
     void test_series(clspv_utils::kernel&               kernel,
                      const std::vector<std::string>&    args,
@@ -67,7 +67,7 @@ namespace fill_kernel {
         vulkan_utils::fillDeviceMemory(dst_buffer.mem, buffer_width * buffer_height, src_value);
 
         invocationResult.mExecutionTime = invoke(kernel,
-                                                 *dst_buffer.buf, // dst_buffer
+                                                 dst_buffer, // dst_buffer
                                                  buffer_width,   // pitch
                                                  pixels::traits<PixelType>::device_pixel_format, // device_format
                                                  0, 0, // offset_x, offset_y

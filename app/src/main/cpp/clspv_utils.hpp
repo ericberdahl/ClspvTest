@@ -169,10 +169,10 @@ namespace clspv_utils {
 
                     ~kernel_invocation();
 
-        void    addStorageBufferArgument(vk::Buffer buf);
-        void    addUniformBufferArgument(vk::Buffer buf);
-        void    addReadOnlyImageArgument(vk::ImageView image);
-        void    addWriteOnlyImageArgument(vk::ImageView image);
+        void    addStorageBufferArgument(vulkan_utils::storage_buffer& buffer);
+        void    addUniformBufferArgument(vulkan_utils::uniform_buffer& buffer);
+        void    addReadOnlyImageArgument(vulkan_utils::image& image);
+        void    addWriteOnlyImageArgument(vulkan_utils::image& image);
         void    addSamplerArgument(vk::Sampler samp);
         void    addLocalArraySizeArgument(unsigned int numElements);
 

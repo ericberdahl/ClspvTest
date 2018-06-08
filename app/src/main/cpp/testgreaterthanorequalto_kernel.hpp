@@ -15,10 +15,10 @@
 namespace testgreaterthanorequalto_kernel {
 
     clspv_utils::execution_time_t
-    invoke(const clspv_utils::kernel&          kernel,
-           vk::Buffer                          dst_buffer,
-           int                                 width,
-           int                                 height);
+    invoke(const clspv_utils::kernel&       kernel,
+           vulkan_utils::storage_buffer&    dst_buffer,
+           int                              width,
+           int                              height);
 
     void test_all(clspv_utils::kernel&              kernel,
                   const std::vector<std::string>&   args,

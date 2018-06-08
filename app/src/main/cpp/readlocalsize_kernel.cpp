@@ -307,12 +307,12 @@ namespace {
 namespace readlocalsize_kernel {
 
     clspv_utils::execution_time_t
-    invoke(clspv_utils::kernel& kernel,
-           vk::Buffer           outLocalSizes,
-           int                  inWidth,
-           int                  inHeight,
-           int                  inPitch,
-           idtype_t             inIdType) {
+    invoke(clspv_utils::kernel&             kernel,
+           vulkan_utils::storage_buffer&    outLocalSizes,
+           int                              inWidth,
+           int                              inHeight,
+           int                              inPitch,
+           idtype_t                         inIdType) {
         struct scalar_args {
             int width;  // offset 0
             int height; // offset 4
@@ -370,7 +370,7 @@ namespace readlocalsize_kernel {
                                                         kernel.getWorkgroupSize());
 
         invocationResult.mExecutionTime = invoke(kernel,
-                                                 *dst_buffer.buf,
+                                                 dst_buffer,
                                                  buffer_width,
                                                  buffer_height,
                                                  buffer_width,

@@ -667,20 +667,20 @@ namespace clspv_utils {
         mLiteralSamplers.insert(mLiteralSamplers.end(), samplers.begin(), samplers.end());
     }
 
-    void kernel_invocation::addStorageBufferArgument(vk::Buffer buf) {
+    void kernel_invocation::addStorageBufferArgument(vulkan_utils::storage_buffer& buffer) {
         arg item;
 
         item.type = vk::DescriptorType::eStorageBuffer;
-        item.buffer = buf;
+        item.buffer = *buffer.buf;
 
         mDescriptorArguments.push_back(item);
     }
 
-    void kernel_invocation::addUniformBufferArgument(vk::Buffer buf) {
+    void kernel_invocation::addUniformBufferArgument(vulkan_utils::uniform_buffer& buffer) {
         arg item;
 
         item.type = vk::DescriptorType::eUniformBuffer;
-        item.buffer = buf;
+        item.buffer = *buffer.buf;
 
         mDescriptorArguments.push_back(item);
     }
@@ -694,20 +694,20 @@ namespace clspv_utils {
         mDescriptorArguments.push_back(item);
     }
 
-    void kernel_invocation::addReadOnlyImageArgument(vk::ImageView im) {
+    void kernel_invocation::addReadOnlyImageArgument(vulkan_utils::image& image) {
         arg item;
 
         item.type = vk::DescriptorType::eSampledImage;
-        item.image = im;
+        item.image = *image.view;
 
         mDescriptorArguments.push_back(item);
     }
 
-    void kernel_invocation::addWriteOnlyImageArgument(vk::ImageView im) {
+    void kernel_invocation::addWriteOnlyImageArgument(vulkan_utils::image& image) {
         arg item;
 
         item.type = vk::DescriptorType::eStorageImage;
-        item.image = im;
+        item.image = *image.view;
 
         mDescriptorArguments.push_back(item);
     }
@@ -721,7 +721,7 @@ namespace clspv_utils {
         vulkan_utils::uniform_buffer scalar_args(dev.mDevice, dev.mMemoryProperties, sizeofPod);
 
         vulkan_utils::copyToDeviceMemory(scalar_args.mem, pod, sizeofPod);
-        addUniformBufferArgument(*scalar_args.buf);
+        addUniformBufferArgument(scalar_args);
 
         mPodBuffers.push_back(std::move(scalar_args));
     }

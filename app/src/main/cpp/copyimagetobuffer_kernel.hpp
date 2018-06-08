@@ -15,16 +15,16 @@
 namespace copyimagetobuffer_kernel {
 
     clspv_utils::execution_time_t
-    invoke(clspv_utils::kernel& kernel,
-           vk::ImageView        src_image,
-           vk::Buffer           dst_buffer,
-           int                  dst_offset,
-           int                  dst_pitch,
-           cl_channel_order     dst_channel_order,
-           cl_channel_type      dst_channel_type,
-           bool                 swap_components,
-           int                  width,
-           int                  height);
+    invoke(clspv_utils::kernel&             kernel,
+           vulkan_utils::image&             src_image,
+           vulkan_utils::storage_buffer&    dst_buffer,
+           int                              dst_offset,
+           int                              dst_pitch,
+           cl_channel_order                 dst_channel_order,
+           cl_channel_type                  dst_channel_type,
+           bool                             swap_components,
+           int                              width,
+           int                              height);
 
     void test_matrix(clspv_utils::kernel&               kernel,
                      const std::vector<std::string>&    args,
@@ -64,8 +64,8 @@ namespace copyimagetobuffer_kernel {
         test_utils::invert_pixel_buffer<BufferPixelType>(dst_buffer.mem, buffer_length);
 
         invocationResult.mExecutionTime = invoke(kernel,
-                                                 *srcImage.view,
-                                                 *dst_buffer.buf,
+                                                 srcImage,
+                                                 dst_buffer,
                                                  0,
                                                  buffer_width,
                                                  pixels::traits<BufferPixelType>::cl_pixel_order,

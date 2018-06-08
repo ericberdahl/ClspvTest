@@ -7,9 +7,9 @@
 namespace readconstantdata_kernel {
 
     clspv_utils::execution_time_t
-    invoke(clspv_utils::kernel& kernel,
-           vk::Buffer           dst_buffer,
-           int                  width)
+    invoke(clspv_utils::kernel&             kernel,
+           vulkan_utils::storage_buffer&    dst_buffer,
+           int                              width)
     {
         struct scalar_args {
             int inWidth;            // offset 0
@@ -70,7 +70,7 @@ namespace readconstantdata_kernel {
         });
 
         invocationResult.mExecutionTime = invoke(kernel,
-                                                 *dstBuffer.buf,
+                                                 dstBuffer,
                                                  buffer_width);
 
         test_utils::check_results<float, float>(expectedResults.data(), dstBuffer.mem,
