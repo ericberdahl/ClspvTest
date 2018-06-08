@@ -59,42 +59,33 @@ namespace vulkan_utils {
         void    bind(vk::Image im, vk::DeviceSize memoryOffset) const;
         void    bind(vk::Buffer buf, vk::DeviceSize memoryOffset) const;
 
+        struct unmapper_t {
+            unmapper_t(device_memory* s) : self(s) {}
+
+            void    operator()(void* ptr) { self->unmap(); }
+
+            device_memory*  self;
+        };
+
+        typedef std::unique_ptr<void, unmapper_t> mapped_ptr_t;
+
+        mapped_ptr_t map();
+
         template <typename Fn>
         void mappedOp(Fn f) {
-            device_memory* const self = this;
-            auto unmapper = [self](void* ptr) {
-                self->unmap();
-            };
-
-            void* memMap = map();
-            std::unique_ptr<void, decltype(unmapper)> unmapper_ptr(memMap, unmapper);
-
-            f(memMap);
+            auto memMap = map();
+            f(memMap.get());
         }
 
         template <typename Fn>
         void mappedOp(device_memory& extraMap, Fn f) {
-            device_memory* const self = this;
-            auto myUnmapper = [self](void* ptr) {
-                self->unmap();
-            };
+            auto myMemMap = map();
+            auto extraMemMap = extraMap.map();
 
-            device_memory* const extra = &extraMap;
-            auto extraUnmapper = [extra](void* ptr) {
-                extra->unmap();
-            };
-
-            void* myMemMap = map();
-            std::unique_ptr<void, decltype(myUnmapper)> myUnmapperPtr(myMemMap, myUnmapper);
-
-            void* extraMemMap = extraMap.map();
-            std::unique_ptr<void, decltype(extraUnmapper)> extraUnmapperPtr(extraMemMap, extraUnmapper);
-
-            f(myMemMap, extraMemMap);
+            f(myMemMap.get(), extraMemMap.get());
         }
 
     private:
-        void*   map();
         void    unmap();
 
     private:
