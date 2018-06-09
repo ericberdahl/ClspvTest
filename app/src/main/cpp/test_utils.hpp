@@ -164,37 +164,11 @@ namespace test_utils {
         });
     }
 
-    template <typename PixelType>
-    void invert_pixel_buffer(vulkan_utils::device_memory& dstMem, std::size_t bufferSize) {
-        auto dst_data = dstMem.map<typename pixels::traits<PixelType>::pixel_t>();
-        invert_pixel_buffer<PixelType>(dst_data.get(), dst_data.get() + bufferSize);
-    }
-
     template <typename SrcPixelType, typename DstPixelType, typename SrcIterator, typename DstIterator>
     void copy_pixel_buffer(SrcIterator first, SrcIterator last, DstIterator dst) {
         std::transform(first, last, dst, [](const SrcPixelType& p) {
             return pixels::traits<DstPixelType>::translate(p);
         });
-    }
-
-    template <typename SrcPixelType, typename DstPixelType, typename SrcIterator>
-    void copy_pixel_buffer(SrcIterator first, SrcIterator last, vulkan_utils::device_memory& dstMem) {
-        auto dst_data = dstMem.map<typename pixels::traits<DstPixelType>::pixel_t>();
-        copy_pixel_buffer<SrcPixelType, DstPixelType>(first, last, dst_data.get());
-    }
-
-    template <typename SrcPixelType, typename DstPixelType, typename DstIterator>
-    void copy_pixel_buffer(vulkan_utils::device_memory& srcMem, std::size_t bufferSize, DstIterator dst) {
-        auto src_data = srcMem.map<typename pixels::traits<SrcPixelType>::pixel_t>();
-        copy_pixel_buffer<SrcPixelType, DstPixelType>(src_data.get(), src_data.get() + bufferSize, dst);
-    }
-
-    template <typename SrcPixelType, typename DstPixelType>
-    void copy_pixel_buffer(vulkan_utils::device_memory& srcMem, vulkan_utils::device_memory& dstMem, std::size_t bufferSize) {
-        auto src_data = srcMem.map<typename pixels::traits<SrcPixelType>::pixel_t>();
-        auto dst_data = dstMem.map<typename pixels::traits<DstPixelType>::pixel_t>();
-
-        copy_pixel_buffer<SrcPixelType, DstPixelType>(src_data.get(), src_data.get() + bufferSize, dst_data.get());
     }
 
     template <typename PixelType, typename OutputIterator>
@@ -206,12 +180,6 @@ namespace test_utils {
         std::generate(first, last, [&dis,&gen]() {
             return pixels::traits<PixelType>::translate((gpu_types::float4){ dis(gen), dis(gen), dis(gen), dis(gen) });
         });
-    }
-
-    template <typename PixelType>
-    void fill_random_pixels(vulkan_utils::device_memory& mem, std::size_t bufferSize) {
-        auto data = mem.map<typename pixels::traits<PixelType>::pixel_t>();
-        fill_random_pixels<PixelType>(data.get(), data.get() + bufferSize);
     }
 
     template<typename ExpectedPixelType, typename ObservedPixelType>
@@ -288,46 +256,6 @@ namespace test_utils {
                 check_result(*expected_p, *observed_p, r, c, verbose, result);
             }
         }
-    }
-
-    template<typename ExpectedPixelType, typename ObservedPixelType>
-    void check_results(vulkan_utils::device_memory& expected,
-                       vulkan_utils::device_memory& observed,
-                       int                          width,
-                       int                          height,
-                       int                          pitch,
-                       bool                         verbose,
-                       InvocationResult&            result) {
-        auto src_pixels = expected.map<const ExpectedPixelType>();
-        auto dst_pixels = observed.map<const ObservedPixelType>();
-
-        check_results(src_pixels.get(), dst_pixels.get(), width, height, pitch, verbose, result);
-    }
-
-    template<typename ExpectedPixelType, typename ObservedPixelType>
-    void check_results(const ExpectedPixelType*     expected_pixels,
-                       vulkan_utils::device_memory& observed,
-                       int                          width,
-                       int                          height,
-                       int                          pitch,
-                       bool                         verbose,
-                       InvocationResult&            result)
-    {
-        auto dst_pixels = observed.map<const ObservedPixelType>();
-        check_results(expected_pixels, dst_pixels.get(), width, height, pitch, verbose, result);
-    }
-
-    template<typename ObservedPixelType>
-    void check_results(vulkan_utils::device_memory& observed,
-                       int                          width,
-                       int                          height,
-                       int                          pitch,
-                       const gpu_types::float4&     expected,
-                       bool                         verbose,
-                       InvocationResult&            result)
-    {
-        auto pixels = observed.map<const ObservedPixelType>();
-        check_results(pixels.get(), width, height, pitch, expected, verbose, result);
     }
 
     void test_kernel_invocations(clspv_utils::kernel&               kernel,

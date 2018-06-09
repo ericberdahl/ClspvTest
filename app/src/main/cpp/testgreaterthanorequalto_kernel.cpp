@@ -79,11 +79,12 @@ namespace testgreaterthanorequalto_kernel {
                                                  buffer_width,
                                                  buffer_height);
 
-        test_utils::check_results<float, float>(expectedResults.data(), dstBuffer.mem,
-                                                buffer_width, buffer_height,
-                                                buffer_height,
-                                                verbose,
-                                                invocationResult);
+        dstBufferMap = dstBuffer.mem.map<float>();
+        test_utils::check_results(expectedResults.data(), dstBufferMap.get(),
+                                  buffer_width, buffer_height,
+                                  buffer_height,
+                                  verbose,
+                                  invocationResult);
 
         resultSet.push_back(std::move(invocationResult));
     }

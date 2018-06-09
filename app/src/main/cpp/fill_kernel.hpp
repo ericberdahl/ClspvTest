@@ -76,12 +76,13 @@ namespace fill_kernel {
                                                  buffer_width, buffer_height, // width, height
                                                  color); // color
 
-        test_utils::check_results<PixelType>(dst_buffer.mem,
-                                             buffer_width, buffer_height,
-                                             buffer_width,
-                                             color,
-                                             verbose,
-                                             invocationResult);
+        dstBufferMap = dst_buffer.mem.map<PixelType>();
+        test_utils::check_results(dstBufferMap.get(),
+                                  buffer_width, buffer_height,
+                                  buffer_width,
+                                  color,
+                                  verbose,
+                                  invocationResult);
 
         resultSet.push_back(std::move(invocationResult));
     }

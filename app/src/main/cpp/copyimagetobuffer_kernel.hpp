@@ -57,11 +57,16 @@ namespace copyimagetobuffer_kernel {
         vulkan_utils::image             srcImage(device.mDevice, device.mMemoryProperties, buffer_width, buffer_height, vk::Format(pixels::traits<ImagePixelType>::vk_pixel_type));
 
         // initialize source memory with random data
-        test_utils::fill_random_pixels<ImagePixelType>(srcImage.mem, buffer_length);
+        auto srcImageMap = srcImage.mem.map<ImagePixelType>();
+        test_utils::fill_random_pixels<ImagePixelType>(srcImageMap.get(), srcImageMap.get() + buffer_length);
 
         // initialize destination memory (copy source and invert, thereby forcing the kernel to make the change back to the source value)
-        test_utils::copy_pixel_buffer<ImagePixelType, BufferPixelType>(srcImage.mem, dst_buffer.mem, buffer_length);
-        test_utils::invert_pixel_buffer<BufferPixelType>(dst_buffer.mem, buffer_length);
+        auto dstBufferMap = dst_buffer.mem.map<BufferPixelType>();
+        test_utils::copy_pixel_buffer<ImagePixelType, BufferPixelType>(srcImageMap.get(), srcImageMap.get() + buffer_length, dstBufferMap.get());
+        test_utils::invert_pixel_buffer<BufferPixelType>(dstBufferMap.get(), dstBufferMap.get() + buffer_length);
+
+        dstBufferMap.reset();
+        srcImageMap.reset();
 
         invocationResult.mExecutionTime = invoke(kernel,
                                                  srcImage,
@@ -74,11 +79,14 @@ namespace copyimagetobuffer_kernel {
                                                  buffer_width,
                                                  buffer_height);
 
-        test_utils::check_results<ImagePixelType, BufferPixelType>(srcImage.mem, dst_buffer.mem,
-                                                                   buffer_width, buffer_height,
-                                                                   buffer_height,
-                                                                   verbose,
-                                                                   invocationResult);
+        srcImageMap = srcImage.mem.map<ImagePixelType>();
+        dstBufferMap = dst_buffer.mem.map<BufferPixelType>();
+        test_utils::check_results(srcImageMap.get(),
+                                  dstBufferMap.get(),
+                                  buffer_width, buffer_height,
+                                  buffer_height,
+                                  verbose,
+                                  invocationResult);
 
         resultSet.push_back(std::move(invocationResult));
     }

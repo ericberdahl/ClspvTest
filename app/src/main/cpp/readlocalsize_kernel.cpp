@@ -362,7 +362,10 @@ namespace readlocalsize_kernel {
         auto num_elements = buffer_width * buffer_height;
         const std::size_t buffer_size = num_elements * sizeof(std::int32_t);
         vulkan_utils::storage_buffer dst_buffer(device.mDevice, device.mMemoryProperties, buffer_size);
-        test_utils::fill_random_pixels<std::int32_t>(dst_buffer.mem, num_elements);
+
+        auto dstBufferMap = dst_buffer.mem.map<std::int32_t>();
+        test_utils::fill_random_pixels<std::int32_t>(dstBufferMap.get(), dstBufferMap.get() + num_elements);
+        dstBufferMap.reset();
 
         auto expectedResults = compute_expected_results(idtype,
                                                         buffer_width,
@@ -376,13 +379,14 @@ namespace readlocalsize_kernel {
                                                  buffer_width,
                                                  idtype);
 
-        test_utils::check_results<std::int32_t,std::int32_t>(expectedResults.data(),
-                                                             dst_buffer.mem,
-                                                             buffer_width,
-                                                             buffer_height,
-                                                             buffer_width,
-                                                             verbose,
-                                                             invocationResult);
+        dstBufferMap = dst_buffer.mem.map<std::int32_t>();
+        test_utils::check_results(expectedResults.data(),
+                                  dstBufferMap.get(),
+                                  buffer_width,
+                                  buffer_height,
+                                  buffer_width,
+                                  verbose,
+                                  invocationResult);
 
         resultSet.push_back(std::move(invocationResult));
     };
