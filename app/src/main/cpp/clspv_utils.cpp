@@ -722,7 +722,7 @@ namespace clspv_utils {
 
         auto scalarArgsMemMap = scalar_args.mem.map();
         std::memcpy(scalarArgsMemMap.get(), pod, sizeofPod);
-        scalarArgsMemMap.release();
+        scalarArgsMemMap.reset();
 
         addUniformBufferArgument(scalar_args);
 

@@ -116,7 +116,7 @@ namespace vulkan_utils {
         mDevice.bindImageMemory(im, *mMemory, memoryOffset);
     }
 
-    device_memory::mapped_ptr_t device_memory::map()
+    std::unique_ptr<void, device_memory::unmapper_t> device_memory::map()
     {
         if (mMapped) {
             throw std::runtime_error("device_memory is already mapped");
@@ -128,7 +128,7 @@ namespace vulkan_utils {
         const vk::MappedMemoryRange mappedRange(*mMemory, 0, VK_WHOLE_SIZE);
         mDevice.invalidateMappedMemoryRanges(mappedRange);
 
-        return mapped_ptr_t(memMap, unmapper_t(this));
+        return std::unique_ptr<void, device_memory::unmapper_t>(memMap, unmapper_t(this));
     }
 
     void device_memory::unmap()
