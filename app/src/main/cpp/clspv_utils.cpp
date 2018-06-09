@@ -720,7 +720,10 @@ namespace clspv_utils {
         auto& dev = getDevice();
         vulkan_utils::uniform_buffer scalar_args(dev.mDevice, dev.mMemoryProperties, sizeofPod);
 
-        vulkan_utils::copyToDeviceMemory(scalar_args.mem, pod, sizeofPod);
+        auto scalarArgsMemMap = scalar_args.mem.map();
+        std::memcpy(scalarArgsMemMap.get(), pod, sizeofPod);
+        scalarArgsMemMap.release();
+
         addUniformBufferArgument(scalar_args);
 
         mPodBuffers.push_back(std::move(scalar_args));

@@ -72,18 +72,6 @@ namespace vulkan_utils {
         return device.allocateMemoryUnique(alloc_info);
     }
 
-    void copyFromDeviceMemory(void* dst, device_memory& src, std::size_t numBytes)
-    {
-        auto src_ptr = src.map();
-        std::memcpy(dst, src_ptr.get(), numBytes);
-    }
-
-    void copyToDeviceMemory(device_memory& dst, const void* src, std::size_t numBytes)
-    {
-        auto dest_ptr = dst.map();
-        std::memcpy(dest_ptr.get(), src, numBytes);
-    }
-
     device_memory::device_memory(vk::Device                                dev,
                                  const vk::MemoryRequirements&             mem_reqs,
                                  const vk::PhysicalDeviceMemoryProperties  mem_props)

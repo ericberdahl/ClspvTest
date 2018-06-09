@@ -85,10 +85,6 @@ namespace vulkan_utils {
         lhs.swap(rhs);
     }
 
-    void copyToDeviceMemory(device_memory& dst, const void* src, std::size_t numBytes);
-
-    void copyFromDeviceMemory(void* dst, device_memory& src, std::size_t numBytes);
-
     struct uniform_buffer {
         uniform_buffer () {}
 
