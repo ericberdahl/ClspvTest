@@ -65,8 +65,8 @@ namespace vulkan_utils {
 
         void    swap(device_memory& other);
 
-        void    bind(vk::Image im, vk::DeviceSize memoryOffset) const;
-        void    bind(vk::Buffer buf, vk::DeviceSize memoryOffset) const;
+        vk::Device          getDevice() const { return mDevice; }
+        vk::DeviceMemory    getDeviceMemory() const { return *mMemory; }
 
         template <typename T>
         std::unique_ptr<T, unmapper_t> map()

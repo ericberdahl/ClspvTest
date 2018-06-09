@@ -106,16 +106,6 @@ namespace vulkan_utils {
         swap(mMapped, other.mMapped);
     }
 
-    void device_memory::bind(vk::Buffer buf, vk::DeviceSize memoryOffset) const
-    {
-        mDevice.bindBufferMemory(buf, *mMemory, memoryOffset);
-    }
-
-    void device_memory::bind(vk::Image im, vk::DeviceSize memoryOffset) const
-    {
-        mDevice.bindImageMemory(im, *mMemory, memoryOffset);
-    }
-
     std::unique_ptr<void, device_memory::unmapper_t> device_memory::map()
     {
         if (mMapped) {
@@ -158,7 +148,7 @@ namespace vulkan_utils {
         mem = device_memory(dev, dev.getBufferMemoryRequirements(*buf), memoryProperties);
 
         // Bind the memory to the buffer object
-        mem.bind(*buf, 0);
+        dev.bindBufferMemory(*buf, mem.getDeviceMemory(), 0);
     }
 
     uniform_buffer::uniform_buffer(uniform_buffer&& other) :
@@ -198,7 +188,7 @@ namespace vulkan_utils {
         mem = device_memory(dev, dev.getBufferMemoryRequirements(*buf), memoryProperties);
 
         // Bind the memory to the buffer object
-        mem.bind(*buf, 0);
+        dev.bindBufferMemory(*buf, mem.getDeviceMemory(), 0);
     }
 
     storage_buffer::storage_buffer(storage_buffer&& other) :
@@ -260,7 +250,7 @@ namespace vulkan_utils {
         mem = device_memory(dev, dev.getImageMemoryRequirements(*im), memoryProperties);
 
         // Bind the memory to the image object
-        mem.bind(*im, 0);
+        dev.bindImageMemory(*im, mem.getDeviceMemory(), 0);
 
         // Allocate the image view
         vk::ImageViewCreateInfo viewInfo;
