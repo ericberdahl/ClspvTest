@@ -57,16 +57,17 @@ namespace vulkan_utils {
         }
     }
 
-    vk::UniqueDeviceMemory allocate_device_memory(vk::Device device,
+    vk::UniqueDeviceMemory allocate_device_memory(vk::Device                                device,
                                                   const vk::MemoryRequirements&             mem_reqs,
-                                                  const vk::PhysicalDeviceMemoryProperties& mem_props)
+                                                  const vk::PhysicalDeviceMemoryProperties& mem_props,
+                                                  vk::MemoryPropertyFlags                   property_flags)
     {
         // Allocate memory for the buffer
         vk::MemoryAllocateInfo alloc_info;
         alloc_info.setAllocationSize(mem_reqs.size)
                 .setMemoryTypeIndex(find_compatible_memory_index(mem_props,
                                                                  mem_reqs.memoryTypeBits,
-                                                                 vk::MemoryPropertyFlagBits::eHostVisible));
+                                                                 property_flags));
         assert(alloc_info.memoryTypeIndex < std::numeric_limits<uint32_t>::max() &&
                "No mappable memory");
         return device.allocateMemoryUnique(alloc_info);
@@ -76,7 +77,7 @@ namespace vulkan_utils {
                                  const vk::MemoryRequirements&             mem_reqs,
                                  const vk::PhysicalDeviceMemoryProperties  mem_props)
             : mDevice(dev),
-              mMemory(allocate_device_memory(dev, mem_reqs, mem_props)),
+              mMemory(allocate_device_memory(dev, mem_reqs, mem_props, vk::MemoryPropertyFlagBits::eHostVisible)),
               mMapped(false)
     {
     }
@@ -179,7 +180,7 @@ namespace vulkan_utils {
     {
         // Allocate the buffer
         vk::BufferCreateInfo buf_info;
-        buf_info.setUsage(vk::BufferUsageFlagBits::eStorageBuffer)
+        buf_info.setUsage(vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eTransferSrc)
                 .setSize(num_bytes)
                 .setSharingMode(vk::SharingMode::eExclusive);
 
@@ -215,11 +216,30 @@ namespace vulkan_utils {
     }
 
     image::image()
-            : mem(),
+            : mDevice(),
+              mMemoryProperties(),
+              mLayout(vk::ImageLayout::eUndefined),
+              mDeviceMemory(),
+              mWidth(0),
+              mHeight(0),
               im(),
               view()
     {
         // this space intentionally left blank
+    }
+
+    void image::swap(image& other)
+    {
+        using std::swap;
+
+        swap(mDevice, other.mDevice);
+        swap(mMemoryProperties, other.mMemoryProperties);
+        swap(mLayout, other.mLayout);
+        swap(mDeviceMemory, other.mDeviceMemory);
+        swap(mWidth, other.mWidth);
+        swap(mHeight, other.mHeight);
+        swap(im, other.im);
+        swap(view, other.view);
     }
 
     image::image(vk::Device                                dev,
@@ -229,6 +249,9 @@ namespace vulkan_utils {
                  vk::Format                                format)
             : image()
     {
+        mDevice = dev;
+        mMemoryProperties = memoryProperties;
+
         vk::ImageCreateInfo imageInfo;
         imageInfo.setImageType(vk::ImageType::e2D)
                 .setFormat(format)
@@ -236,21 +259,23 @@ namespace vulkan_utils {
                 .setMipLevels(1)
                 .setArrayLayers(1)
                 .setSamples(vk::SampleCountFlagBits::e1)
-                .setTiling(vk::ImageTiling::eLinear)
+                .setTiling(vk::ImageTiling::eOptimal)
                 .setUsage(vk::ImageUsageFlagBits::eStorage |
                           vk::ImageUsageFlagBits::eSampled |
                           vk::ImageUsageFlagBits::eTransferDst |
                           vk::ImageUsageFlagBits::eTransferSrc)
                 .setSharingMode(vk::SharingMode::eExclusive)
-                .setInitialLayout(vk::ImageLayout::ePreinitialized);
+                .setInitialLayout(mLayout);
 
-        im = dev.createImageUnique(imageInfo);
+        im = mDevice.createImageUnique(imageInfo);
 
-        // Find out what we need in order to allocate memory for the image
-        mem = device_memory(dev, dev.getImageMemoryRequirements(*im), memoryProperties);
+        // allocate device memory for the image
+        mDeviceMemory = allocate_device_memory(mDevice,
+                                               mDevice.getImageMemoryRequirements(*im),
+                                               mMemoryProperties);
 
         // Bind the memory to the image object
-        dev.bindImageMemory(*im, mem.getDeviceMemory(), 0);
+        mDevice.bindImageMemory(*im, *mDeviceMemory, 0);
 
         // Allocate the image view
         vk::ImageViewCreateInfo viewInfo;
@@ -261,7 +286,7 @@ namespace vulkan_utils {
                 .setLevelCount(1)
                 .setLayerCount(1);
 
-        view = dev.createImageViewUnique(viewInfo);
+        view = mDevice.createImageViewUnique(viewInfo);
     }
 
     image::image(image&& other)
@@ -280,13 +305,138 @@ namespace vulkan_utils {
         return *this;
     }
 
-    void image::swap(image& other)
+    staging_buffer image::createStagingBuffer()
+    {
+        return staging_buffer(mDevice,
+                              mMemoryProperties,
+                              *im,
+                              mWidth,
+                              mHeight,
+                              4);   // TODO: Get correct pixel size
+    }
+
+    void image::setLayout(vk::ImageLayout newLayout)
+    {
+        throw std::runtime_error("image::setLayout not yet implemented");
+    }
+
+    staging_buffer::staging_buffer()
+            : mDevice(),
+              mImage(),
+              mWidth(0),
+              mHeight(0),
+              mDeviceMemory(),
+              mBuffer(),
+              mMapped(false)
+    {
+        // this space intentionally left blank
+    }
+
+    void staging_buffer::swap(staging_buffer& other)
     {
         using std::swap;
 
-        swap(mem, other.mem);
-        swap(im, other.im);
-        swap(view, other.view);
+        swap(mDevice, other.mDevice);
+        swap(mImage, other.mImage);
+        swap(mWidth, other.mWidth);
+        swap(mHeight, other.mHeight);
+        swap(mDeviceMemory, other.mDeviceMemory);
+        swap(mBuffer, other.mBuffer);
+        swap(mMapped, other.mMapped);
+    }
+
+
+    staging_buffer::staging_buffer(vk::Device                           device,
+                                   vk::PhysicalDeviceMemoryProperties   memoryProperties,
+                                   vk::Image                            image,
+                                   uint32_t                             width,
+                                   uint32_t                             height,
+                                   std::size_t                          pixelSize)
+            : staging_buffer()
+    {
+        mDevice = device;
+        mImage = image;
+
+        const std::size_t num_bytes = pixelSize * width * height;
+
+        // Allocate the buffer
+        vk::BufferCreateInfo buf_info;
+        buf_info.setUsage(vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eTransferSrc)
+                .setSize(num_bytes)
+                .setSharingMode(vk::SharingMode::eExclusive);
+
+        mBuffer = mDevice.createBufferUnique(buf_info);
+
+        mDeviceMemory = allocate_device_memory(mDevice,
+                                               mDevice.getBufferMemoryRequirements(*mBuffer),
+                                               memoryProperties);
+
+        // Bind the memory to the buffer object
+        mDevice.bindBufferMemory(*mBuffer, *mDeviceMemory, 0);
+    }
+
+    staging_buffer::staging_buffer(staging_buffer&& other)
+            : staging_buffer()
+    {
+        swap(other);
+    }
+
+    staging_buffer::~staging_buffer() {
+    }
+
+    staging_buffer& staging_buffer::operator=(staging_buffer&& other)
+    {
+        swap(other);
+        return *this;
+    }
+
+    std::unique_ptr<void, staging_buffer::unmapper_t> staging_buffer::map()
+    {
+        if (mMapped) {
+            throw std::runtime_error("staging_buffer is already mapped");
+        }
+
+        void* memMap = mDevice.mapMemory(*mDeviceMemory, 0, VK_WHOLE_SIZE, vk::MemoryMapFlags());
+        mMapped = true;
+
+        const vk::MappedMemoryRange mappedRange(*mDeviceMemory, 0, VK_WHOLE_SIZE);
+        mDevice.invalidateMappedMemoryRanges(mappedRange);
+
+        return std::unique_ptr<void, staging_buffer::unmapper_t>(memMap, unmapper_t(this));
+    }
+
+    void staging_buffer::unmap()
+    {
+        if (!mMapped) {
+            throw std::runtime_error("staging_buffer is not mapped");
+        }
+
+        const vk::MappedMemoryRange mappedRange(*mDeviceMemory, 0, VK_WHOLE_SIZE);
+        mDevice.flushMappedMemoryRanges(mappedRange);
+
+        mDevice.unmapMemory(*mDeviceMemory);
+        mMapped = false;
+    }
+
+    void staging_buffer::copyToImage(vk::CommandBuffer cmd)
+    {
+        // TODO: Not yet implemented - staging_buffer::copyToImage
+        throw std::runtime_error("staging_buffer::copyToImage not yet implemented");
+
+        vk::BufferImageCopy bic;
+        bic.imageExtent.setWidth(mWidth)
+                .setHeight(mHeight)
+                .setDepth(1);
+        bic.imageSubresource.setAspectMask(vk::ImageAspectFlagBits::eColor)
+                .setLayerCount(1);
+
+        cmd.copyBufferToImage(*mBuffer, mImage, vk::ImageLayout::eGeneral, bic); // TODO: use correct layout
+    }
+
+    void staging_buffer::copyFromImage(vk::CommandBuffer cmd)
+    {
+        // TODO: Not yet implemented - staging_buffer::copyFromImage
+        throw std::runtime_error("staging_buffer::copyFromImage not yet implemented");
     }
 
     double timestamp_delta_ns(uint64_t                              startTimestamp,

@@ -51,13 +51,14 @@ namespace copybuffertoimage_kernel {
         // allocate buffers and images
         vulkan_utils::storage_buffer    srcBuffer(device.mDevice, device.mMemoryProperties, buffer_size);
         vulkan_utils::image             dstImage(device.mDevice, device.mMemoryProperties, buffer_width, buffer_height, vk::Format(pixels::traits<ImagePixelType>::vk_pixel_type));
+        vulkan_utils::staging_buffer    dstImageStaging = dstImage.createStagingBuffer();
 
         // initialize source memory with random data
         auto srcBufferMap = srcBuffer.mem.map<BufferPixelType>();
         test_utils::fill_random_pixels<BufferPixelType>(srcBufferMap.get(), srcBufferMap.get() + buffer_length);
 
         // initialize destination memory (copy source and invert, thereby forcing the kernel to make the change back to the source value)
-        auto dstImageMap = dstImage.mem.map<ImagePixelType>();
+        auto dstImageMap = dstImageStaging.map<ImagePixelType>();
         test_utils::copy_pixel_buffer<BufferPixelType, ImagePixelType>(srcBufferMap.get(), srcBufferMap.get() + buffer_length, dstImageMap.get());
         test_utils::invert_pixel_buffer<ImagePixelType>(dstImageMap.get(), dstImageMap.get() + buffer_length);
 
@@ -77,7 +78,7 @@ namespace copybuffertoimage_kernel {
                                                  buffer_height);
 
         srcBufferMap = srcBuffer.mem.map<BufferPixelType>();
-        dstImageMap = dstImage.mem.map<ImagePixelType>();
+        dstImageMap = dstImageStaging.map<ImagePixelType>();
         test_utils::check_results(srcBufferMap.get(),
                                   dstImageMap.get(),
                                   buffer_width, buffer_height,

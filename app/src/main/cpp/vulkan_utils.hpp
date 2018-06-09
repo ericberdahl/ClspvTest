@@ -34,7 +34,8 @@ namespace vulkan_utils {
 
     vk::UniqueDeviceMemory allocate_device_memory(vk::Device device,
                                                   const vk::MemoryRequirements&             mem_reqs,
-                                                  const vk::PhysicalDeviceMemoryProperties& mem_props);
+                                                  const vk::PhysicalDeviceMemoryProperties& mem_props,
+                                                  vk::MemoryPropertyFlags                   property_flags = vk::MemoryPropertyFlags());
 
     class device_memory {
     public:
@@ -143,6 +144,8 @@ namespace vulkan_utils {
         lhs.swap(rhs);
     }
 
+    class staging_buffer;
+
     struct image {
         image();
 
@@ -164,12 +167,87 @@ namespace vulkan_utils {
 
         void    swap(image& other);
 
-        device_memory       mem;
-        vk::UniqueImage     im;
-        vk::UniqueImageView view;
+        staging_buffer  createStagingBuffer();
+
+        void    setLayout(vk::ImageLayout newLayout);
+
+    private:
+        vk::Device                          mDevice;
+        vk::PhysicalDeviceMemoryProperties  mMemoryProperties;
+        vk::ImageLayout                     mLayout;
+        vk::UniqueDeviceMemory              mDeviceMemory;
+        uint32_t                            mWidth;
+        uint32_t                            mHeight;
+    public:
+        vk::UniqueImage                     im;
+        vk::UniqueImageView                 view;
     };
 
     inline void swap(image& lhs, image& rhs)
+    {
+        lhs.swap(rhs);
+    }
+
+    class staging_buffer {
+    public:
+        struct unmapper_t {
+            unmapper_t(staging_buffer* s) : self(s) {}
+
+            void    operator()(void* ptr) { self->unmap(); }
+
+            staging_buffer*  self;
+        };
+
+    public:
+        staging_buffer ();
+
+        staging_buffer (vk::Device                           device,
+                        vk::PhysicalDeviceMemoryProperties   memoryProperties,
+                        vk::Image                            image,
+                        uint32_t                             width,
+                        uint32_t                             height,
+                        std::size_t                          pixelSize);
+
+        staging_buffer (const staging_buffer & other) = delete;
+
+        staging_buffer (staging_buffer && other);
+
+        ~staging_buffer ();
+
+        staging_buffer & operator=(const staging_buffer & other) = delete;
+
+        staging_buffer & operator=(staging_buffer && other);
+
+        void    swap(staging_buffer & other);
+
+        void    copyToImage(vk::CommandBuffer cmd);
+        void    copyFromImage(vk::CommandBuffer cmd);
+
+        vk::DeviceMemory    getDeviceMemoryHack();
+
+        template <typename T>
+        std::unique_ptr<T, unmapper_t> map()
+        {
+            auto basicMap = map();
+            return std::unique_ptr<T, unmapper_t>(static_cast<T*>(basicMap.release()), basicMap.get_deleter());
+        }
+
+        std::unique_ptr<void, unmapper_t> map();
+
+    private:
+        void                unmap();
+
+    private:
+        vk::Device              mDevice;
+        vk::Image               mImage;
+        uint32_t                mWidth;
+        uint32_t                mHeight;
+        vk::UniqueDeviceMemory  mDeviceMemory;
+        vk::UniqueBuffer        mBuffer;
+        bool                    mMapped;
+    };
+
+    inline void swap(staging_buffer & lhs, staging_buffer & rhs)
     {
         lhs.swap(rhs);
     }
