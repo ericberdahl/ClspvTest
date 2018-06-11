@@ -200,6 +200,9 @@ namespace vulkan_utils {
             staging_buffer*  self;
         };
 
+        template <typename T>
+        using mapped_ptr = std::unique_ptr<T, unmapper_t>;
+
     public:
         staging_buffer ();
 
@@ -228,13 +231,13 @@ namespace vulkan_utils {
         vk::DeviceMemory    getDeviceMemoryHack();
 
         template <typename T>
-        std::unique_ptr<T, unmapper_t> map()
+        mapped_ptr<T> map()
         {
             auto basicMap = map();
             return std::unique_ptr<T, unmapper_t>(static_cast<T*>(basicMap.release()), basicMap.get_deleter());
         }
 
-        std::unique_ptr<void, unmapper_t> map();
+        mapped_ptr<void> map();
 
     private:
         void                unmap();
