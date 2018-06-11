@@ -165,17 +165,6 @@ namespace clspv_utils {
             return device.createShaderModuleUnique(shaderModuleCreateInfo);
         }
 
-        vk::UniqueCommandBuffer allocate_command_buffer(vk::Device device, vk::CommandPool cmd_pool) {
-            vk::CommandBufferAllocateInfo allocInfo;
-            allocInfo.setCommandPool(cmd_pool)
-                    .setLevel(vk::CommandBufferLevel::ePrimary)
-                    .setCommandBufferCount(1);
-
-            auto buffers = device.allocateCommandBuffersUnique(allocInfo);
-            assert(buffers.size() == 1);
-            return std::move(buffers[0]);
-        }
-
         std::vector<vk::UniqueDescriptorSet> allocate_descriptor_sets(
                 vk::Device                                      device,
                 vk::DescriptorPool                              pool,
@@ -649,7 +638,7 @@ namespace clspv_utils {
     {
         auto& device = getDevice();
 
-        mCommand = allocate_command_buffer(device.mDevice, device.mCommandPool);
+        mCommand = vulkan_utils::allocate_command_buffer(device.mDevice, device.mCommandPool);
 
         vk::QueryPoolCreateInfo poolCreateInfo;
         poolCreateInfo.setQueryType(vk::QueryType::eTimestamp)

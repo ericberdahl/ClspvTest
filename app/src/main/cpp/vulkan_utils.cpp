@@ -73,6 +73,17 @@ namespace vulkan_utils {
         return device.allocateMemoryUnique(alloc_info);
     }
 
+    vk::UniqueCommandBuffer allocate_command_buffer(vk::Device device, vk::CommandPool cmd_pool) {
+        vk::CommandBufferAllocateInfo allocInfo;
+        allocInfo.setCommandPool(cmd_pool)
+                .setLevel(vk::CommandBufferLevel::ePrimary)
+                .setCommandBufferCount(1);
+
+        auto buffers = device.allocateCommandBuffersUnique(allocInfo);
+        assert(buffers.size() == 1);
+        return std::move(buffers[0]);
+    }
+    
     device_memory::device_memory(vk::Device                                dev,
                                  const vk::MemoryRequirements&             mem_reqs,
                                  const vk::PhysicalDeviceMemoryProperties  mem_props)

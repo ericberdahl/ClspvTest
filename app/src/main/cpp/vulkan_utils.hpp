@@ -37,6 +37,8 @@ namespace vulkan_utils {
                                                   const vk::PhysicalDeviceMemoryProperties& mem_props,
                                                   vk::MemoryPropertyFlags                   property_flags = vk::MemoryPropertyFlags());
 
+    vk::UniqueCommandBuffer allocate_command_buffer(vk::Device device, vk::CommandPool cmd_pool);
+
     class device_memory {
     public:
         struct unmapper_t {
