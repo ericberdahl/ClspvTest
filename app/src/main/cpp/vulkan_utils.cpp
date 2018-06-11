@@ -262,6 +262,8 @@ namespace vulkan_utils {
     {
         mDevice = dev;
         mMemoryProperties = memoryProperties;
+        mWidth = width;
+        mHeight = height;
 
         vk::ImageCreateInfo imageInfo;
         imageInfo.setImageType(vk::ImageType::e2D)
@@ -320,15 +322,53 @@ namespace vulkan_utils {
     {
         return staging_buffer(mDevice,
                               mMemoryProperties,
-                              *im,
+                              this,
                               mWidth,
                               mHeight,
-                              4);   // TODO: Get correct pixel size
+                              16);   // TODO: Get correct pixel size
     }
 
-    void image::setLayout(vk::ImageLayout newLayout)
+    vk::ImageMemoryBarrier image::setLayout(vk::ImageLayout newLayout)
     {
-        throw std::runtime_error("image::setLayout not yet implemented");
+        if (newLayout == vk::ImageLayout::eUndefined)
+        {
+            throw std::runtime_error("images cannot be transitioned to undefined layout");
+        }
+
+        const auto accessMap = {
+                std::make_pair(vk::ImageLayout::eShaderReadOnlyOptimal, vk::AccessFlagBits::eShaderRead),
+                std::make_pair(vk::ImageLayout::eTransferDstOptimal, vk::AccessFlagBits::eTransferWrite),
+                std::make_pair(vk::ImageLayout::eTransferSrcOptimal, vk::AccessFlagBits::eTransferRead),
+                std::make_pair(vk::ImageLayout::eGeneral, vk::AccessFlagBits::eShaderWrite),
+                std::make_pair(vk::ImageLayout::eUndefined, vk::AccessFlagBits(0))
+        };
+
+        auto layoutFinder = [](decltype(accessMap)::const_reference item, vk::ImageLayout layout) {
+            return item.first == layout;
+        };
+
+        auto oldAccess = std::find_if(accessMap.begin(), accessMap.end(), std::bind(layoutFinder, std::placeholders::_1, mLayout));
+        assert(oldAccess != accessMap.end());
+
+        auto newAccess = std::find_if(accessMap.begin(), accessMap.end(), std::bind(layoutFinder, std::placeholders::_1, newLayout));
+        if (newAccess == accessMap.end())
+        {
+            throw std::runtime_error("new image layout is unsupported");
+        }
+
+        vk::ImageMemoryBarrier result;
+        result.setSrcAccessMask(oldAccess->second)
+                .setDstAccessMask(newAccess->second)
+                .setOldLayout(mLayout)
+                .setNewLayout(newLayout)
+                .setImage(*im);
+        result.subresourceRange.setAspectMask(vk::ImageAspectFlagBits::eColor)
+                .setLevelCount(1)
+                .setLayerCount(1);
+
+        mLayout = newLayout;
+
+        return result;
     }
 
     staging_buffer::staging_buffer()
@@ -359,7 +399,7 @@ namespace vulkan_utils {
 
     staging_buffer::staging_buffer(vk::Device                           device,
                                    vk::PhysicalDeviceMemoryProperties   memoryProperties,
-                                   vk::Image                            image,
+                                   image*                               image,
                                    uint32_t                             width,
                                    uint32_t                             height,
                                    std::size_t                          pixelSize)
@@ -367,6 +407,8 @@ namespace vulkan_utils {
     {
         mDevice = device;
         mImage = image;
+        mWidth = width;
+        mHeight = height;
 
         const std::size_t num_bytes = pixelSize * width * height;
 
@@ -380,7 +422,8 @@ namespace vulkan_utils {
 
         mDeviceMemory = allocate_device_memory(mDevice,
                                                mDevice.getBufferMemoryRequirements(*mBuffer),
-                                               memoryProperties);
+                                               memoryProperties,
+                                               vk::MemoryPropertyFlagBits::eHostVisible);
 
         // Bind the memory to the buffer object
         mDevice.bindBufferMemory(*mBuffer, *mDeviceMemory, 0);
@@ -429,22 +472,34 @@ namespace vulkan_utils {
         mMapped = false;
     }
 
-    void staging_buffer::copyToImage(vk::CommandBuffer cmd)
+    void staging_buffer::copyToImage(vk::CommandBuffer commandBuffer)
     {
-        // TODO: Not yet implemented - staging_buffer::copyToImage
-        throw std::runtime_error("staging_buffer::copyToImage not yet implemented");
+        vk::BufferMemoryBarrier bufferBarrier;
+        bufferBarrier.setSrcAccessMask(vk::AccessFlagBits::eHostWrite)
+                .setDstAccessMask(vk::AccessFlagBits::eTransferRead)
+                .setBuffer(*mBuffer)
+                .setSize(VK_WHOLE_SIZE);
 
-        vk::BufferImageCopy bic;
-        bic.imageExtent.setWidth(mWidth)
-                .setHeight(mHeight)
-                .setDepth(1);
-        bic.imageSubresource.setAspectMask(vk::ImageAspectFlagBits::eColor)
+        vk::ImageMemoryBarrier imageBarrier = mImage->setLayout(vk::ImageLayout::eTransferDstOptimal);
+
+        vk::BufferImageCopy copyRegion;
+        copyRegion.setBufferRowLength(mWidth)
+                .setBufferImageHeight(mHeight)
+                .setImageExtent(vk::Extent3D(mWidth, mHeight, 1));
+        copyRegion.imageSubresource.setAspectMask(vk::ImageAspectFlagBits::eColor)
                 .setLayerCount(1);
 
-        cmd.copyBufferToImage(*mBuffer, mImage, vk::ImageLayout::eGeneral, bic); // TODO: use correct layout
+        commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eHost | vk::PipelineStageFlagBits::eComputeShader | vk::PipelineStageFlagBits::eTransfer,
+                                      vk::PipelineStageFlagBits::eTransfer,
+                                      vk::DependencyFlags(),
+                                      nullptr,         // memory barriers
+                                      bufferBarrier,   // buffer memory barriers
+                                      imageBarrier);   // image memory barriers
+
+        commandBuffer.copyBufferToImage(*mBuffer, imageBarrier.image, imageBarrier.newLayout, copyRegion);
     }
 
-    void staging_buffer::copyFromImage(vk::CommandBuffer cmd)
+    void staging_buffer::copyFromImage()
     {
         // TODO: Not yet implemented - staging_buffer::copyFromImage
         throw std::runtime_error("staging_buffer::copyFromImage not yet implemented");

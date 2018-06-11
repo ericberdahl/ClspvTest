@@ -171,7 +171,7 @@ namespace vulkan_utils {
 
         staging_buffer  createStagingBuffer();
 
-        void    setLayout(vk::ImageLayout newLayout);
+        vk::ImageMemoryBarrier setLayout(vk::ImageLayout newLayout);
 
     private:
         vk::Device                          mDevice;
@@ -208,7 +208,7 @@ namespace vulkan_utils {
 
         staging_buffer (vk::Device                           device,
                         vk::PhysicalDeviceMemoryProperties   memoryProperties,
-                        vk::Image                            image,
+                        image*                               image,
                         uint32_t                             width,
                         uint32_t                             height,
                         std::size_t                          pixelSize);
@@ -225,10 +225,8 @@ namespace vulkan_utils {
 
         void    swap(staging_buffer & other);
 
-        void    copyToImage(vk::CommandBuffer cmd);
-        void    copyFromImage(vk::CommandBuffer cmd);
-
-        vk::DeviceMemory    getDeviceMemoryHack();
+        void    copyToImage(vk::CommandBuffer commandBuffer);
+        void    copyFromImage();
 
         template <typename T>
         mapped_ptr<T> map()
@@ -244,7 +242,7 @@ namespace vulkan_utils {
 
     private:
         vk::Device              mDevice;
-        vk::Image               mImage;
+        image*                  mImage;
         uint32_t                mWidth;
         uint32_t                mHeight;
         vk::UniqueDeviceMemory  mDeviceMemory;

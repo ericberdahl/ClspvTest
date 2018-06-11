@@ -69,6 +69,19 @@ namespace copyimagetobuffer_kernel {
         dstBufferMap.reset();
         srcImageMap.reset();
 
+        // complete setup of the image
+        vk::UniqueCommandBuffer setupCommand = vulkan_utils::allocate_command_buffer(device.mDevice, device.mCommandPool);
+        setupCommand->begin(vk::CommandBufferBeginInfo());
+        srcImageStaging.copyToImage(*setupCommand);
+        setupCommand->end();
+
+        vk::CommandBuffer rawCommand = *setupCommand;
+        vk::SubmitInfo submitInfo;
+        submitInfo.setCommandBufferCount(1)
+                .setPCommandBuffers(&rawCommand);
+
+        device.mComputeQueue.submit(submitInfo, nullptr);
+
         invocationResult.mExecutionTime = invoke(kernel,
                                                  srcImage,
                                                  dst_buffer,
