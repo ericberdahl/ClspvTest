@@ -874,7 +874,7 @@ namespace clspv_utils {
         mCommand->dispatch(num_workgroups.x, num_workgroups.y, 1);
         mCommand->writeTimestamp(vk::PipelineStageFlagBits::eComputeShader, *mQueryPool, kQueryIndex_PostExecution);
         mCommand->pipelineBarrier(vk::PipelineStageFlagBits::eComputeShader,
-                                  vk::PipelineStageFlagBits::eBottomOfPipe,
+                                  vk::PipelineStageFlagBits::eHost | vk::PipelineStageFlagBits::eTransfer,
                                   vk::DependencyFlags(),
                                   { { vk::AccessFlagBits::eShaderWrite, vk::AccessFlagBits::eHostRead} },    // memory barriers
                                   nullptr,    // buffer memory barriers
