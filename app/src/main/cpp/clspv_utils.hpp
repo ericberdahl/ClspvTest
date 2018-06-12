@@ -219,6 +219,7 @@ namespace clspv_utils {
         std::vector<arg>                            mDescriptorArguments;
         std::vector<int32_t>                        mSpecConstantArguments;
         std::vector<vulkan_utils::uniform_buffer>   mPodBuffers;
+        std::vector<vk::ImageMemoryBarrier>         mImageMemoryBarriers;
     };
 
     template <typename T>

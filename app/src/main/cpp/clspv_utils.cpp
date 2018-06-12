@@ -690,6 +690,7 @@ namespace clspv_utils {
         item.image = *image.view;
 
         mDescriptorArguments.push_back(item);
+        mImageMemoryBarriers.push_back(image.setLayout(vk::ImageLayout::eShaderReadOnlyOptimal));
     }
 
     void kernel_invocation::addWriteOnlyImageArgument(vulkan_utils::image& image) {
@@ -699,6 +700,7 @@ namespace clspv_utils {
         item.image = *image.view;
 
         mDescriptorArguments.push_back(item);
+        mImageMemoryBarriers.push_back(image.setLayout(vk::ImageLayout::eGeneral));
     }
 
     void kernel_invocation::addLocalArraySizeArgument(unsigned int numElements) {
@@ -744,7 +746,9 @@ namespace clspv_utils {
                 case vk::DescriptorType::eSampledImage: {
                     vk::DescriptorImageInfo imageInfo;
                     imageInfo.setImageView(a.image)
-                            .setImageLayout(vk::ImageLayout::eGeneral);
+                            .setImageLayout(a.type == vk::DescriptorType::eStorageImage ?
+                                            vk::ImageLayout::eGeneral :
+                                            vk::ImageLayout::eShaderReadOnlyOptimal);
 
                     imageList.push_back(imageInfo);
                     break;
@@ -860,17 +864,17 @@ namespace clspv_utils {
         mCommand->resetQueryPool(*mQueryPool, kQueryIndex_FirstIndex, kQueryIndex_Count);
 
         mCommand->writeTimestamp(vk::PipelineStageFlagBits::eComputeShader, *mQueryPool, kQueryIndex_StartOfExecution);
-        mCommand->pipelineBarrier(vk::PipelineStageFlagBits::eHost,
+        mCommand->pipelineBarrier(vk::PipelineStageFlagBits::eHost | vk::PipelineStageFlagBits::eComputeShader | vk::PipelineStageFlagBits::eTransfer,
                                   vk::PipelineStageFlagBits::eComputeShader,
                                   vk::DependencyFlags(),
                                   { { vk::AccessFlagBits::eHostWrite, vk::AccessFlagBits::eShaderRead } },    // memory barriers
                                   nullptr,    // buffer memory barriers
-                                  nullptr);    // image memory barriers
+                                  mImageMemoryBarriers);    // image memory barriers
         mCommand->writeTimestamp(vk::PipelineStageFlagBits::eComputeShader, *mQueryPool, kQueryIndex_PostHostBarrier);
         mCommand->dispatch(num_workgroups.x, num_workgroups.y, 1);
         mCommand->writeTimestamp(vk::PipelineStageFlagBits::eComputeShader, *mQueryPool, kQueryIndex_PostExecution);
         mCommand->pipelineBarrier(vk::PipelineStageFlagBits::eComputeShader,
-                                  vk::PipelineStageFlagBits::eHost,
+                                  vk::PipelineStageFlagBits::eBottomOfPipe,
                                   vk::DependencyFlags(),
                                   { { vk::AccessFlagBits::eShaderWrite, vk::AccessFlagBits::eHostRead} },    // memory barriers
                                   nullptr,    // buffer memory barriers
