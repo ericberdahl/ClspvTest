@@ -630,11 +630,7 @@ namespace clspv_utils {
     }
 
     kernel_invocation::kernel_invocation(kernel& kernel) :
-            mKernel(kernel),
-            mCommand(),
-            mLiteralSamplers(),
-            mDescriptorArguments(),
-            mSpecConstantArguments()
+            mKernel(kernel)
     {
         auto& device = getDevice();
 
@@ -653,53 +649,89 @@ namespace clspv_utils {
     }
 
     void kernel_invocation::addLiteralSamplers(vk::ArrayProxy<const vk::Sampler> samplers) {
-        mLiteralSamplers.insert(mLiteralSamplers.end(), samplers.begin(), samplers.end());
+        for (auto s : samplers) {
+            vk::DescriptorImageInfo samplerInfo;
+            samplerInfo.setSampler(s);
+
+            mLiteralSamplerDescriptors.push_back(samplerInfo);
+        }
     }
 
     void kernel_invocation::addStorageBufferArgument(vulkan_utils::storage_buffer& buffer) {
-        arg item;
+        vk::DescriptorBufferInfo bufferInfo;
+        bufferInfo.setRange(VK_WHOLE_SIZE)
+                .setBuffer(*buffer.buf);
+        mBufferDescriptors.push_back(bufferInfo);
 
-        item.type = vk::DescriptorType::eStorageBuffer;
-        item.buffer = *buffer.buf;
-
-        mDescriptorArguments.push_back(item);
+        vk::WriteDescriptorSet argSet;
+        argSet.setDstSet(mKernel.get().getArgumentDescSet())
+                .setDstBinding(mArgumentDescriptorWrites.size())
+                .setDescriptorCount(1)
+                .setDescriptorType(vk::DescriptorType::eStorageBuffer)
+                .setPBufferInfo(&mBufferDescriptors.back());
+        mArgumentDescriptorWrites.push_back(argSet);
     }
 
     void kernel_invocation::addUniformBufferArgument(vulkan_utils::uniform_buffer& buffer) {
-        arg item;
+        vk::DescriptorBufferInfo bufferInfo;
+        bufferInfo.setRange(VK_WHOLE_SIZE)
+                .setBuffer(*buffer.buf);
+        mBufferDescriptors.push_back(bufferInfo);
 
-        item.type = vk::DescriptorType::eUniformBuffer;
-        item.buffer = *buffer.buf;
-
-        mDescriptorArguments.push_back(item);
+        vk::WriteDescriptorSet argSet;
+        argSet.setDstSet(mKernel.get().getArgumentDescSet())
+                .setDstBinding(mArgumentDescriptorWrites.size())
+                .setDescriptorCount(1)
+                .setDescriptorType(vk::DescriptorType::eUniformBuffer)
+                .setPBufferInfo(&mBufferDescriptors.back());
+        mArgumentDescriptorWrites.push_back(argSet);
     }
 
     void kernel_invocation::addSamplerArgument(vk::Sampler samp) {
-        arg item;
+        vk::DescriptorImageInfo samplerInfo;
+        samplerInfo.setSampler(samp);
+        mImageDescriptors.push_back(samplerInfo);
 
-        item.type = vk::DescriptorType::eSampler;
-        item.sampler = samp;
-
-        mDescriptorArguments.push_back(item);
+        vk::WriteDescriptorSet argSet;
+        argSet.setDstSet(mKernel.get().getArgumentDescSet())
+                .setDstBinding(mArgumentDescriptorWrites.size())
+                .setDescriptorCount(1)
+                .setDescriptorType(vk::DescriptorType::eSampler)
+                .setPImageInfo(&mImageDescriptors.back());
+        mArgumentDescriptorWrites.push_back(argSet);
     }
 
     void kernel_invocation::addReadOnlyImageArgument(vulkan_utils::image& image) {
-        arg item;
+        vk::DescriptorImageInfo imageInfo;
+        imageInfo.setImageView(*image.view)
+                .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal);
+        mImageDescriptors.push_back(imageInfo);
 
-        item.type = vk::DescriptorType::eSampledImage;
-        item.image = *image.view;
+        vk::WriteDescriptorSet argSet;
+        argSet.setDstSet(mKernel.get().getArgumentDescSet())
+                .setDstBinding(mArgumentDescriptorWrites.size())
+                .setDescriptorCount(1)
+                .setDescriptorType(vk::DescriptorType::eSampledImage)
+                .setPImageInfo(&mImageDescriptors.back());
+        mArgumentDescriptorWrites.push_back(argSet);
 
-        mDescriptorArguments.push_back(item);
         mImageMemoryBarriers.push_back(image.setLayout(vk::ImageLayout::eShaderReadOnlyOptimal));
     }
 
     void kernel_invocation::addWriteOnlyImageArgument(vulkan_utils::image& image) {
-        arg item;
+        vk::DescriptorImageInfo imageInfo;
+        imageInfo.setImageView(*image.view)
+                .setImageLayout(vk::ImageLayout::eGeneral);
+        mImageDescriptors.push_back(imageInfo);
 
-        item.type = vk::DescriptorType::eStorageImage;
-        item.image = *image.view;
+        vk::WriteDescriptorSet argSet;
+        argSet.setDstSet(mKernel.get().getArgumentDescSet())
+                .setDstBinding(mArgumentDescriptorWrites.size())
+                .setDescriptorCount(1)
+                .setDescriptorType(vk::DescriptorType::eStorageImage)
+                .setPImageInfo(&mImageDescriptors.back());
+        mArgumentDescriptorWrites.push_back(argSet);
 
-        mDescriptorArguments.push_back(item);
         mImageMemoryBarriers.push_back(image.setLayout(vk::ImageLayout::eGeneral));
     }
 
@@ -721,62 +753,6 @@ namespace clspv_utils {
     }
 
     void kernel_invocation::updateDescriptorSets() {
-        std::vector<vk::DescriptorImageInfo>    imageList;
-        std::vector<vk::DescriptorBufferInfo>   bufferList;
-
-        auto literalSamplerDescSet = mKernel.get().getLiteralSamplerDescSet();
-        auto argumentDescSet = mKernel.get().getArgumentDescSet();
-
-        //
-        // Collect information about the literal samplers
-        //
-        for (auto s : mLiteralSamplers) {
-            vk::DescriptorImageInfo samplerInfo;
-            samplerInfo.setSampler(s);
-
-            imageList.push_back(samplerInfo);
-        }
-
-        //
-        // Collect information about the arguments
-        //
-        for (auto& a : mDescriptorArguments) {
-            switch (a.type) {
-                case vk::DescriptorType::eStorageImage:
-                case vk::DescriptorType::eSampledImage: {
-                    vk::DescriptorImageInfo imageInfo;
-                    imageInfo.setImageView(a.image)
-                            .setImageLayout(a.type == vk::DescriptorType::eStorageImage ?
-                                            vk::ImageLayout::eGeneral :
-                                            vk::ImageLayout::eShaderReadOnlyOptimal);
-
-                    imageList.push_back(imageInfo);
-                    break;
-                }
-
-                case vk::DescriptorType::eStorageBuffer:
-                case vk::DescriptorType::eUniformBuffer: {
-                    vk::DescriptorBufferInfo bufferInfo;
-                    bufferInfo.setRange(VK_WHOLE_SIZE)
-                            .setBuffer(a.buffer);
-
-                    bufferList.push_back(bufferInfo);
-                    break;
-                }
-
-                case vk::DescriptorType::eSampler: {
-                    vk::DescriptorImageInfo samplerInfo;
-                    samplerInfo.setSampler(a.sampler);
-
-                    imageList.push_back(samplerInfo);
-                    break;
-                }
-
-                default:
-                    assert(0 && "unkown argument type");
-            }
-        }
-
         //
         // Set up to create the descriptor set write structures
         // We will iterate the param lists in the same order,
@@ -784,27 +760,22 @@ namespace clspv_utils {
         //
 
         std::vector<vk::WriteDescriptorSet> writeSets;
-        auto nextImage = imageList.begin();
-        auto nextBuffer = bufferList.begin();
 
         //
         // Update the literal samplers' descriptor set
         //
 
         vk::WriteDescriptorSet literalSamplerSet;
-        literalSamplerSet.setDstSet(literalSamplerDescSet)
+        literalSamplerSet.setDstSet(mKernel.get().getLiteralSamplerDescSet())
                 .setDstBinding(0)
                 .setDescriptorCount(1)
                 .setDescriptorType(vk::DescriptorType::eSampler);
 
-        assert(mLiteralSamplers.empty() || literalSamplerDescSet);
+        assert(mLiteralSamplerDescriptors.empty() || literalSamplerSet.dstSet);
 
-        for (auto s : mLiteralSamplers) {
-            literalSamplerSet.setPImageInfo(&(*nextImage));
-            ++nextImage;
-
+        for (auto& lsd : mLiteralSamplerDescriptors) {
+            literalSamplerSet.setPImageInfo(&lsd);
             writeSets.push_back(literalSamplerSet);
-
             ++literalSamplerSet.dstBinding;
         }
 
@@ -812,43 +783,30 @@ namespace clspv_utils {
         // Update the kernel's argument descriptor set
         //
 
-        vk::WriteDescriptorSet argSet;
-        argSet.setDstSet(argumentDescSet)
-                .setDstBinding(0)
-                .setDescriptorCount(1);
+        auto nextImage = mImageDescriptors.begin();
+        auto nextBuffer = mBufferDescriptors.begin();
 
-        assert(mDescriptorArguments.empty() || argumentDescSet);
-
-        for (auto& a : mDescriptorArguments) {
-            switch (a.type) {
+        for (auto& a : mArgumentDescriptorWrites) {
+            switch (a.descriptorType) {
                 case vk::DescriptorType::eStorageImage:
                 case vk::DescriptorType::eSampledImage:
-                    argSet.setDescriptorType(a.type)
-                            .setPImageInfo(&(*nextImage));
+                case vk::DescriptorType::eSampler:
+                    a.setPImageInfo(&(*nextImage));
                     ++nextImage;
                     break;
 
                 case vk::DescriptorType::eUniformBuffer:
                 case vk::DescriptorType::eStorageBuffer:
-                    argSet.setDescriptorType(a.type)
-                            .setPBufferInfo(&(*nextBuffer));
+                    a.setPBufferInfo(&(*nextBuffer));
                     ++nextBuffer;
-                    break;
-
-                case vk::DescriptorType::eSampler:
-                    argSet.setDescriptorType(vk::DescriptorType::eSampler)
-                            .setPImageInfo(&(*nextImage));
-                    ++nextImage;
                     break;
 
                 default:
                     assert(0 && "unkown argument type");
             }
-
-            writeSets.push_back(argSet);
-
-            ++argSet.dstBinding;
         }
+
+        writeSets.insert(writeSets.end(), mArgumentDescriptorWrites.begin(), mArgumentDescriptorWrites.end());
 
         //
         // Do the actual descriptor set updates

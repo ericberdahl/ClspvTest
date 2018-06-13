@@ -203,23 +203,18 @@ namespace clspv_utils {
         };
 
     private:
-        struct arg {
-            vk::DescriptorType  type;
-            vk::Buffer          buffer;
-            vk::Sampler         sampler;
-            vk::ImageView       image;
-        };
-
-    private:
         std::reference_wrapper<kernel>              mKernel;
         vk::UniqueCommandBuffer                     mCommand;
         vk::UniqueQueryPool                         mQueryPool;
 
-        std::vector<vk::Sampler>                    mLiteralSamplers;
-        std::vector<arg>                            mDescriptorArguments;
         std::vector<int32_t>                        mSpecConstantArguments;
         std::vector<vulkan_utils::uniform_buffer>   mPodBuffers;
         std::vector<vk::ImageMemoryBarrier>         mImageMemoryBarriers;
+
+        std::vector<vk::DescriptorImageInfo>        mLiteralSamplerDescriptors;
+        std::vector<vk::DescriptorImageInfo>        mImageDescriptors;
+        std::vector<vk::DescriptorBufferInfo>       mBufferDescriptors;
+        std::vector<vk::WriteDescriptorSet>         mArgumentDescriptorWrites;
     };
 
     template <typename T>
