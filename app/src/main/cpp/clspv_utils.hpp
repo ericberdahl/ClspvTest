@@ -131,6 +131,8 @@ namespace clspv_utils {
         std::vector<vk::Sampler>            mSamplers;
     };
 
+    class kernel_invocation;
+
     class kernel {
     public:
         kernel(kernel_module&               module,
@@ -139,6 +141,7 @@ namespace clspv_utils {
 
         ~kernel();
 
+        kernel_invocation   createInvocation();
         void                bindCommand(vk::CommandBuffer command) const;
 
         std::string         getEntryPoint() const { return mEntryPoint; }
@@ -149,9 +152,6 @@ namespace clspv_utils {
 
         device_t&           getDevice() { return getModule().getDevice(); }
         const device_t&     getDevice() const { return getModule().getDevice(); }
-
-        vk::DescriptorSet   getLiteralSamplerDescSet() const { return mLayout.mLiteralSamplerDescriptor; }
-        vk::DescriptorSet   getArgumentDescSet() const { return mLayout.mArgumentsDescriptor; }
 
         void                updatePipeline(vk::ArrayProxy<int32_t> otherSpecConstants);
 
@@ -165,7 +165,17 @@ namespace clspv_utils {
 
     class kernel_invocation {
     public:
-        explicit    kernel_invocation(kernel& kernel);
+                    kernel_invocation();
+
+        explicit    kernel_invocation(kernel&                                   kernel,
+                                      vk::Device                                device,
+                                      const vk::PhysicalDeviceMemoryProperties& memoryProperties,
+                                      vk::CommandPool                           commandPool,
+                                      vk::Queue                                 queue,
+                                      vk::DescriptorSet                         literalSamplerDescSet,
+                                      vk::DescriptorSet                         argumentDescSet);
+
+                    kernel_invocation(kernel_invocation&& other);
 
                     ~kernel_invocation();
 
@@ -183,14 +193,16 @@ namespace clspv_utils {
 
         execution_time_t    run(const WorkgroupDimensions& num_workgroups);
 
+        void    swap(kernel_invocation& other);
+
     private:
         void    addLiteralSamplers(vk::ArrayProxy<const vk::Sampler> samplers);
 
+        void    bindCommand();
+        void    updatePipeline();
         void    fillCommandBuffer(const WorkgroupDimensions&    num_workgroups);
         void    updateDescriptorSets();
         void    submitCommand();
-
-        const device_t& getDevice() const { return mKernel.get().getModule().getDevice(); }
 
     private:
         enum QueryIndex {
@@ -203,23 +215,34 @@ namespace clspv_utils {
         };
 
     private:
-        std::reference_wrapper<kernel>              mKernel;
+        kernel*                                     mKernel;
+        vk::Device                                  mDevice;
+        vk::PhysicalDeviceMemoryProperties          mMemoryProperties;
+        vk::Queue                                   mQueue;
         vk::UniqueCommandBuffer                     mCommand;
         vk::UniqueQueryPool                         mQueryPool;
+
+        vk::DescriptorSet                           mLiteralSamplerDescriptorSet;
+        vk::DescriptorSet                           mArgumentDescriptorSet;
 
         std::vector<int32_t>                        mSpecConstantArguments;
         std::vector<vulkan_utils::uniform_buffer>   mPodBuffers;
         std::vector<vk::ImageMemoryBarrier>         mImageMemoryBarriers;
 
-        std::vector<vk::DescriptorImageInfo>        mLiteralSamplerDescriptors;
-        std::vector<vk::DescriptorImageInfo>        mImageDescriptors;
-        std::vector<vk::DescriptorBufferInfo>       mBufferDescriptors;
+        std::vector<vk::DescriptorImageInfo>        mLiteralSamplerInfo;
+        std::vector<vk::DescriptorImageInfo>        mImageArgumentInfo;
+        std::vector<vk::DescriptorBufferInfo>       mBufferArgumentInfo;
         std::vector<vk::WriteDescriptorSet>         mArgumentDescriptorWrites;
     };
 
     template <typename T>
     inline void kernel_invocation::addPodArgument(const T& pod) {
         addPodArgument(&pod, sizeof(pod));
+    }
+
+    inline void swap(kernel_invocation & lhs, kernel_invocation & rhs)
+    {
+        lhs.swap(rhs);
     }
 }
 

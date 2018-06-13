@@ -49,7 +49,7 @@ namespace fill_kernel {
                 (scalars.inWidth + workgroup_sizes.x - 1) / workgroup_sizes.x,
                 (scalars.inHeight + workgroup_sizes.y - 1) / workgroup_sizes.y);
 
-        clspv_utils::kernel_invocation invocation(kernel);
+        clspv_utils::kernel_invocation invocation = kernel.createInvocation();
 
         invocation.addStorageBufferArgument(dst_buffer);
         invocation.addPodArgument(scalars);

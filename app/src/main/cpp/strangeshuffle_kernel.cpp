@@ -20,7 +20,7 @@ namespace strangeshuffle_kernel {
         const clspv_utils::WorkgroupDimensions workgroup_sizes = kernel.getWorkgroupSize();
         const clspv_utils::WorkgroupDimensions num_workgroups(((num_elements/2) + workgroup_sizes.x - 1)/workgroup_sizes.x);
 
-        clspv_utils::kernel_invocation invocation(kernel);
+        clspv_utils::kernel_invocation invocation = kernel.createInvocation();
 
         invocation.addStorageBufferArgument(index_buffer);
         invocation.addStorageBufferArgument(source_buffer);

@@ -57,7 +57,7 @@ namespace copybuffertoimage_kernel {
                 (width + workgroup_sizes.x - 1) / workgroup_sizes.x,
                 (height + workgroup_sizes.y - 1) / workgroup_sizes.y);
 
-        clspv_utils::kernel_invocation invocation(kernel);
+        clspv_utils::kernel_invocation invocation = kernel.createInvocation();
 
         invocation.addStorageBufferArgument(src_buffer);
         invocation.addWriteOnlyImageArgument(dst_image);

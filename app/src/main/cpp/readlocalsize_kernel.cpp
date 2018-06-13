@@ -336,7 +336,7 @@ namespace readlocalsize_kernel {
                 (scalars.width + workgroup_sizes.x - 1) / workgroup_sizes.x,
                 (scalars.height + workgroup_sizes.y - 1) / workgroup_sizes.y);
 
-        clspv_utils::kernel_invocation invocation(kernel);
+        clspv_utils::kernel_invocation invocation = kernel.createInvocation();
 
         invocation.addStorageBufferArgument(outLocalSizes);
         invocation.addPodArgument(scalars);

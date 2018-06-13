@@ -585,6 +585,18 @@ namespace clspv_utils {
     kernel::~kernel() {
     }
 
+    kernel_invocation kernel::createInvocation()
+    {
+        device_t& dev = getDevice();
+        return kernel_invocation(*this,
+                                 dev.mDevice,
+                                 dev.mMemoryProperties,
+                                 dev.mCommandPool,
+                                 dev.mComputeQueue,
+                                 mLayout.mLiteralSamplerDescriptor,
+                                 mLayout.mArgumentsDescriptor);
+    }
+
     void kernel::updatePipeline(vk::ArrayProxy<int32_t> otherSpecConstants) {
         std::vector<int32_t> specConstants = {
                 mWorkgroupSizes.x,
@@ -608,13 +620,13 @@ namespace clspv_utils {
                 .setPData(specConstants.data());
 
         vk::ComputePipelineCreateInfo createInfo;
-        createInfo.setLayout(*mLayout.mPipelineLayout)
-                .stage.setStage(vk::ShaderStageFlagBits::eCompute)
+        createInfo.setLayout(*mLayout.mPipelineLayout);
+        createInfo.stage.setStage(vk::ShaderStageFlagBits::eCompute)
                 .setModule(mModule.get().getShaderModule())
                 .setPName(mEntryPoint.c_str())
                 .setPSpecializationInfo(&specializationInfo);
 
-        mPipeline = mModule.get().getDevice().mDevice.createComputePipelineUnique(vk::PipelineCache(), createInfo);
+        mPipeline = getDevice().mDevice.createComputePipelineUnique(vk::PipelineCache(), createInfo);
     }
 
     void kernel::bindCommand(vk::CommandBuffer command) const {
@@ -629,31 +641,79 @@ namespace clspv_utils {
                                 nullptr);
     }
 
-    kernel_invocation::kernel_invocation(kernel& kernel) :
-            mKernel(kernel)
+    kernel_invocation::kernel_invocation()
+            : mKernel(nullptr)
     {
-        auto& device = getDevice();
+        // this space intentionally left blank
+    }
 
-        mCommand = vulkan_utils::allocate_command_buffer(device.mDevice, device.mCommandPool);
+    kernel_invocation::kernel_invocation(kernel&                                    kernel,
+                                         vk::Device                                 device,
+                                         const vk::PhysicalDeviceMemoryProperties&  memoryProperties,
+                                         vk::CommandPool                            commandPool,
+                                         vk::Queue                                  queue,
+                                         vk::DescriptorSet                          literalSamplerDescSet,
+                                         vk::DescriptorSet                          argumentDescSet)
+            : kernel_invocation()
+    {
+        mKernel = &kernel;
+        mDevice = device;
+        mMemoryProperties = memoryProperties;
+        mQueue = queue;
+        mLiteralSamplerDescriptorSet = literalSamplerDescSet;
+        mArgumentDescriptorSet = argumentDescSet;
+
+        mCommand = vulkan_utils::allocate_command_buffer(mDevice, commandPool);
 
         vk::QueryPoolCreateInfo poolCreateInfo;
         poolCreateInfo.setQueryType(vk::QueryType::eTimestamp)
                 .setQueryCount(kQueryIndex_Count);
 
-        mQueryPool = device.mDevice.createQueryPoolUnique(poolCreateInfo);
+        mQueryPool = mDevice.createQueryPoolUnique(poolCreateInfo);
 
         addLiteralSamplers(kernel.getModule().getLiteralSamplersHack());
     }
 
+    kernel_invocation::kernel_invocation(kernel_invocation&& other)
+            : kernel_invocation()
+    {
+        swap(*this);
+    }
+
     kernel_invocation::~kernel_invocation() {
     }
+
+    void kernel_invocation::swap(kernel_invocation& other)
+    {
+        using std::swap;
+
+        swap(mKernel, other.mKernel);
+        swap(mDevice, other.mDevice);
+        swap(mMemoryProperties, other.mMemoryProperties);
+        swap(mQueue, other.mQueue);
+        swap(mCommand, other.mCommand);
+        swap(mQueryPool, other.mQueryPool);
+
+        swap(mLiteralSamplerDescriptorSet, other.mLiteralSamplerDescriptorSet);
+        swap(mArgumentDescriptorSet, other.mArgumentDescriptorSet);
+
+        swap(mSpecConstantArguments, other.mSpecConstantArguments);
+        swap(mPodBuffers, other.mPodBuffers);
+        swap(mImageMemoryBarriers, other.mImageMemoryBarriers);
+
+        swap(mLiteralSamplerInfo, other.mLiteralSamplerInfo);
+        swap(mImageArgumentInfo, other.mImageArgumentInfo);
+        swap(mBufferArgumentInfo, other.mBufferArgumentInfo);
+        swap(mArgumentDescriptorWrites, other.mArgumentDescriptorWrites);
+    }
+
 
     void kernel_invocation::addLiteralSamplers(vk::ArrayProxy<const vk::Sampler> samplers) {
         for (auto s : samplers) {
             vk::DescriptorImageInfo samplerInfo;
             samplerInfo.setSampler(s);
 
-            mLiteralSamplerDescriptors.push_back(samplerInfo);
+            mLiteralSamplerInfo.push_back(samplerInfo);
         }
     }
 
@@ -661,14 +721,13 @@ namespace clspv_utils {
         vk::DescriptorBufferInfo bufferInfo;
         bufferInfo.setRange(VK_WHOLE_SIZE)
                 .setBuffer(*buffer.buf);
-        mBufferDescriptors.push_back(bufferInfo);
+        mBufferArgumentInfo.push_back(bufferInfo);
 
         vk::WriteDescriptorSet argSet;
-        argSet.setDstSet(mKernel.get().getArgumentDescSet())
+        argSet.setDstSet(mArgumentDescriptorSet)
                 .setDstBinding(mArgumentDescriptorWrites.size())
                 .setDescriptorCount(1)
-                .setDescriptorType(vk::DescriptorType::eStorageBuffer)
-                .setPBufferInfo(&mBufferDescriptors.back());
+                .setDescriptorType(vk::DescriptorType::eStorageBuffer);
         mArgumentDescriptorWrites.push_back(argSet);
     }
 
@@ -676,28 +735,26 @@ namespace clspv_utils {
         vk::DescriptorBufferInfo bufferInfo;
         bufferInfo.setRange(VK_WHOLE_SIZE)
                 .setBuffer(*buffer.buf);
-        mBufferDescriptors.push_back(bufferInfo);
+        mBufferArgumentInfo.push_back(bufferInfo);
 
         vk::WriteDescriptorSet argSet;
-        argSet.setDstSet(mKernel.get().getArgumentDescSet())
+        argSet.setDstSet(mArgumentDescriptorSet)
                 .setDstBinding(mArgumentDescriptorWrites.size())
                 .setDescriptorCount(1)
-                .setDescriptorType(vk::DescriptorType::eUniformBuffer)
-                .setPBufferInfo(&mBufferDescriptors.back());
+                .setDescriptorType(vk::DescriptorType::eUniformBuffer);
         mArgumentDescriptorWrites.push_back(argSet);
     }
 
     void kernel_invocation::addSamplerArgument(vk::Sampler samp) {
         vk::DescriptorImageInfo samplerInfo;
         samplerInfo.setSampler(samp);
-        mImageDescriptors.push_back(samplerInfo);
+        mImageArgumentInfo.push_back(samplerInfo);
 
         vk::WriteDescriptorSet argSet;
-        argSet.setDstSet(mKernel.get().getArgumentDescSet())
+        argSet.setDstSet(mArgumentDescriptorSet)
                 .setDstBinding(mArgumentDescriptorWrites.size())
                 .setDescriptorCount(1)
-                .setDescriptorType(vk::DescriptorType::eSampler)
-                .setPImageInfo(&mImageDescriptors.back());
+                .setDescriptorType(vk::DescriptorType::eSampler);
         mArgumentDescriptorWrites.push_back(argSet);
     }
 
@@ -705,14 +762,13 @@ namespace clspv_utils {
         vk::DescriptorImageInfo imageInfo;
         imageInfo.setImageView(*image.view)
                 .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal);
-        mImageDescriptors.push_back(imageInfo);
+        mImageArgumentInfo.push_back(imageInfo);
 
         vk::WriteDescriptorSet argSet;
-        argSet.setDstSet(mKernel.get().getArgumentDescSet())
+        argSet.setDstSet(mArgumentDescriptorSet)
                 .setDstBinding(mArgumentDescriptorWrites.size())
                 .setDescriptorCount(1)
-                .setDescriptorType(vk::DescriptorType::eSampledImage)
-                .setPImageInfo(&mImageDescriptors.back());
+                .setDescriptorType(vk::DescriptorType::eSampledImage);
         mArgumentDescriptorWrites.push_back(argSet);
 
         mImageMemoryBarriers.push_back(image.setLayout(vk::ImageLayout::eShaderReadOnlyOptimal));
@@ -722,14 +778,13 @@ namespace clspv_utils {
         vk::DescriptorImageInfo imageInfo;
         imageInfo.setImageView(*image.view)
                 .setImageLayout(vk::ImageLayout::eGeneral);
-        mImageDescriptors.push_back(imageInfo);
+        mImageArgumentInfo.push_back(imageInfo);
 
         vk::WriteDescriptorSet argSet;
-        argSet.setDstSet(mKernel.get().getArgumentDescSet())
+        argSet.setDstSet(mArgumentDescriptorSet)
                 .setDstBinding(mArgumentDescriptorWrites.size())
                 .setDescriptorCount(1)
-                .setDescriptorType(vk::DescriptorType::eStorageImage)
-                .setPImageInfo(&mImageDescriptors.back());
+                .setDescriptorType(vk::DescriptorType::eStorageImage);
         mArgumentDescriptorWrites.push_back(argSet);
 
         mImageMemoryBarriers.push_back(image.setLayout(vk::ImageLayout::eGeneral));
@@ -740,8 +795,7 @@ namespace clspv_utils {
     }
 
     void kernel_invocation::addPodArgument(const void* pod, std::size_t sizeofPod) {
-        auto& dev = getDevice();
-        vulkan_utils::uniform_buffer scalar_args(dev.mDevice, dev.mMemoryProperties, sizeofPod);
+        vulkan_utils::uniform_buffer scalar_args(mDevice, mMemoryProperties, sizeofPod);
 
         auto scalarArgsMemMap = scalar_args.mem.map();
         std::memcpy(scalarArgsMemMap.get(), pod, sizeofPod);
@@ -766,14 +820,14 @@ namespace clspv_utils {
         //
 
         vk::WriteDescriptorSet literalSamplerSet;
-        literalSamplerSet.setDstSet(mKernel.get().getLiteralSamplerDescSet())
+        literalSamplerSet.setDstSet(mLiteralSamplerDescriptorSet)
                 .setDstBinding(0)
                 .setDescriptorCount(1)
                 .setDescriptorType(vk::DescriptorType::eSampler);
 
-        assert(mLiteralSamplerDescriptors.empty() || literalSamplerSet.dstSet);
+        assert(mLiteralSamplerInfo.empty() || literalSamplerSet.dstSet);
 
-        for (auto& lsd : mLiteralSamplerDescriptors) {
+        for (auto& lsd : mLiteralSamplerInfo) {
             literalSamplerSet.setPImageInfo(&lsd);
             writeSets.push_back(literalSamplerSet);
             ++literalSamplerSet.dstBinding;
@@ -783,8 +837,8 @@ namespace clspv_utils {
         // Update the kernel's argument descriptor set
         //
 
-        auto nextImage = mImageDescriptors.begin();
-        auto nextBuffer = mBufferDescriptors.begin();
+        auto nextImage = mImageArgumentInfo.begin();
+        auto nextBuffer = mBufferArgumentInfo.begin();
 
         for (auto& a : mArgumentDescriptorWrites) {
             switch (a.descriptorType) {
@@ -811,13 +865,19 @@ namespace clspv_utils {
         //
         // Do the actual descriptor set updates
         //
-        getDevice().mDevice.updateDescriptorSets(writeSets, nullptr);
+        mDevice.updateDescriptorSets(writeSets, nullptr);
     }
 
-    void kernel_invocation::fillCommandBuffer(const WorkgroupDimensions& num_workgroups) {
+    void kernel_invocation::bindCommand()
+    {
+        mKernel->bindCommand(*mCommand);
+    }
+
+    void kernel_invocation::fillCommandBuffer(const WorkgroupDimensions& num_workgroups)
+    {
         mCommand->begin(vk::CommandBufferBeginInfo());
 
-        mKernel.get().bindCommand(*mCommand);
+        bindCommand();
 
         mCommand->resetQueryPool(*mQueryPool, kQueryIndex_FirstIndex, kQueryIndex_Count);
 
@@ -848,8 +908,13 @@ namespace clspv_utils {
         submitInfo.setCommandBufferCount(1)
                 .setPCommandBuffers(&rawCommand);
 
-        getDevice().mComputeQueue.submit(submitInfo, nullptr);
+        mQueue.submit(submitInfo, nullptr);
 
+    }
+
+    void kernel_invocation::updatePipeline()
+    {
+        mKernel->updatePipeline(mSpecConstantArguments);
     }
 
     execution_time_t kernel_invocation::run(const WorkgroupDimensions& num_workgroups) {
@@ -857,7 +922,7 @@ namespace clspv_utils {
         // TODO factor the pipeline recreation better, possibly along with an overhaul of kernel
         // management
         if (!mSpecConstantArguments.empty()) {
-            mKernel.get().updatePipeline(mSpecConstantArguments);
+            updatePipeline();
         }
 
         updateDescriptorSets();
@@ -865,17 +930,17 @@ namespace clspv_utils {
 
         auto start = std::chrono::high_resolution_clock::now();
         submitCommand();
-        getDevice().mComputeQueue.waitIdle();
+        mQueue.waitIdle();
         auto end = std::chrono::high_resolution_clock::now();
 
         uint64_t timestamps[kQueryIndex_Count];
-        getDevice().mDevice.getQueryPoolResults(*mQueryPool,
-                                        kQueryIndex_FirstIndex,
-                                        kQueryIndex_Count,
-                                        sizeof(uint64_t),
-                                        timestamps,
-                                        sizeof(uint64_t),
-                                        vk::QueryResultFlagBits::e64 | vk::QueryResultFlagBits::eWait);
+        mDevice.getQueryPoolResults(*mQueryPool,
+                                    kQueryIndex_FirstIndex,
+                                    kQueryIndex_Count,
+                                    sizeof(uint64_t),
+                                    timestamps,
+                                    sizeof(uint64_t),
+                                    vk::QueryResultFlagBits::e64 | vk::QueryResultFlagBits::eWait);
 
         execution_time_t result;
         result.cpu_duration = end - start;
