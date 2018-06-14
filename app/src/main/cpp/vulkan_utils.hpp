@@ -243,7 +243,7 @@ namespace vulkan_utils {
         void    swap(staging_buffer & other);
 
         void    copyToImage(vk::CommandBuffer commandBuffer);
-        void    copyFromImage();
+        void    copyFromImage(vk::CommandBuffer commandBuffer);
 
         template <typename T>
         mapped_ptr<T> map()

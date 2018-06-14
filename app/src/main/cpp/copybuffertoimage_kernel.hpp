@@ -77,6 +77,20 @@ namespace copybuffertoimage_kernel {
                                                  buffer_width,
                                                  buffer_height);
 
+        // readback the image data
+        vk::UniqueCommandBuffer readbackCommand = vulkan_utils::allocate_command_buffer(device.mDevice, device.mCommandPool);
+        readbackCommand->begin(vk::CommandBufferBeginInfo());
+        dstImageStaging.copyFromImage(*readbackCommand);
+        readbackCommand->end();
+
+        vk::CommandBuffer rawCommand = *readbackCommand;
+        vk::SubmitInfo submitInfo;
+        submitInfo.setCommandBufferCount(1)
+                .setPCommandBuffers(&rawCommand);
+
+        device.mComputeQueue.submit(submitInfo, nullptr);
+        device.mComputeQueue.waitIdle();
+
         srcBufferMap = srcBuffer.mem.map<BufferPixelType>();
         dstImageMap = dstImageStaging.map<ImagePixelType>();
         test_utils::check_results(srcBufferMap.get(),

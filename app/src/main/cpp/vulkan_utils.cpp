@@ -507,10 +507,31 @@ namespace vulkan_utils {
         commandBuffer.copyBufferToImage(*mBuffer, imageBarrier.image, imageBarrier.newLayout, copyRegion);
     }
 
-    void staging_buffer::copyFromImage()
+    void staging_buffer::copyFromImage(vk::CommandBuffer commandBuffer)
     {
-        // TODO: Not yet implemented - staging_buffer::copyFromImage
-        throw std::runtime_error("staging_buffer::copyFromImage not yet implemented");
+        vk::BufferMemoryBarrier bufferBarrier;
+        bufferBarrier.setSrcAccessMask(vk::AccessFlagBits::eTransferRead | vk::AccessFlagBits::eHostRead | vk::AccessFlagBits::eShaderRead)
+                .setDstAccessMask(vk::AccessFlagBits::eTransferWrite)
+                .setBuffer(*mBuffer)
+                .setSize(VK_WHOLE_SIZE);
+
+        vk::ImageMemoryBarrier imageBarrier = mImage->prepare(vk::ImageLayout::eTransferSrcOptimal);
+
+        vk::BufferImageCopy copyRegion;
+        copyRegion.setBufferRowLength(mWidth)
+                .setBufferImageHeight(mHeight)
+                .setImageExtent(vk::Extent3D(mWidth, mHeight, 1));
+        copyRegion.imageSubresource.setAspectMask(vk::ImageAspectFlagBits::eColor)
+                .setLayerCount(1);
+
+        commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eHost | vk::PipelineStageFlagBits::eComputeShader | vk::PipelineStageFlagBits::eTransfer,
+                                      vk::PipelineStageFlagBits::eTransfer,
+                                      vk::DependencyFlags(),
+                                      nullptr,         // memory barriers
+                                      bufferBarrier,   // buffer memory barriers
+                                      imageBarrier);   // image memory barriers
+
+        commandBuffer.copyImageToBuffer(imageBarrier.image, imageBarrier.newLayout, *mBuffer, copyRegion);
     }
 
     double timestamp_delta_ns(uint64_t                              startTimestamp,
