@@ -49,6 +49,9 @@ namespace vulkan_utils {
             device_memory*  self;
         };
 
+        template <typename T>
+        using mapped_ptr = std::unique_ptr<T, unmapper_t>;
+
     public:
         device_memory() {}
 
@@ -72,13 +75,13 @@ namespace vulkan_utils {
         vk::DeviceMemory    getDeviceMemory() const { return *mMemory; }
 
         template <typename T>
-        std::unique_ptr<T, unmapper_t> map()
+        mapped_ptr<T> map()
         {
             auto basicMap = map();
             return std::unique_ptr<T, unmapper_t>(static_cast<T*>(basicMap.release()), basicMap.get_deleter());
         }
 
-        std::unique_ptr<void, unmapper_t> map();
+        mapped_ptr<void> map();
 
     private:
         void    unmap();
@@ -94,7 +97,12 @@ namespace vulkan_utils {
         lhs.swap(rhs);
     }
 
-    struct uniform_buffer {
+    class uniform_buffer {
+    public:
+        template <typename T>
+        using mapped_ptr = device_memory::mapped_ptr<T>;
+
+    public:
         uniform_buffer () {}
 
         uniform_buffer (vk::Device dev, const vk::PhysicalDeviceMemoryProperties memoryProperties, vk::DeviceSize num_bytes);
@@ -111,7 +119,16 @@ namespace vulkan_utils {
 
         void    swap(uniform_buffer& other);
 
+    public:
+        template <typename T = void>
+        mapped_ptr<T> map()
+        {
+            return mem.map<T>();
+        }
+
+    private:
         device_memory       mem;
+    public:
         vk::UniqueBuffer    buf;
     };
 

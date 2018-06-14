@@ -41,16 +41,19 @@ namespace copybuffertoimage_kernel {
         static_assert(24 == offsetof(scalar_args, inWidth), "inWidth offset incorrect");
         static_assert(28 == offsetof(scalar_args, inHeight), "inHeight offset incorrect");
 
-        const scalar_args scalars = {
-                src_offset,
-                src_pitch,
-                src_channel_order,
-                src_channel_type,
-                (swap_components ? 1 : 0),
-                (premultiply ? 1 : 0),
-                width,
-                height
-        };
+        vulkan_utils::uniform_buffer scalarBuffer(kernel.getDevice().mDevice,
+                                                  kernel.getDevice().mMemoryProperties,
+                                                  sizeof(scalar_args));
+        auto scalars = scalarBuffer.map<scalar_args>();
+        scalars->inSrcOffset = src_offset;
+        scalars->inSrcPitch = src_pitch;
+        scalars->inSrcChannelOrder = src_channel_order;
+        scalars->inSrcChannelType = src_channel_type;
+        scalars->inSwapComponents = (swap_components ? 1 : 0);
+        scalars->inPremultiply = (premultiply ? 1 : 0);
+        scalars->inWidth = width;
+        scalars->inHeight = height;
+        scalars.reset();
 
         const clspv_utils::WorkgroupDimensions workgroup_sizes = kernel.getWorkgroupSize();
         const clspv_utils::WorkgroupDimensions num_workgroups(
@@ -61,7 +64,7 @@ namespace copybuffertoimage_kernel {
 
         invocation.addStorageBufferArgument(src_buffer);
         invocation.addWriteOnlyImageArgument(dst_image);
-        invocation.addPodArgument(scalars);
+        invocation.addUniformBufferArgument(scalarBuffer);
 
         return invocation.run(num_workgroups);
     }

@@ -324,22 +324,25 @@ namespace readlocalsize_kernel {
         static_assert(8 == offsetof(scalar_args, pitch), "pitch offset incorrect");
         static_assert(12 == offsetof(scalar_args, idtype), "idtype offset incorrect");
 
-        const scalar_args scalars = {
-                inWidth,
-                inHeight,
-                inPitch,
-                inIdType
-        };
+        vulkan_utils::uniform_buffer scalarBuffer(kernel.getDevice().mDevice,
+                                                  kernel.getDevice().mMemoryProperties,
+                                                  sizeof(scalar_args));
+        auto scalars = scalarBuffer.map<scalar_args>();
+        scalars->width = inWidth;
+        scalars->height = inHeight;
+        scalars->pitch = inPitch;
+        scalars->idtype = inIdType;
+        scalars.reset();
 
         const clspv_utils::WorkgroupDimensions workgroup_sizes = kernel.getWorkgroupSize();
         const clspv_utils::WorkgroupDimensions num_workgroups(
-                (scalars.width + workgroup_sizes.x - 1) / workgroup_sizes.x,
-                (scalars.height + workgroup_sizes.y - 1) / workgroup_sizes.y);
+                (inWidth + workgroup_sizes.x - 1) / workgroup_sizes.x,
+                (inHeight + workgroup_sizes.y - 1) / workgroup_sizes.y);
 
         clspv_utils::kernel_invocation invocation = kernel.createInvocation();
 
         invocation.addStorageBufferArgument(outLocalSizes);
-        invocation.addPodArgument(scalars);
+        invocation.addUniformBufferArgument(scalarBuffer);
 
         return invocation.run(num_workgroups);
     }

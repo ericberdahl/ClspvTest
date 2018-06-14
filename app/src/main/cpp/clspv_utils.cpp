@@ -698,7 +698,6 @@ namespace clspv_utils {
         swap(mArgumentDescriptorSet, other.mArgumentDescriptorSet);
 
         swap(mSpecConstantArguments, other.mSpecConstantArguments);
-        swap(mPodBuffers, other.mPodBuffers);
         swap(mImageMemoryBarriers, other.mImageMemoryBarriers);
 
         swap(mLiteralSamplerInfo, other.mLiteralSamplerInfo);
@@ -792,18 +791,6 @@ namespace clspv_utils {
 
     void kernel_invocation::addLocalArraySizeArgument(unsigned int numElements) {
         mSpecConstantArguments.push_back(numElements);
-    }
-
-    void kernel_invocation::addPodArgument(const void* pod, std::size_t sizeofPod) {
-        vulkan_utils::uniform_buffer scalar_args(mDevice, mMemoryProperties, sizeofPod);
-
-        auto scalarArgsMemMap = scalar_args.mem.map();
-        std::memcpy(scalarArgsMemMap.get(), pod, sizeofPod);
-        scalarArgsMemMap.reset();
-
-        addUniformBufferArgument(scalar_args);
-
-        mPodBuffers.push_back(std::move(scalar_args));
     }
 
     void kernel_invocation::updateDescriptorSets() {

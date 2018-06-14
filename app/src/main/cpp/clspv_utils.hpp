@@ -186,11 +186,6 @@ namespace clspv_utils {
         void    addSamplerArgument(vk::Sampler samp);
         void    addLocalArraySizeArgument(unsigned int numElements);
 
-        void    addPodArgument(const void* pod, std::size_t sizeofPod);
-
-        template <typename T>
-        void    addPodArgument(const T& pod);
-
         execution_time_t    run(const WorkgroupDimensions& num_workgroups);
 
         void    swap(kernel_invocation& other);
@@ -215,30 +210,24 @@ namespace clspv_utils {
         };
 
     private:
-        kernel*                                     mKernel;
-        vk::Device                                  mDevice;
-        vk::PhysicalDeviceMemoryProperties          mMemoryProperties;
-        vk::Queue                                   mQueue;
-        vk::UniqueCommandBuffer                     mCommand;
-        vk::UniqueQueryPool                         mQueryPool;
+        kernel*                                 mKernel;
+        vk::Device                              mDevice;
+        vk::PhysicalDeviceMemoryProperties      mMemoryProperties;
+        vk::Queue                               mQueue;
+        vk::UniqueCommandBuffer                 mCommand;
+        vk::UniqueQueryPool                     mQueryPool;
 
-        vk::DescriptorSet                           mLiteralSamplerDescriptorSet;
-        vk::DescriptorSet                           mArgumentDescriptorSet;
+        vk::DescriptorSet                       mLiteralSamplerDescriptorSet;
+        vk::DescriptorSet                       mArgumentDescriptorSet;
 
-        std::vector<int32_t>                        mSpecConstantArguments;
-        std::vector<vulkan_utils::uniform_buffer>   mPodBuffers;
-        std::vector<vk::ImageMemoryBarrier>         mImageMemoryBarriers;
+        std::vector<int32_t>                    mSpecConstantArguments;
+        std::vector<vk::ImageMemoryBarrier>     mImageMemoryBarriers;
 
-        std::vector<vk::DescriptorImageInfo>        mLiteralSamplerInfo;
-        std::vector<vk::DescriptorImageInfo>        mImageArgumentInfo;
-        std::vector<vk::DescriptorBufferInfo>       mBufferArgumentInfo;
-        std::vector<vk::WriteDescriptorSet>         mArgumentDescriptorWrites;
+        std::vector<vk::DescriptorImageInfo>    mLiteralSamplerInfo;
+        std::vector<vk::DescriptorImageInfo>    mImageArgumentInfo;
+        std::vector<vk::DescriptorBufferInfo>   mBufferArgumentInfo;
+        std::vector<vk::WriteDescriptorSet>     mArgumentDescriptorWrites;
     };
-
-    template <typename T>
-    inline void kernel_invocation::addPodArgument(const T& pod) {
-        addPodArgument(&pod, sizeof(pod));
-    }
 
     inline void swap(kernel_invocation & lhs, kernel_invocation & rhs)
     {

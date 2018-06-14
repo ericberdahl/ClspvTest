@@ -16,9 +16,12 @@ namespace readconstantdata_kernel {
         };
         static_assert(0 == offsetof(scalar_args, inWidth), "inWidth offset incorrect");
 
-        const scalar_args scalars = {
-                width
-        };
+        vulkan_utils::uniform_buffer scalarBuffer(kernel.getDevice().mDevice,
+                                                  kernel.getDevice().mMemoryProperties,
+                                                  sizeof(scalar_args));
+        auto scalars = scalarBuffer.map<scalar_args>();
+        scalars->inWidth = width;
+        scalars.reset();
 
         const clspv_utils::WorkgroupDimensions workgroup_sizes = kernel.getWorkgroupSize();
         const clspv_utils::WorkgroupDimensions num_workgroups(
@@ -27,7 +30,7 @@ namespace readconstantdata_kernel {
         clspv_utils::kernel_invocation invocation = kernel.createInvocation();
 
         invocation.addStorageBufferArgument(dst_buffer);
-        invocation.addPodArgument(scalars);
+        invocation.addUniformBufferArgument(scalarBuffer);
 
         return invocation.run(num_workgroups);
     }

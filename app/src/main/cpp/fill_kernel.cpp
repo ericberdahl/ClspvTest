@@ -34,25 +34,28 @@ namespace fill_kernel {
         static_assert(20 == offsetof(scalar_args, inHeight), "inHeight offset incorrect");
         static_assert(32 == offsetof(scalar_args, inColor), "inColor offset incorrect");
 
-        const scalar_args scalars = {
-                pitch,
-                device_format,
-                offset_x,
-                offset_y,
-                width,
-                height,
-                color
-        };
+        vulkan_utils::uniform_buffer scalarBuffer(kernel.getDevice().mDevice,
+                                                  kernel.getDevice().mMemoryProperties,
+                                                  sizeof(scalar_args));
+        auto scalars = scalarBuffer.map<scalar_args>();
+        scalars->inPitch = pitch;
+        scalars->inDeviceFormat = device_format;
+        scalars->inOffsetX = offset_x;
+        scalars->inOffsetY = offset_y;
+        scalars->inWidth = width;
+        scalars->inHeight = height;
+        scalars->inColor = color;
+        scalars.reset();
 
         const clspv_utils::WorkgroupDimensions workgroup_sizes = kernel.getWorkgroupSize();
         const clspv_utils::WorkgroupDimensions num_workgroups(
-                (scalars.inWidth + workgroup_sizes.x - 1) / workgroup_sizes.x,
-                (scalars.inHeight + workgroup_sizes.y - 1) / workgroup_sizes.y);
+                (width + workgroup_sizes.x - 1) / workgroup_sizes.x,
+                (height + workgroup_sizes.y - 1) / workgroup_sizes.y);
 
         clspv_utils::kernel_invocation invocation = kernel.createInvocation();
 
         invocation.addStorageBufferArgument(dst_buffer);
-        invocation.addPodArgument(scalars);
+        invocation.addUniformBufferArgument(scalarBuffer);
         return invocation.run(num_workgroups);
     }
 
