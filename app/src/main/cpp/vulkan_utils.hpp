@@ -188,18 +188,18 @@ namespace vulkan_utils {
 
         staging_buffer  createStagingBuffer();
 
-        vk::ImageMemoryBarrier setLayout(vk::ImageLayout newLayout);
+        vk::DescriptorImageInfo use();
+        vk::ImageMemoryBarrier  prepare(vk::ImageLayout newLayout);
 
     private:
         vk::Device                          mDevice;
         vk::PhysicalDeviceMemoryProperties  mMemoryProperties;
-        vk::ImageLayout                     mLayout;
+        vk::ImageLayout                     mImageLayout;
         vk::UniqueDeviceMemory              mDeviceMemory;
         uint32_t                            mWidth;
         uint32_t                            mHeight;
-    public:
-        vk::UniqueImage                     im;
-        vk::UniqueImageView                 view;
+        vk::UniqueImage                     mImage;
+        vk::UniqueImageView                 mImageView;
     };
 
     inline void swap(image& lhs, image& rhs)

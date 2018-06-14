@@ -229,12 +229,12 @@ namespace vulkan_utils {
     image::image()
             : mDevice(),
               mMemoryProperties(),
-              mLayout(vk::ImageLayout::eUndefined),
+              mImageLayout(vk::ImageLayout::eUndefined),
               mDeviceMemory(),
               mWidth(0),
               mHeight(0),
-              im(),
-              view()
+              mImage(),
+              mImageView()
     {
         // this space intentionally left blank
     }
@@ -245,12 +245,12 @@ namespace vulkan_utils {
 
         swap(mDevice, other.mDevice);
         swap(mMemoryProperties, other.mMemoryProperties);
-        swap(mLayout, other.mLayout);
+        swap(mImageLayout, other.mImageLayout);
         swap(mDeviceMemory, other.mDeviceMemory);
         swap(mWidth, other.mWidth);
         swap(mHeight, other.mHeight);
-        swap(im, other.im);
-        swap(view, other.view);
+        swap(mImage, other.mImage);
+        swap(mImageView, other.mImageView);
     }
 
     image::image(vk::Device                                dev,
@@ -278,28 +278,28 @@ namespace vulkan_utils {
                           vk::ImageUsageFlagBits::eTransferDst |
                           vk::ImageUsageFlagBits::eTransferSrc)
                 .setSharingMode(vk::SharingMode::eExclusive)
-                .setInitialLayout(mLayout);
+                .setInitialLayout(mImageLayout);
 
-        im = mDevice.createImageUnique(imageInfo);
+        mImage = mDevice.createImageUnique(imageInfo);
 
         // allocate device memory for the image
         mDeviceMemory = allocate_device_memory(mDevice,
-                                               mDevice.getImageMemoryRequirements(*im),
+                                               mDevice.getImageMemoryRequirements(*mImage),
                                                mMemoryProperties);
 
         // Bind the memory to the image object
-        mDevice.bindImageMemory(*im, *mDeviceMemory, 0);
+        mDevice.bindImageMemory(*mImage, *mDeviceMemory, 0);
 
         // Allocate the image view
         vk::ImageViewCreateInfo viewInfo;
-        viewInfo.setImage(*im)
+        viewInfo.setImage(*mImage)
                 .setViewType(vk::ImageViewType::e2D)
                 .setFormat(format)
                 .subresourceRange.setAspectMask(vk::ImageAspectFlagBits::eColor)
                 .setLevelCount(1)
                 .setLayerCount(1);
 
-        view = mDevice.createImageViewUnique(viewInfo);
+        mImageView = mDevice.createImageViewUnique(viewInfo);
     }
 
     image::image(image&& other)
@@ -328,7 +328,15 @@ namespace vulkan_utils {
                               16);   // TODO: Get correct pixel size
     }
 
-    vk::ImageMemoryBarrier image::setLayout(vk::ImageLayout newLayout)
+    vk::DescriptorImageInfo image::use()
+    {
+        vk::DescriptorImageInfo result;
+        result.setImageView(*mImageView)
+                .setImageLayout(mImageLayout);
+        return result;
+    }
+
+    vk::ImageMemoryBarrier image::prepare(vk::ImageLayout newLayout)
     {
         if (newLayout == vk::ImageLayout::eUndefined)
         {
@@ -347,7 +355,7 @@ namespace vulkan_utils {
             return item.first == layout;
         };
 
-        auto oldAccess = std::find_if(accessMap.begin(), accessMap.end(), std::bind(layoutFinder, std::placeholders::_1, mLayout));
+        auto oldAccess = std::find_if(accessMap.begin(), accessMap.end(), std::bind(layoutFinder, std::placeholders::_1, mImageLayout));
         assert(oldAccess != accessMap.end());
 
         auto newAccess = std::find_if(accessMap.begin(), accessMap.end(), std::bind(layoutFinder, std::placeholders::_1, newLayout));
@@ -359,14 +367,14 @@ namespace vulkan_utils {
         vk::ImageMemoryBarrier result;
         result.setSrcAccessMask(oldAccess->second)
                 .setDstAccessMask(newAccess->second)
-                .setOldLayout(mLayout)
+                .setOldLayout(mImageLayout)
                 .setNewLayout(newLayout)
-                .setImage(*im);
+                .setImage(*mImage);
         result.subresourceRange.setAspectMask(vk::ImageAspectFlagBits::eColor)
                 .setLevelCount(1)
                 .setLayerCount(1);
 
-        mLayout = newLayout;
+        mImageLayout = newLayout;
 
         return result;
     }
@@ -480,7 +488,7 @@ namespace vulkan_utils {
                 .setBuffer(*mBuffer)
                 .setSize(VK_WHOLE_SIZE);
 
-        vk::ImageMemoryBarrier imageBarrier = mImage->setLayout(vk::ImageLayout::eTransferDstOptimal);
+        vk::ImageMemoryBarrier imageBarrier = mImage->prepare(vk::ImageLayout::eTransferDstOptimal);
 
         vk::BufferImageCopy copyRegion;
         copyRegion.setBufferRowLength(mWidth)

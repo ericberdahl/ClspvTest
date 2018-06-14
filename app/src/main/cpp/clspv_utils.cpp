@@ -758,10 +758,8 @@ namespace clspv_utils {
     }
 
     void kernel_invocation::addReadOnlyImageArgument(vulkan_utils::image& image) {
-        vk::DescriptorImageInfo imageInfo;
-        imageInfo.setImageView(*image.view)
-                .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal);
-        mImageArgumentInfo.push_back(imageInfo);
+        mImageMemoryBarriers.push_back(image.prepare(vk::ImageLayout::eShaderReadOnlyOptimal));
+        mImageArgumentInfo.push_back(image.use());
 
         vk::WriteDescriptorSet argSet;
         argSet.setDstSet(mArgumentDescriptorSet)
@@ -769,15 +767,11 @@ namespace clspv_utils {
                 .setDescriptorCount(1)
                 .setDescriptorType(vk::DescriptorType::eSampledImage);
         mArgumentDescriptorWrites.push_back(argSet);
-
-        mImageMemoryBarriers.push_back(image.setLayout(vk::ImageLayout::eShaderReadOnlyOptimal));
     }
 
     void kernel_invocation::addWriteOnlyImageArgument(vulkan_utils::image& image) {
-        vk::DescriptorImageInfo imageInfo;
-        imageInfo.setImageView(*image.view)
-                .setImageLayout(vk::ImageLayout::eGeneral);
-        mImageArgumentInfo.push_back(imageInfo);
+        mImageMemoryBarriers.push_back(image.prepare(vk::ImageLayout::eGeneral));
+        mImageArgumentInfo.push_back(image.use());
 
         vk::WriteDescriptorSet argSet;
         argSet.setDstSet(mArgumentDescriptorSet)
@@ -785,8 +779,6 @@ namespace clspv_utils {
                 .setDescriptorCount(1)
                 .setDescriptorType(vk::DescriptorType::eStorageImage);
         mArgumentDescriptorWrites.push_back(argSet);
-
-        mImageMemoryBarriers.push_back(image.setLayout(vk::ImageLayout::eGeneral));
     }
 
     void kernel_invocation::addLocalArraySizeArgument(unsigned int numElements) {
