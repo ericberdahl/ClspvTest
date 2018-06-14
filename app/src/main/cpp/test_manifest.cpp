@@ -89,8 +89,8 @@ namespace test_manifest {
                     std::string testName;
                     in_line >> testEntry.entry
                             >> testName
-                            >> testEntry.workgroupSize.x
-                            >> testEntry.workgroupSize.y;
+                            >> testEntry.workgroupSize.width
+                            >> testEntry.workgroupSize.height;
 
                     while (!in_line.eof()) {
                         std::string arg;
@@ -113,11 +113,11 @@ namespace test_manifest {
                              line.c_str());
                         lineIsGood = false;
                     }
-                    if (1 > testEntry.workgroupSize.x || 1 > testEntry.workgroupSize.y) {
+                    if (1 > testEntry.workgroupSize.width || 1 > testEntry.workgroupSize.height) {
                         LOGE("%s: bad workgroup dimensions {%d,%d} from command '%s'",
                              __func__,
-                             testEntry.workgroupSize.x,
-                             testEntry.workgroupSize.y,
+                             testEntry.workgroupSize.width,
+                             testEntry.workgroupSize.height,
                              line.c_str());
                         lineIsGood = false;
                     }
@@ -132,7 +132,7 @@ namespace test_manifest {
                 // skip kernel in module
                 if (currentModule) {
                     test_utils::kernel_test_map skipEntry;
-                    skipEntry.workgroupSize = clspv_utils::WorkgroupDimensions(0, 0);
+                    skipEntry.workgroupSize = vk::Extent2D(0, 0);
 
                     in_line >> skipEntry.entry;
 

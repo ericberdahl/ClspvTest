@@ -90,8 +90,8 @@ namespace test_utils {
 
                 // Iterate through all entries for the entry point in the test map.
                 for (auto& epTest : entryTests) {
-                    if (0 == epTest.workgroupSize.x && 0 == epTest.workgroupSize.y) {
-                        // WorkgroupDimensions(0, 0) is a sentinel to skip this kernel entirely
+                    if (0 == epTest.workgroupSize.width && 0 == epTest.workgroupSize.width) {
+                        // vk::Extent2D(0, 0) is a sentinel to skip this kernel entirely
 
                         KernelResult kernelResult;
                         kernelResult.mEntryName = ep;

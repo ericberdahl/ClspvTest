@@ -230,10 +230,10 @@ namespace {
         return expected;
     }
 
-    std::vector<std::int32_t> compute_expected_results(idtype_t                                 idtype,
-                                                       int                                      buffer_width,
-                                                       int                                      buffer_height,
-                                                       const clspv_utils::WorkgroupDimensions&  workgroupSize) {
+    std::vector<std::int32_t> compute_expected_results(idtype_t             idtype,
+                                                       int                  buffer_width,
+                                                       int                  buffer_height,
+                                                       const vk::Extent2D&  workgroupSize) {
         std::vector<std::int32_t> expectedResults;
         switch (idtype) {
             case idtype_globalid_x:
@@ -261,11 +261,11 @@ namespace {
                 break;
 
             case idtype_localsize_x:
-                expectedResults = compute_expected_local_size_x(buffer_width, buffer_height, buffer_width, workgroupSize.x);
+                expectedResults = compute_expected_local_size_x(buffer_width, buffer_height, buffer_width, workgroupSize.width);
                 break;
 
             case idtype_localsize_y:
-                expectedResults = compute_expected_local_size_y(buffer_width, buffer_height, buffer_width, workgroupSize.y);
+                expectedResults = compute_expected_local_size_y(buffer_width, buffer_height, buffer_width, workgroupSize.height);
                 break;
 
             case idtype_localsize_z:
@@ -273,11 +273,11 @@ namespace {
                 break;
 
             case idtype_groupid_x:
-                expectedResults = compute_expected_group_id_x(buffer_width, buffer_height, buffer_width, workgroupSize.x);
+                expectedResults = compute_expected_group_id_x(buffer_width, buffer_height, buffer_width, workgroupSize.width);
                 break;
 
             case idtype_groupid_y:
-                expectedResults = compute_expected_group_id_y(buffer_width, buffer_height, buffer_width, workgroupSize.y);
+                expectedResults = compute_expected_group_id_y(buffer_width, buffer_height, buffer_width, workgroupSize.height);
                 break;
 
             case idtype_groupid_z:
@@ -285,11 +285,11 @@ namespace {
                 break;
 
             case idtype_localid_x:
-                expectedResults = compute_expected_local_id_x(buffer_width, buffer_height, buffer_width, workgroupSize.x);
+                expectedResults = compute_expected_local_id_x(buffer_width, buffer_height, buffer_width, workgroupSize.width);
                 break;
 
             case idtype_localid_y:
-                expectedResults = compute_expected_local_id_y(buffer_width, buffer_height, buffer_width, workgroupSize.y);
+                expectedResults = compute_expected_local_id_y(buffer_width, buffer_height, buffer_width, workgroupSize.height);
                 break;
 
             case idtype_localid_z:
@@ -334,10 +334,10 @@ namespace readlocalsize_kernel {
         scalars->idtype = inIdType;
         scalars.reset();
 
-        const clspv_utils::WorkgroupDimensions workgroup_sizes = kernel.getWorkgroupSize();
-        const clspv_utils::WorkgroupDimensions num_workgroups(
-                (inWidth + workgroup_sizes.x - 1) / workgroup_sizes.x,
-                (inHeight + workgroup_sizes.y - 1) / workgroup_sizes.y);
+        const vk::Extent2D workgroup_sizes = kernel.getWorkgroupSize();
+        const vk::Extent2D num_workgroups(
+                (inWidth + workgroup_sizes.width - 1) / workgroup_sizes.width,
+                (inHeight + workgroup_sizes.height - 1) / workgroup_sizes.height);
 
         clspv_utils::kernel_invocation invocation = kernel.createInvocation();
 

@@ -23,9 +23,9 @@ namespace readconstantdata_kernel {
         scalars->inWidth = width;
         scalars.reset();
 
-        const clspv_utils::WorkgroupDimensions workgroup_sizes = kernel.getWorkgroupSize();
-        const clspv_utils::WorkgroupDimensions num_workgroups(
-                (width + workgroup_sizes.x - 1) / workgroup_sizes.x);
+        const vk::Extent2D workgroup_sizes = kernel.getWorkgroupSize();
+        const vk::Extent2D num_workgroups(
+                (width + workgroup_sizes.width - 1) / workgroup_sizes.width, 1);
 
         clspv_utils::kernel_invocation invocation = kernel.createInvocation();
 

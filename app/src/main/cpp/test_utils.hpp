@@ -132,12 +132,12 @@ namespace test_utils {
                                    InvocationResultSet&             resultSet);
 
     struct kernel_test_map {
-        std::string                         entry;
-        test_kernel_fn                      test        = nullptr;
-        clspv_utils::WorkgroupDimensions    workgroupSize;
-        std::vector<std::string>            args;
-        unsigned int                        iterations  = 1;
-        bool                                verbose     = false;
+        std::string                 entry;
+        test_kernel_fn              test            = nullptr;
+        vk::Extent2D                workgroupSize   = vk::Extent2D(1, 1);
+        std::vector<std::string>    args;
+        unsigned int                iterations      = 1;
+        bool                        verbose         = false;
     };
 
     struct module_test_bundle {

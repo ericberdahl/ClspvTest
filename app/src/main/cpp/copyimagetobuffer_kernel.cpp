@@ -51,10 +51,10 @@ namespace copyimagetobuffer_kernel {
         scalars->inHeight = height;
         scalars.reset();
 
-        const clspv_utils::WorkgroupDimensions workgroup_sizes = kernel.getWorkgroupSize();
-        const clspv_utils::WorkgroupDimensions num_workgroups(
-                (width + workgroup_sizes.x - 1) / workgroup_sizes.x,
-                (height + workgroup_sizes.y - 1) / workgroup_sizes.y);
+        const vk::Extent2D workgroup_sizes = kernel.getWorkgroupSize();
+        const vk::Extent2D num_workgroups(
+                (width + workgroup_sizes.width - 1) / workgroup_sizes.width,
+                (height + workgroup_sizes.height - 1) / workgroup_sizes.height);
 
         clspv_utils::kernel_invocation invocation = kernel.createInvocation();
 

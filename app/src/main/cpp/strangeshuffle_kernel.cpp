@@ -17,15 +17,15 @@ namespace strangeshuffle_kernel {
             throw std::runtime_error("num_elements must be even");
         }
 
-        const clspv_utils::WorkgroupDimensions workgroup_sizes = kernel.getWorkgroupSize();
-        const clspv_utils::WorkgroupDimensions num_workgroups(((num_elements/2) + workgroup_sizes.x - 1)/workgroup_sizes.x);
+        const vk::Extent2D workgroup_sizes = kernel.getWorkgroupSize();
+        const vk::Extent2D num_workgroups(((num_elements/2) + workgroup_sizes.width - 1)/workgroup_sizes.width, 1);
 
         clspv_utils::kernel_invocation invocation = kernel.createInvocation();
 
         invocation.addStorageBufferArgument(index_buffer);
         invocation.addStorageBufferArgument(source_buffer);
         invocation.addStorageBufferArgument(destination_buffer);
-        invocation.addLocalArraySizeArgument(2 * workgroup_sizes.x);
+        invocation.addLocalArraySizeArgument(2 * workgroup_sizes.width);
         return invocation.run(num_workgroups);
     }
 

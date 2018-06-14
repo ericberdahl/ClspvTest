@@ -571,9 +571,9 @@ namespace clspv_utils {
         return create_layout_for_entry(device.mDevice, device.mDescriptorPool, mSpvMap, entryPoint);
     }
 
-    kernel::kernel(kernel_module&               module,
-                   std::string                  entryPoint,
-                   const WorkgroupDimensions&   workgroup_sizes) :
+    kernel::kernel(kernel_module&       module,
+                   std::string          entryPoint,
+                   const vk::Extent2D&  workgroup_sizes) :
             mModule(module),
             mEntryPoint(entryPoint),
             mWorkgroupSizes(workgroup_sizes),
@@ -598,11 +598,12 @@ namespace clspv_utils {
     }
 
     void kernel::updatePipeline(vk::ArrayProxy<int32_t> otherSpecConstants) {
-        std::vector<int32_t> specConstants = {
-                mWorkgroupSizes.x,
-                mWorkgroupSizes.y,
+        std::vector<std::uint32_t> specConstants = {
+                mWorkgroupSizes.width,
+                mWorkgroupSizes.height,
                 1
         };
+        typedef decltype(specConstants)::value_type spec_constant_t;
         std::copy(otherSpecConstants.begin(), otherSpecConstants.end(), std::back_inserter(specConstants));
 
         std::vector<vk::SpecializationMapEntry> specializationEntries;
@@ -611,12 +612,12 @@ namespace clspv_utils {
                         specConstants.size(),
                         [&index] () {
                             const uint32_t current = index++;
-                            return vk::SpecializationMapEntry(current, current * sizeof(int32_t), sizeof(int32_t));
+                            return vk::SpecializationMapEntry(current, current * sizeof(spec_constant_t), sizeof(spec_constant_t));
                         });
         vk::SpecializationInfo specializationInfo;
         specializationInfo.setMapEntryCount(specConstants.size())
                 .setPMapEntries(specializationEntries.data())
-                .setDataSize(specConstants.size() * sizeof(int32_t))
+                .setDataSize(specConstants.size() * sizeof(spec_constant_t))
                 .setPData(specConstants.data());
 
         vk::ComputePipelineCreateInfo createInfo;
@@ -852,7 +853,7 @@ namespace clspv_utils {
         mKernel->bindCommand(*mCommand);
     }
 
-    void kernel_invocation::fillCommandBuffer(const WorkgroupDimensions& num_workgroups)
+    void kernel_invocation::fillCommandBuffer(const vk::Extent2D& num_workgroups)
     {
         mCommand->begin(vk::CommandBufferBeginInfo());
 
@@ -868,7 +869,7 @@ namespace clspv_utils {
                                   nullptr,    // buffer memory barriers
                                   mImageMemoryBarriers);    // image memory barriers
         mCommand->writeTimestamp(vk::PipelineStageFlagBits::eComputeShader, *mQueryPool, kQueryIndex_PostHostBarrier);
-        mCommand->dispatch(num_workgroups.x, num_workgroups.y, 1);
+        mCommand->dispatch(num_workgroups.width, num_workgroups.height, 1);
         mCommand->writeTimestamp(vk::PipelineStageFlagBits::eComputeShader, *mQueryPool, kQueryIndex_PostExecution);
         mCommand->pipelineBarrier(vk::PipelineStageFlagBits::eComputeShader,
                                   vk::PipelineStageFlagBits::eHost | vk::PipelineStageFlagBits::eTransfer,
@@ -896,7 +897,7 @@ namespace clspv_utils {
         mKernel->updatePipeline(mSpecConstantArguments);
     }
 
-    execution_time_t kernel_invocation::run(const WorkgroupDimensions& num_workgroups) {
+    execution_time_t kernel_invocation::run(const vk::Extent2D& num_workgroups) {
         // HACK re-create the pipeline if the invocation includes spec constant arguments.
         // TODO factor the pipeline recreation better, possibly along with an overhaul of kernel
         // management
