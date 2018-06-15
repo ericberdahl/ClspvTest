@@ -62,7 +62,7 @@ namespace copyimagetobuffer_kernel {
         test_utils::fill_random_pixels<ImagePixelType>(srcImageMap.get(), srcImageMap.get() + buffer_length);
 
         // initialize destination memory (copy source and invert, thereby forcing the kernel to make the change back to the source value)
-        auto dstBufferMap = dst_buffer.mem.map<BufferPixelType>();
+        auto dstBufferMap = dst_buffer.map<BufferPixelType>();
         test_utils::copy_pixel_buffer<ImagePixelType, BufferPixelType>(srcImageMap.get(), srcImageMap.get() + buffer_length, dstBufferMap.get());
         test_utils::invert_pixel_buffer<BufferPixelType>(dstBufferMap.get(), dstBufferMap.get() + buffer_length);
 
@@ -94,7 +94,7 @@ namespace copyimagetobuffer_kernel {
                                                  buffer_height);
 
         srcImageMap = srcImageStaging.map<ImagePixelType>();
-        dstBufferMap = dst_buffer.mem.map<BufferPixelType>();
+        dstBufferMap = dst_buffer.map<BufferPixelType>();
         test_utils::check_results(srcImageMap.get(),
                                   dstBufferMap.get(),
                                   buffer_width, buffer_height,

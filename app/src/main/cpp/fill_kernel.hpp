@@ -64,7 +64,7 @@ namespace fill_kernel {
         vulkan_utils::storage_buffer dst_buffer(device.mDevice, device.mMemoryProperties, buffer_size);
 
         const PixelType src_value = pixels::traits<PixelType>::translate((gpu_types::float4){ 0.0f, 0.0f, 0.0f, 0.0f });
-        auto dstBufferMap = dst_buffer.mem.map<PixelType>();
+        auto dstBufferMap = dst_buffer.map<PixelType>();
         std::fill(dstBufferMap.get(), dstBufferMap.get() + (buffer_width * buffer_height), src_value);
         dstBufferMap.reset();
 
@@ -76,7 +76,7 @@ namespace fill_kernel {
                                                  buffer_width, buffer_height, // width, height
                                                  color); // color
 
-        dstBufferMap = dst_buffer.mem.map<PixelType>();
+        dstBufferMap = dst_buffer.map<PixelType>();
         test_utils::check_results(dstBufferMap.get(),
                                   buffer_width, buffer_height,
                                   buffer_width,

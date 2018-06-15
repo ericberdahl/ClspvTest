@@ -72,10 +72,13 @@ namespace vulkan_utils {
         void    swap(device_memory& other);
 
         vk::Device          getDevice() const { return mDevice; }
-        vk::DeviceMemory    getDeviceMemory() const { return *mMemory; }
+
+        void    bind(vk::Buffer buffer, vk::DeviceSize memoryOffset);
+
+        void    bind(vk::Image image, vk::DeviceSize memoryOffset);
 
         template <typename T>
-        mapped_ptr<T> map()
+        inline mapped_ptr<T> map()
         {
             auto basicMap = map();
             return std::unique_ptr<T, unmapper_t>(static_cast<T*>(basicMap.release()), basicMap.get_deleter());
@@ -121,7 +124,7 @@ namespace vulkan_utils {
 
     public:
         template <typename T = void>
-        mapped_ptr<T> map()
+        inline mapped_ptr<T> map()
         {
             return mem.map<T>();
         }
@@ -137,7 +140,12 @@ namespace vulkan_utils {
         lhs.swap(rhs);
     }
 
-    struct storage_buffer {
+    class storage_buffer {
+    public:
+        template <typename T>
+        using mapped_ptr = device_memory::mapped_ptr<T>;
+
+    public:
         storage_buffer () {}
 
         storage_buffer (vk::Device dev, const vk::PhysicalDeviceMemoryProperties memoryProperties, vk::DeviceSize num_bytes);
@@ -154,7 +162,16 @@ namespace vulkan_utils {
 
         void    swap(storage_buffer & other);
 
+    public:
+        template <typename T = void>
+        inline mapped_ptr<T> map()
+        {
+            return mem.map<T>();
+        }
+
+    private:
         device_memory       mem;
+    public:
         vk::UniqueBuffer    buf;
     };
 
@@ -165,7 +182,8 @@ namespace vulkan_utils {
 
     class staging_buffer;
 
-    struct image {
+    class image {
+    public:
         image();
 
         image(vk::Device                                dev,
@@ -209,16 +227,8 @@ namespace vulkan_utils {
 
     class staging_buffer {
     public:
-        struct unmapper_t {
-            unmapper_t(staging_buffer* s) : self(s) {}
-
-            void    operator()(void* ptr) { self->unmap(); }
-
-            staging_buffer*  self;
-        };
-
         template <typename T>
-        using mapped_ptr = std::unique_ptr<T, unmapper_t>;
+        using mapped_ptr = device_memory::mapped_ptr <T>;
 
     public:
         staging_buffer ();
@@ -246,25 +256,18 @@ namespace vulkan_utils {
         void    copyFromImage(vk::CommandBuffer commandBuffer);
 
         template <typename T>
-        mapped_ptr<T> map()
+        inline mapped_ptr<T> map()
         {
-            auto basicMap = map();
-            return std::unique_ptr<T, unmapper_t>(static_cast<T*>(basicMap.release()), basicMap.get_deleter());
+            return mDeviceMemory.map<T>();
         }
-
-        mapped_ptr<void> map();
-
-    private:
-        void                unmap();
 
     private:
         vk::Device              mDevice;
         image*                  mImage;
         uint32_t                mWidth;
         uint32_t                mHeight;
-        vk::UniqueDeviceMemory  mDeviceMemory;
+        device_memory           mDeviceMemory;
         vk::UniqueBuffer        mBuffer;
-        bool                    mMapped;
     };
 
     inline void swap(staging_buffer & lhs, staging_buffer & rhs)

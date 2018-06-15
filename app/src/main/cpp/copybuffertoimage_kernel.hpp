@@ -54,7 +54,7 @@ namespace copybuffertoimage_kernel {
         vulkan_utils::staging_buffer    dstImageStaging = dstImage.createStagingBuffer();
 
         // initialize source memory with random data
-        auto srcBufferMap = srcBuffer.mem.map<BufferPixelType>();
+        auto srcBufferMap = srcBuffer.map<BufferPixelType>();
         test_utils::fill_random_pixels<BufferPixelType>(srcBufferMap.get(), srcBufferMap.get() + buffer_length);
 
         // initialize destination memory (copy source and invert, thereby forcing the kernel to make the change back to the source value)
@@ -91,7 +91,7 @@ namespace copybuffertoimage_kernel {
         device.mComputeQueue.submit(submitInfo, nullptr);
         device.mComputeQueue.waitIdle();
 
-        srcBufferMap = srcBuffer.mem.map<BufferPixelType>();
+        srcBufferMap = srcBuffer.map<BufferPixelType>();
         dstImageMap = dstImageStaging.map<ImagePixelType>();
         test_utils::check_results(srcBufferMap.get(),
                                   dstImageMap.get(),

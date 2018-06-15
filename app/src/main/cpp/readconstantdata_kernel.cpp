@@ -56,7 +56,7 @@ namespace readconstantdata_kernel {
         vulkan_utils::storage_buffer  dstBuffer(device.mDevice, device.mMemoryProperties, buffer_size);
 
         // initialize destination memory with random data
-        auto dstBufferMap = dstBuffer.mem.map<float>();
+        auto dstBufferMap = dstBuffer.map<float>();
         test_utils::fill_random_pixels<float>(dstBufferMap.get(), dstBufferMap.get() + buffer_length);
         dstBufferMap.reset();
 
@@ -78,7 +78,7 @@ namespace readconstantdata_kernel {
                                                  dstBuffer,
                                                  buffer_width);
 
-        dstBufferMap = dstBuffer.mem.map<float>();
+        dstBufferMap = dstBuffer.map<float>();
         test_utils::check_results(expectedResults.data(),
                                   dstBufferMap.get(),
                                   buffer_width, buffer_height,

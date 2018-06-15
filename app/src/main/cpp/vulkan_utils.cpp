@@ -118,6 +118,16 @@ namespace vulkan_utils {
         swap(mMapped, other.mMapped);
     }
 
+    void device_memory::bind(vk::Buffer buffer, vk::DeviceSize memoryOffset)
+    {
+        mDevice.bindBufferMemory(buffer, *mMemory, memoryOffset);
+    }
+
+    void device_memory::bind(vk::Image image, vk::DeviceSize memoryOffset)
+    {
+        mDevice.bindImageMemory(image, *mMemory, memoryOffset);
+    }
+
     std::unique_ptr<void, device_memory::unmapper_t> device_memory::map()
     {
         if (mMapped) {
@@ -160,7 +170,7 @@ namespace vulkan_utils {
         mem = device_memory(dev, dev.getBufferMemoryRequirements(*buf), memoryProperties);
 
         // Bind the memory to the buffer object
-        dev.bindBufferMemory(*buf, mem.getDeviceMemory(), 0);
+        mem.bind(*buf, 0);
     }
 
     uniform_buffer::uniform_buffer(uniform_buffer&& other) :
@@ -200,7 +210,7 @@ namespace vulkan_utils {
         mem = device_memory(dev, dev.getBufferMemoryRequirements(*buf), memoryProperties);
 
         // Bind the memory to the buffer object
-        dev.bindBufferMemory(*buf, mem.getDeviceMemory(), 0);
+        mem.bind(*buf, 0);
     }
 
     storage_buffer::storage_buffer(storage_buffer&& other) :
@@ -385,8 +395,7 @@ namespace vulkan_utils {
               mWidth(0),
               mHeight(0),
               mDeviceMemory(),
-              mBuffer(),
-              mMapped(false)
+              mBuffer()
     {
         // this space intentionally left blank
     }
@@ -401,7 +410,6 @@ namespace vulkan_utils {
         swap(mHeight, other.mHeight);
         swap(mDeviceMemory, other.mDeviceMemory);
         swap(mBuffer, other.mBuffer);
-        swap(mMapped, other.mMapped);
     }
 
 
@@ -428,13 +436,12 @@ namespace vulkan_utils {
 
         mBuffer = mDevice.createBufferUnique(buf_info);
 
-        mDeviceMemory = allocate_device_memory(mDevice,
-                                               mDevice.getBufferMemoryRequirements(*mBuffer),
-                                               memoryProperties,
-                                               vk::MemoryPropertyFlagBits::eHostVisible);
+        mDeviceMemory = device_memory(device,
+                                      device.getBufferMemoryRequirements(*mBuffer),
+                                      memoryProperties);
 
         // Bind the memory to the buffer object
-        mDevice.bindBufferMemory(*mBuffer, *mDeviceMemory, 0);
+        mDeviceMemory.bind(*mBuffer, 0);
     }
 
     staging_buffer::staging_buffer(staging_buffer&& other)
@@ -450,34 +457,6 @@ namespace vulkan_utils {
     {
         swap(other);
         return *this;
-    }
-
-    std::unique_ptr<void, staging_buffer::unmapper_t> staging_buffer::map()
-    {
-        if (mMapped) {
-            throw std::runtime_error("staging_buffer is already mapped");
-        }
-
-        void* memMap = mDevice.mapMemory(*mDeviceMemory, 0, VK_WHOLE_SIZE, vk::MemoryMapFlags());
-        mMapped = true;
-
-        const vk::MappedMemoryRange mappedRange(*mDeviceMemory, 0, VK_WHOLE_SIZE);
-        mDevice.invalidateMappedMemoryRanges(mappedRange);
-
-        return std::unique_ptr<void, staging_buffer::unmapper_t>(memMap, unmapper_t(this));
-    }
-
-    void staging_buffer::unmap()
-    {
-        if (!mMapped) {
-            throw std::runtime_error("staging_buffer is not mapped");
-        }
-
-        const vk::MappedMemoryRange mappedRange(*mDeviceMemory, 0, VK_WHOLE_SIZE);
-        mDevice.flushMappedMemoryRanges(mappedRange);
-
-        mDevice.unmapMemory(*mDeviceMemory);
-        mMapped = false;
     }
 
     void staging_buffer::copyToImage(vk::CommandBuffer commandBuffer)

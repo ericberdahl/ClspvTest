@@ -59,7 +59,7 @@ namespace testgreaterthanorequalto_kernel {
 
         // initialize destination memory with unexpected value. the kernel should write either 0 or
         // 1. so, initialize thedestination with 2.
-        auto dstBufferMap = dstBuffer.mem.map<float>();
+        auto dstBufferMap = dstBuffer.map<float>();
         std::fill(dstBufferMap.get(), dstBufferMap.get() + buffer_length, 2.0f);
         dstBufferMap.reset();
 
@@ -80,7 +80,7 @@ namespace testgreaterthanorequalto_kernel {
                                                  buffer_width,
                                                  buffer_height);
 
-        dstBufferMap = dstBuffer.mem.map<float>();
+        dstBufferMap = dstBuffer.map<float>();
         test_utils::check_results(expectedResults.data(), dstBufferMap.get(),
                                   buffer_width, buffer_height,
                                   buffer_height,

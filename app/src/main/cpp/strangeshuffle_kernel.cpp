@@ -47,15 +47,15 @@ namespace strangeshuffle_kernel {
         const std::size_t index_buffer_size = buffer_width * sizeof(int32_t);
         vulkan_utils::storage_buffer index_buffer(device.mDevice, device.mMemoryProperties, index_buffer_size);
 
-        auto srcBufferMap = src_buffer.mem.map<gpu_types::float4>();
+        auto srcBufferMap = src_buffer.map<gpu_types::float4>();
         test_utils::fill_random_pixels<gpu_types::float4>(srcBufferMap.get(), srcBufferMap.get() + buffer_width);
         srcBufferMap.reset();
 
-        auto dstBufferMap = dst_buffer.mem.map<gpu_types::float4>();
+        auto dstBufferMap = dst_buffer.map<gpu_types::float4>();
         test_utils::fill_random_pixels<gpu_types::float4>(dstBufferMap.get(), dstBufferMap.get() + buffer_width);
         dstBufferMap.reset();
 
-        auto mappedIndices = index_buffer.mem.map<int32_t>();
+        auto mappedIndices = index_buffer.map<int32_t>();
         std::iota(mappedIndices.get(), mappedIndices.get() + buffer_width, 0);
         mappedIndices.reset();
 
@@ -65,8 +65,8 @@ namespace strangeshuffle_kernel {
                                                  dst_buffer,
                                                  buffer_width);
 
-        srcBufferMap = src_buffer.mem.map<gpu_types::float4>();
-        dstBufferMap = dst_buffer.mem.map<gpu_types::float4>();
+        srcBufferMap = src_buffer.map<gpu_types::float4>();
+        dstBufferMap = dst_buffer.map<gpu_types::float4>();
         test_utils::check_results(srcBufferMap.get(),
                                   dstBufferMap.get(),
                                   buffer_width, 1,
