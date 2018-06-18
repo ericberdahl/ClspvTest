@@ -263,17 +263,26 @@ namespace vulkan_utils {
         swap(mImageView, other.mImageView);
     }
 
-    image::image(vk::Device                                dev,
-                 const vk::PhysicalDeviceMemoryProperties  memoryProperties,
-                 uint32_t                                  width,
-                 uint32_t                                  height,
-                 vk::Format                                format)
+    image::image(vk::Device                                 dev,
+                 const vk::PhysicalDeviceMemoryProperties   memoryProperties,
+                 uint32_t                                   width,
+                 uint32_t                                   height,
+                 vk::Format                                 format,
+                 Usage                                      usage)
             : image()
     {
         mDevice = dev;
         mMemoryProperties = memoryProperties;
         mWidth = width;
         mHeight = height;
+
+        vk::ImageUsageFlags imageUsage = vk::ImageUsageFlagBits::eSampled |
+                                         vk::ImageUsageFlagBits::eTransferDst |
+                                         vk::ImageUsageFlagBits::eTransferSrc;
+        if (kUsage_ReadWrite == usage)
+        {
+            imageUsage |= vk::ImageUsageFlagBits::eStorage;
+        }
 
         vk::ImageCreateInfo imageInfo;
         imageInfo.setImageType(vk::ImageType::e2D)
@@ -283,10 +292,7 @@ namespace vulkan_utils {
                 .setArrayLayers(1)
                 .setSamples(vk::SampleCountFlagBits::e1)
                 .setTiling(vk::ImageTiling::eOptimal)
-                .setUsage(vk::ImageUsageFlagBits::eStorage |
-                          vk::ImageUsageFlagBits::eSampled |
-                          vk::ImageUsageFlagBits::eTransferDst |
-                          vk::ImageUsageFlagBits::eTransferSrc)
+                .setUsage(imageUsage)
                 .setSharingMode(vk::SharingMode::eExclusive)
                 .setInitialLayout(mImageLayout);
 

@@ -184,13 +184,20 @@ namespace vulkan_utils {
 
     class image {
     public:
+        enum Usage {
+            kUsage_ReadOnly,
+            kUsage_ReadWrite
+        };
+
+    public:
         image();
 
         image(vk::Device                                dev,
               const vk::PhysicalDeviceMemoryProperties  memoryProperties,
               uint32_t                                  width,
               uint32_t                                  height,
-              vk::Format                                format);
+              vk::Format                                format,
+              Usage                                     usage);
 
         image(const image& other) = delete;
 
