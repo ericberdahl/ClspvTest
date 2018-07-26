@@ -213,7 +213,7 @@ namespace test_utils {
 
                 std::ostringstream os;
                 os << (pixel_is_correct ? "CORRECT  " : "INCORRECT")
-                   << ": pixel{row:" << row << ", col:" << column << "}"
+                   << ": pixel{x:" << column << ", y:" << row << "}"
                    << " expected:" << expectedString << " observed:" << observedString
                    << " expectedPromotion:" << expectedPromotionString << " observedPromotion:"
                    << observedPromotionString;
