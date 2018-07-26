@@ -44,6 +44,7 @@ add_library(native-activity SHARED
     fill_kernel.cpp
     readconstantdata_kernel.cpp
     readlocalsize_kernel.cpp
+    resample2dimage_kernel.cpp
     strangeshuffle_kernel.cpp
     testgreaterthanorequalto_kernel.cpp
     clspv_test.cpp

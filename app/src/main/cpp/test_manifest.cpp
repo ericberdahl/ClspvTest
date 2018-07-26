@@ -9,6 +9,7 @@
 #include "fill_kernel.hpp"
 #include "readconstantdata_kernel.hpp"
 #include "readlocalsize_kernel.hpp"
+#include "resample2dimage_kernel.hpp"
 #include "strangeshuffle_kernel.hpp"
 #include "testgreaterthanorequalto_kernel.hpp"
 
@@ -16,15 +17,16 @@
 
 namespace {
     const auto test_map = {
-            std::make_pair("readLocalSize",      readlocalsize_kernel::test),
+            std::make_pair("copyBufferToImage",  copybuffertoimage_kernel::test_matrix),
+            std::make_pair("copyImageToBuffer",  copyimagetobuffer_kernel::test_matrix),
             std::make_pair("fill",               fill_kernel::test_series),
             std::make_pair("fill<float4>",       fill_kernel::test<gpu_types::float4>),
             std::make_pair("fill<half4>",        fill_kernel::test<gpu_types::half4>),
-            std::make_pair("copyImageToBuffer",  copyimagetobuffer_kernel::test_matrix),
-            std::make_pair("copyBufferToImage",  copybuffertoimage_kernel::test_matrix),
+            std::make_pair("resample2dimage",    resample2dimage_kernel::test),
+            std::make_pair("readLocalSize",      readlocalsize_kernel::test),
             std::make_pair("readConstantData",   readconstantdata_kernel::test_all),
-            std::make_pair("testGtEq",           testgreaterthanorequalto_kernel::test_all),
             std::make_pair("strangeShuffle",     strangeshuffle_kernel::test),
+            std::make_pair("testGtEq",           testgreaterthanorequalto_kernel::test_all),
     };
 
     test_utils::test_kernel_fn lookup_test_fn(const std::string& testName) {

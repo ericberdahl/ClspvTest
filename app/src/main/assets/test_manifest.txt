@@ -111,6 +111,7 @@ test main fill<float4> 32 32 -w 1080 -h 720
 module shaders_cl/Memory
 test CopyBufferToImageKernel copyBufferToImage 32 32
 test CopyImageToBufferKernel copyImageToBuffer 32 32
+test Resample2DImage resample2dimage 32 32
 #
 module shaders_small_cl/Memory
 # test CopyBufferToImageKernel copyBufferToImage 32 32

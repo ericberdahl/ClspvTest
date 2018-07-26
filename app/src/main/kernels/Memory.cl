@@ -185,3 +185,28 @@ __kernel void CopyImageToBufferKernel(
     }
 }
 
+
+const sampler_t linearSampler = CLK_NORMALIZED_COORDS_TRUE | CLK_ADDRESS_CLAMP_TO_EDGE | CLK_FILTER_LINEAR;
+
+__kernel void Resample2DImage(
+    __read_only image2d_t   inImage,
+    __global float4*        outDest,
+    int                     inDestWidth,
+    int                     inDestHeight)
+{
+    int x = KernelX();
+    int y = KernelY();
+
+    if (x < inDestWidth && y < inDestHeight)
+    {
+        float2 srcCoord = (float2)( ((float)x + 0.5f)/((float)inDestWidth),
+                                    ((float)y + 0.5f)/((float)inDestHeight) );
+        int destIndex = (y * inDestWidth) + x;
+
+        float4 pixel = read_imagef(inImage, linearSampler, srcCoord);
+        pixel.z = srcCoord.x;
+        pixel.w = srcCoord.y;
+
+        outDest[destIndex] = pixel;
+    }
+}
