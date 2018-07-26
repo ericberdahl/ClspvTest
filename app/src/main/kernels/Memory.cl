@@ -204,8 +204,6 @@ __kernel void Resample2DImage(
         int destIndex = (y * inDestWidth) + x;
 
         float4 pixel = read_imagef(inImage, linearSampler, srcCoord);
-        pixel.z = srcCoord.x;
-        pixel.w = srcCoord.y;
 
         outDest[destIndex] = pixel;
     }

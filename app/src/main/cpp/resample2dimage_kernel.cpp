@@ -149,8 +149,8 @@ namespace resample2dimage_kernel {
 
                 expectedDstBuffer[(row * buffer_width) + col] = gpu_types::float4(sampledCoordinate.x,
                                                                                   sampledCoordinate.y,
-                                                                                  normalizedCoordinate.x,
-                                                                                  normalizedCoordinate.y);
+                                                                                  0.0f,
+                                                                                  0.0f);
             }
         }
 
