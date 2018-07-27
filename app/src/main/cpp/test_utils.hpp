@@ -185,9 +185,7 @@ namespace test_utils {
     template<typename ExpectedPixelType, typename ObservedPixelType>
     void check_result(ExpectedPixelType expected_pixel,
                       ObservedPixelType observed_pixel,
-                      int               row,
-                      int               column,
-                      int               slice,
+                      vk::Extent3D      coord,
                       bool              verbose,
                       InvocationResult& result) {
         typedef typename details::pixel_promotion<ExpectedPixelType, ObservedPixelType>::promotion_type promotion_type;
@@ -214,7 +212,7 @@ namespace test_utils {
 
                 std::ostringstream os;
                 os << (pixel_is_correct ? "CORRECT  " : "INCORRECT")
-                   << ": pixel{x:" << column << ", y:" << row << ", z:" << slice << "}"
+                   << ": pixel{x:" << coord.width << ", y:" << coord.height << ", z:" << coord.depth << "}"
                    << " expected:" << expectedString << " observed:" << observedString
                    << " expectedPromotion:" << expectedPromotionString << " observedPromotion:"
                    << observedPromotionString;
@@ -237,7 +235,7 @@ namespace test_utils {
             for (int r = 0; r < height; ++r, row += pitch) {
                 auto p = row;
                 for (int c = 0; c < width; ++c, ++p) {
-                    check_result(expected, *p, r, c, s, verbose, result);
+                    check_result(expected, *p, vk::Extent3D(c, r, s), verbose, result);
                 }
             }
         }
@@ -259,7 +257,7 @@ namespace test_utils {
                 auto expected_p = expected_row;
                 auto observed_p = observed_row;
                 for (int c = 0; c < width; ++c, ++expected_p, ++observed_p) {
-                    check_result(*expected_p, *observed_p, r, c, s, verbose, result);
+                    check_result(*expected_p, *observed_p, vk::Extent3D(c, r, s), verbose, result);
                 }
             }
         }
