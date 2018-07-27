@@ -10,6 +10,7 @@
 #include "readconstantdata_kernel.hpp"
 #include "readlocalsize_kernel.hpp"
 #include "resample2dimage_kernel.hpp"
+#include "resample3dimage_kernel.hpp"
 #include "strangeshuffle_kernel.hpp"
 #include "testgreaterthanorequalto_kernel.hpp"
 
@@ -23,6 +24,7 @@ namespace {
             std::make_pair("fill<float4>",       fill_kernel::test<gpu_types::float4>),
             std::make_pair("fill<half4>",        fill_kernel::test<gpu_types::half4>),
             std::make_pair("resample2dimage",    resample2dimage_kernel::test),
+            std::make_pair("resample3dimage",    resample3dimage_kernel::test),
             std::make_pair("readLocalSize",      readlocalsize_kernel::test),
             std::make_pair("readConstantData",   readconstantdata_kernel::test_all),
             std::make_pair("strangeShuffle",     strangeshuffle_kernel::test),
@@ -81,7 +83,7 @@ namespace test_manifest {
 
                 result.tests.push_back(moduleEntry);
                 currentModule = &result.tests.back();
-            } else if (op == "test") {
+            } else if (op == "test" || op == "test2d" || op == "test3d") {
                 // test kernel in module
                 if (currentModule) {
                     test_utils::kernel_test_map testEntry;
@@ -93,6 +95,11 @@ namespace test_manifest {
                             >> testName
                             >> testEntry.workgroupSize.width
                             >> testEntry.workgroupSize.height;
+                    if (op == "test3d") {
+                        in_line >> testEntry.workgroupSize.depth;
+                    } else {
+                        testEntry.workgroupSize.depth = 1;
+                    }
 
                     while (!in_line.eof()) {
                         std::string arg;
@@ -115,11 +122,12 @@ namespace test_manifest {
                              line.c_str());
                         lineIsGood = false;
                     }
-                    if (1 > testEntry.workgroupSize.width || 1 > testEntry.workgroupSize.height) {
-                        LOGE("%s: bad workgroup dimensions {%d,%d} from command '%s'",
+                    if (1 > testEntry.workgroupSize.width || 1 > testEntry.workgroupSize.height || 1 > testEntry.workgroupSize.depth) {
+                        LOGE("%s: bad workgroup dimensions {%d,%d,%d} from command '%s'",
                              __func__,
                              testEntry.workgroupSize.width,
                              testEntry.workgroupSize.height,
+                             testEntry.workgroupSize.depth,
                              line.c_str());
                         lineIsGood = false;
                     }
@@ -134,7 +142,7 @@ namespace test_manifest {
                 // skip kernel in module
                 if (currentModule) {
                     test_utils::kernel_test_map skipEntry;
-                    skipEntry.workgroupSize = vk::Extent2D(0, 0);
+                    skipEntry.workgroupSize = vk::Extent3D(0, 0, 0);
 
                     in_line >> skipEntry.entry;
 

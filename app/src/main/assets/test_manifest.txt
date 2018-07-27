@@ -3,20 +3,21 @@
 # module module-path
 # Look for the files {module-path}.spv and {module-path}.spvmap in the assets directory, loading the
 # module at runtime. Each entry point in the module will be compiled unless specified by a skip verb
-# for that entry point. If entry points associated with a test verb will then also have the
-# indicated test function executed on that entry point.
+# for that entry point. If entry points associated with a test2d verb will then also have the
+# indicated test2d function executed on that entry point.
 #
 # skip entry-point
 # Do not even compile entry-point (found in the most recently loaded module), just ignore it. This
 # can be useful to work around driver bugs whereby compiling a given entry point has undesirable
 # side effects (e.g. crashes the app).
 #
-# test entry-point test-entry workgroup-size-x workgroup-size-y (test-arg...)
-# Run a test, specified by the test-entry name, against the entry-point (found in the most recently
-# loaded module). test-entry is matched by a table internal to the application to look up the actual
-# test function executed. The test is executed with the indicated workgroup size. Any additional
-# test arguments are collected and passed (as a list of strings) to the test function itself. Test
-# arguments are, therefore, specific to each test function.
+# test2d entry-point test2d-entry workgroup-size-x workgroup-size-y (test2d-arg...)
+# test3d entry-point test2d-entry workgroup-size-x workgroup-size-y workgroup-size-z (test2d-arg...)
+# Run a test2d, specified by the test2d-entry name, against the entry-point (found in the most recently
+# loaded module). test2d-entry is matched by a table internal to the application to look up the actual
+# test2d function executed. The test2d is executed with the indicated workgroup size. Any additional
+# test2d arguments are collected and passed (as a list of strings) to the test2d function itself. test2d
+# arguments are, therefore, specific to each test2d function.
 #
 # verbosity [full|silent]
 # Change the amount of output subsequent tests will emit.
@@ -26,13 +27,13 @@
 # iterations num-iterations
 # Change the number of times subsequent tests will run. The default number of iterations is 1.
 # num-iterations must be positive. This could be useful for exploring timing of individual kernel
-# execution (e.g. allowing one to run a test multiple times in rapid succession without having to
+# execution (e.g. allowing one to run a test2d multiple times in rapid succession without having to
 # launch ClspvTest multiple times.
 #
 # vkValidation [all|none]
-# Instruct the test harness how to set up Vulkan validations layers for this test run. Note that
+# Instruct the test2d harness how to set up Vulkan validations layers for this test2d run. Note that
 # the vkValidation verb affects all tests (different from verbosity and iterations, for example),
-# with the last entry in the manifest affecting all tests in the test run.
+# with the last entry in the manifest affecting all tests in the test2d run.
 # all - (default) install all validation layers before running tests
 # none - install no validations layers before running tests
 #
@@ -44,93 +45,94 @@ vkValidation none
 #
 #
 module shaders_cl/LocalMemory
-test StrangeShuffle strangeShuffle 1024 1
+test2d StrangeShuffle strangeShuffle 1024 1
 #
 module shaders_small_cl/LocalMemory
-test StrangeShuffle strangeShuffle 1024 1
+test2d StrangeShuffle strangeShuffle 1024 1
 #
 module shaders/GL_LocalMemory
-test main strangeShuffle 1024 1
+test2d main strangeShuffle 1024 1
 #
 #
 #
 module shaders_cl/localsize
-test ReadLocalSize readLocalSize 32 32 global_id_x
-test ReadLocalSize readLocalSize 32 32 global_id_y
-test ReadLocalSize readLocalSize 32 32 global_id_z
-test ReadLocalSize readLocalSize 32 32 group_id_x
-test ReadLocalSize readLocalSize 32 32 group_id_y
-test ReadLocalSize readLocalSize 32 32 group_id_z
-test ReadLocalSize readLocalSize 32 32 local_id_x
-test ReadLocalSize readLocalSize 32 32 local_id_y
-test ReadLocalSize readLocalSize 32 32 local_id_z
-test ReadLocalSize readLocalSize 32 32 global_size_x
-test ReadLocalSize readLocalSize 32 32 global_size_y
-test ReadLocalSize readLocalSize 32 32 global_size_z
-test ReadLocalSize readLocalSize 32 32 local_size_x
-test ReadLocalSize readLocalSize 32 32 local_size_y
-test ReadLocalSize readLocalSize 32 32 local_size_z
+test2d ReadLocalSize readLocalSize 32 32 global_id_x
+test2d ReadLocalSize readLocalSize 32 32 global_id_y
+test2d ReadLocalSize readLocalSize 32 32 global_id_z
+test2d ReadLocalSize readLocalSize 32 32 group_id_x
+test2d ReadLocalSize readLocalSize 32 32 group_id_y
+test2d ReadLocalSize readLocalSize 32 32 group_id_z
+test2d ReadLocalSize readLocalSize 32 32 local_id_x
+test2d ReadLocalSize readLocalSize 32 32 local_id_y
+test2d ReadLocalSize readLocalSize 32 32 local_id_z
+test2d ReadLocalSize readLocalSize 32 32 global_size_x
+test2d ReadLocalSize readLocalSize 32 32 global_size_y
+test2d ReadLocalSize readLocalSize 32 32 global_size_z
+test2d ReadLocalSize readLocalSize 32 32 local_size_x
+test2d ReadLocalSize readLocalSize 32 32 local_size_y
+test2d ReadLocalSize readLocalSize 32 32 local_size_z
 #
 module shaders_small_cl/localsize
-test ReadLocalSize readLocalSize 32 32 global_id_x
-test ReadLocalSize readLocalSize 32 32 global_id_y
-test ReadLocalSize readLocalSize 32 32 global_id_z
-test ReadLocalSize readLocalSize 32 32 group_id_x
-test ReadLocalSize readLocalSize 32 32 group_id_y
-test ReadLocalSize readLocalSize 32 32 group_id_z
-test ReadLocalSize readLocalSize 32 32 local_id_x
-test ReadLocalSize readLocalSize 32 32 local_id_y
-test ReadLocalSize readLocalSize 32 32 local_id_z
-test ReadLocalSize readLocalSize 32 32 global_size_x
-test ReadLocalSize readLocalSize 32 32 global_size_y
-test ReadLocalSize readLocalSize 32 32 global_size_z
-test ReadLocalSize readLocalSize 32 32 local_size_x
-test ReadLocalSize readLocalSize 32 32 local_size_y
-test ReadLocalSize readLocalSize 32 32 local_size_z
+test2d ReadLocalSize readLocalSize 32 32 global_id_x
+test2d ReadLocalSize readLocalSize 32 32 global_id_y
+test2d ReadLocalSize readLocalSize 32 32 global_id_z
+test2d ReadLocalSize readLocalSize 32 32 group_id_x
+test2d ReadLocalSize readLocalSize 32 32 group_id_y
+test2d ReadLocalSize readLocalSize 32 32 group_id_z
+test2d ReadLocalSize readLocalSize 32 32 local_id_x
+test2d ReadLocalSize readLocalSize 32 32 local_id_y
+test2d ReadLocalSize readLocalSize 32 32 local_id_z
+test2d ReadLocalSize readLocalSize 32 32 global_size_x
+test2d ReadLocalSize readLocalSize 32 32 global_size_y
+test2d ReadLocalSize readLocalSize 32 32 global_size_z
+test2d ReadLocalSize readLocalSize 32 32 local_size_x
+test2d ReadLocalSize readLocalSize 32 32 local_size_y
+test2d ReadLocalSize readLocalSize 32 32 local_size_z
 #
 #
 #
 module shaders_cl/Fills
-test FillWithColorKernel fill<float4> 32 32 -w 64 -h 64
-test FillWithColorKernel fill<float4> 32 32 -w 1080 -h 720
-test FillWithColorKernel fill<half4> 32 32 -w 64 -h 64
-test FillWithColorKernel fill<half4> 32 32 -w 1080 -h 720
+test2d FillWithColorKernel fill<float4> 32 32 -w 64 -h 64
+test2d FillWithColorKernel fill<float4> 32 32 -w 1080 -h 720
+test2d FillWithColorKernel fill<half4> 32 32 -w 64 -h 64
+test2d FillWithColorKernel fill<half4> 32 32 -w 1080 -h 720
 #
 module shaders_small_cl/Fills
-test FillWithColorKernel fill<float4> 32 32 -w 64 -h 64
-test FillWithColorKernel fill<float4> 32 32 -w 1080 -h 720
-test FillWithColorKernel fill<half4> 32 32 -w 64 -h 64
-test FillWithColorKernel fill<half4> 32 32 -w 1080 -h 720
+test2d FillWithColorKernel fill<float4> 32 32 -w 64 -h 64
+test2d FillWithColorKernel fill<float4> 32 32 -w 1080 -h 720
+test2d FillWithColorKernel fill<half4> 32 32 -w 64 -h 64
+test2d FillWithColorKernel fill<half4> 32 32 -w 1080 -h 720
 #
 module shaders/GL_Fills_reduced
-test main fill<float4> 32 32 -w 64 -h 64
-test main fill<float4> 32 32 -w 1080 -h 720
+test2d main fill<float4> 32 32 -w 64 -h 64
+test2d main fill<float4> 32 32 -w 1080 -h 720
 #
 #
 #
 module shaders_cl/Memory
-test CopyBufferToImageKernel copyBufferToImage 32 32
-test CopyImageToBufferKernel copyImageToBuffer 32 32
-test Resample2DImage resample2dimage 32 32
+test2d CopyBufferToImageKernel copyBufferToImage 32 32
+test2d CopyImageToBufferKernel copyImageToBuffer 32 32
+test2d Resample2DImage resample2dimage 32 32
+test3d Resample3DImage resample3dimage 32 32 32
 #
 module shaders_small_cl/Memory
-# test CopyBufferToImageKernel copyBufferToImage 32 32
-test CopyImageToBufferKernel copyImageToBuffer 32 32
+# test2d CopyBufferToImageKernel copyBufferToImage 32 32
+test2d CopyImageToBufferKernel copyImageToBuffer 32 32
 #
 #
 #
 module shaders_cl/ReadConstantData
-test ReadConstantArray readConstantData 32 1
-test ReadConstantStruct readConstantData 32 1
+test2d ReadConstantArray readConstantData 32 1
+test2d ReadConstantStruct readConstantData 32 1
 #
 module shaders_small_cl/ReadConstantData
-test ReadConstantArray readConstantData 32 1
-test ReadConstantStruct readConstantData 32 1
+test2d ReadConstantArray readConstantData 32 1
+test2d ReadConstantStruct readConstantData 32 1
 #
 #
 #
 module shaders_cl/TestComparisons
-test TestGreaterThanOrEqualTo testGtEq 32 32
+test2d TestGreaterThanOrEqualTo testGtEq 32 32
 #
 module shaders_small_cl/TestComparisons
-test TestGreaterThanOrEqualTo testGtEq 32 32
+test2d TestGreaterThanOrEqualTo testGtEq 32 32

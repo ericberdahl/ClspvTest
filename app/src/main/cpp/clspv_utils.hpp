@@ -130,7 +130,7 @@ namespace clspv_utils {
     public:
         kernel(kernel_module&       module,
                std::string          entryPoint,
-               const vk::Extent2D&  workgroup_sizes);
+               const vk::Extent3D&  workgroup_sizes);
 
         ~kernel();
 
@@ -138,7 +138,7 @@ namespace clspv_utils {
         void                bindCommand(vk::CommandBuffer command) const;
 
         std::string         getEntryPoint() const { return mEntryPoint; }
-        vk::Extent2D        getWorkgroupSize() const { return mWorkgroupSizes; }
+        vk::Extent3D        getWorkgroupSize() const { return mWorkgroupSizes; }
 
         kernel_module&          getModule() { return mModule; }
         const kernel_module&    getModule() const { return mModule; }
@@ -151,7 +151,7 @@ namespace clspv_utils {
     private:
         std::reference_wrapper<kernel_module>   mModule;
         std::string                             mEntryPoint;
-        vk::Extent2D                            mWorkgroupSizes;
+        vk::Extent3D                            mWorkgroupSizes;
         layout_t                                mLayout;
         vk::UniquePipeline                      mPipeline;
     };
@@ -179,7 +179,7 @@ namespace clspv_utils {
         void    addSamplerArgument(vk::Sampler samp);
         void    addLocalArraySizeArgument(unsigned int numElements);
 
-        execution_time_t    run(const vk::Extent2D& num_workgroups);
+        execution_time_t    run(const vk::Extent3D& num_workgroups);
 
         void    swap(kernel_invocation& other);
 
@@ -188,7 +188,7 @@ namespace clspv_utils {
 
         void    bindCommand();
         void    updatePipeline();
-        void    fillCommandBuffer(const vk::Extent2D&    num_workgroups);
+        void    fillCommandBuffer(const vk::Extent3D&    num_workgroups);
         void    updateDescriptorSets();
         void    submitCommand();
 

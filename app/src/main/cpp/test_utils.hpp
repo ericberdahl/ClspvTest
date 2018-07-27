@@ -134,7 +134,7 @@ namespace test_utils {
     struct kernel_test_map {
         std::string                 entry;
         test_kernel_fn              test            = nullptr;
-        vk::Extent2D                workgroupSize   = vk::Extent2D(1, 1);
+        vk::Extent3D                workgroupSize;
         std::vector<std::string>    args;
         unsigned int                iterations      = 1;
         bool                        verbose         = false;
@@ -187,6 +187,7 @@ namespace test_utils {
                       ObservedPixelType observed_pixel,
                       int               row,
                       int               column,
+                      int               slice,
                       bool              verbose,
                       InvocationResult& result) {
         typedef typename details::pixel_promotion<ExpectedPixelType, ObservedPixelType>::promotion_type promotion_type;
@@ -213,7 +214,7 @@ namespace test_utils {
 
                 std::ostringstream os;
                 os << (pixel_is_correct ? "CORRECT  " : "INCORRECT")
-                   << ": pixel{x:" << column << ", y:" << row << "}"
+                   << ": pixel{x:" << column << ", y:" << row << ", z:" << slice << "}"
                    << " expected:" << expectedString << " observed:" << observedString
                    << " expectedPromotion:" << expectedPromotionString << " observedPromotion:"
                    << observedPromotionString;
@@ -226,15 +227,18 @@ namespace test_utils {
     void check_results(const ObservedPixelType* observed_pixels,
                        int                      width,
                        int                      height,
+                       int                      depth,
                        int                      pitch,
                        ExpectedPixelType        expected,
                        bool                     verbose,
                        InvocationResult&        result) {
         auto row = observed_pixels;
-        for (int r = 0; r < height; ++r, row += pitch) {
-            auto p = row;
-            for (int c = 0; c < width; ++c, ++p) {
-                check_result(expected, *p, r, c, verbose, result);
+        for (int s = 0; s < depth; ++s) {
+            for (int r = 0; r < height; ++r, row += pitch) {
+                auto p = row;
+                for (int c = 0; c < width; ++c, ++p) {
+                    check_result(expected, *p, r, c, s, verbose, result);
+                }
             }
         }
     }
@@ -244,16 +248,19 @@ namespace test_utils {
                        const ObservedPixelType* observed_pixels,
                        int                      width,
                        int                      height,
+                       int                      depth,
                        int                      pitch,
                        bool                     verbose,
                        InvocationResult&        result) {
         auto expected_row = expected_pixels;
         auto observed_row = observed_pixels;
-        for (int r = 0; r < height; ++r, expected_row += pitch, observed_row += pitch) {
-            auto expected_p = expected_row;
-            auto observed_p = observed_row;
-            for (int c = 0; c < width; ++c, ++expected_p, ++observed_p) {
-                check_result(*expected_p, *observed_p, r, c, verbose, result);
+        for (int s = 0; s < depth; ++s) {
+            for (int r = 0; r < height; ++r, expected_row += pitch, observed_row += pitch) {
+                auto expected_p = expected_row;
+                auto observed_p = observed_row;
+                for (int c = 0; c < width; ++c, ++expected_p, ++observed_p) {
+                    check_result(*expected_p, *observed_p, r, c, s, verbose, result);
+                }
             }
         }
     }

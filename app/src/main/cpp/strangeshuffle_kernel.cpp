@@ -17,8 +17,10 @@ namespace strangeshuffle_kernel {
             throw std::runtime_error("num_elements must be even");
         }
 
-        const vk::Extent2D workgroup_sizes = kernel.getWorkgroupSize();
-        const vk::Extent2D num_workgroups(((num_elements/2) + workgroup_sizes.width - 1)/workgroup_sizes.width, 1);
+        const vk::Extent3D workgroup_sizes = kernel.getWorkgroupSize();
+        const vk::Extent3D num_workgroups(((num_elements/2) + workgroup_sizes.width - 1)/workgroup_sizes.width,
+                                          1,
+                                          1);
 
         clspv_utils::kernel_invocation invocation = kernel.createInvocation();
 
@@ -69,7 +71,7 @@ namespace strangeshuffle_kernel {
         dstBufferMap = dst_buffer.map<gpu_types::float4>();
         test_utils::check_results(srcBufferMap.get(),
                                   dstBufferMap.get(),
-                                  buffer_width, 1,
+                                  buffer_width, 1, 1,
                                   buffer_width,
                                   verbose,
                                   invocationResult);

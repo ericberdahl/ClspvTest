@@ -140,7 +140,7 @@ namespace {
         return expected;
     }
 
-    std::vector<std::int32_t> compute_expected_group_id_z(int width, int height, int pitch) {
+    std::vector<std::int32_t> compute_expected_group_id_z(int width, int height, int pitch, int group_depth) {
         std::vector<std::int32_t> expected(pitch * height);
 
         auto rowIter = expected.begin();
@@ -182,7 +182,7 @@ namespace {
         return expected;
     }
 
-    std::vector<std::int32_t> compute_expected_local_id_z(int width, int height, int pitch) {
+    std::vector<std::int32_t> compute_expected_local_id_z(int width, int height, int pitch, int group_depth) {
         std::vector<std::int32_t> expected(pitch * height);
 
         auto rowIter = expected.begin();
@@ -218,7 +218,7 @@ namespace {
         return expected;
     }
 
-    std::vector<std::int32_t> compute_expected_local_size_z(int width, int height, int pitch) {
+    std::vector<std::int32_t> compute_expected_local_size_z(int width, int height, int pitch, int group_depth) {
         std::vector<std::int32_t> expected(pitch * height);
 
         auto rowIter = expected.begin();
@@ -233,7 +233,7 @@ namespace {
     std::vector<std::int32_t> compute_expected_results(idtype_t             idtype,
                                                        int                  buffer_width,
                                                        int                  buffer_height,
-                                                       const vk::Extent2D&  workgroupSize) {
+                                                       const vk::Extent3D&  workgroupSize) {
         std::vector<std::int32_t> expectedResults;
         switch (idtype) {
             case idtype_globalid_x:
@@ -269,7 +269,7 @@ namespace {
                 break;
 
             case idtype_localsize_z:
-                expectedResults = compute_expected_local_size_z(buffer_width, buffer_height, buffer_width);
+                expectedResults = compute_expected_local_size_z(buffer_width, buffer_height, buffer_width, workgroupSize.depth);
                 break;
 
             case idtype_groupid_x:
@@ -281,7 +281,7 @@ namespace {
                 break;
 
             case idtype_groupid_z:
-                expectedResults = compute_expected_group_id_z(buffer_width, buffer_height, buffer_width);
+                expectedResults = compute_expected_group_id_z(buffer_width, buffer_height, buffer_width, workgroupSize.depth);
                 break;
 
             case idtype_localid_x:
@@ -293,7 +293,7 @@ namespace {
                 break;
 
             case idtype_localid_z:
-                expectedResults = compute_expected_local_id_z(buffer_width, buffer_height, buffer_width);
+                expectedResults = compute_expected_local_id_z(buffer_width, buffer_height, buffer_width, workgroupSize.depth);
                 break;
 
             default:
@@ -334,10 +334,11 @@ namespace readlocalsize_kernel {
         scalars->idtype = inIdType;
         scalars.reset();
 
-        const vk::Extent2D workgroup_sizes = kernel.getWorkgroupSize();
-        const vk::Extent2D num_workgroups(
+        const vk::Extent3D workgroup_sizes = kernel.getWorkgroupSize();
+        const vk::Extent3D num_workgroups(
                 (inWidth + workgroup_sizes.width - 1) / workgroup_sizes.width,
-                (inHeight + workgroup_sizes.height - 1) / workgroup_sizes.height);
+                (inHeight + workgroup_sizes.height - 1) / workgroup_sizes.height,
+                1);
 
         clspv_utils::kernel_invocation invocation = kernel.createInvocation();
 
@@ -385,8 +386,7 @@ namespace readlocalsize_kernel {
         dstBufferMap = dst_buffer.map<std::int32_t>();
         test_utils::check_results(expectedResults.data(),
                                   dstBufferMap.get(),
-                                  buffer_width,
-                                  buffer_height,
+                                  buffer_width, buffer_height, 1,
                                   buffer_width,
                                   verbose,
                                   invocationResult);

@@ -39,25 +39,26 @@ set(CMAKE_SHARED_LINKER_FLAGS
     "${CMAKE_SHARED_LINKER_FLAGS} -u ANativeActivity_onCreate")
 
 add_library(native-activity SHARED
-    copyimagetobuffer_kernel.cpp
-    copybuffertoimage_kernel.cpp
-    fill_kernel.cpp
-    readconstantdata_kernel.cpp
-    readlocalsize_kernel.cpp
-    resample2dimage_kernel.cpp
-    strangeshuffle_kernel.cpp
-    testgreaterthanorequalto_kernel.cpp
-    clspv_test.cpp
-    clspv_utils.cpp
-    getline_crlf_savvy.cpp
-    gpu_types.cpp
-    test_manifest.cpp
-    test_result_logging.cpp
-    test_utils.cpp
-    vulkan_utils.cpp
-    util.cpp
-    util_init.cpp
-    )
+        copyimagetobuffer_kernel.cpp
+        copybuffertoimage_kernel.cpp
+        fill_kernel.cpp
+        readconstantdata_kernel.cpp
+        readlocalsize_kernel.cpp
+        resample2dimage_kernel.cpp
+        resample3dimage_kernel.cpp
+        strangeshuffle_kernel.cpp
+        testgreaterthanorequalto_kernel.cpp
+        clspv_test.cpp
+        clspv_utils.cpp
+        getline_crlf_savvy.cpp
+        gpu_types.cpp
+        test_manifest.cpp
+        test_result_logging.cpp
+        test_utils.cpp
+        vulkan_utils.cpp
+        util.cpp
+        util_init.cpp
+        )
 
 target_include_directories(native-activity PRIVATE
     ${PROJECT_SOURCE_DIR}
@@ -87,8 +88,18 @@ set(CLSPV_FLAGS ${CLSPV_FLAGS} -hack-undef)
 set(CLSPV_FLAGS ${CLSPV_FLAGS} -pod-ubo)
 
 set(SPRIV_OPT_FLAGS)
-set(SPRIV_OPT_FLAGS ${SPRIV_OPT_FLAGS} --set-spec-const-default-value "0:2 1:2 2:2")
-set(SPRIV_OPT_INLINE_FLAGS --inline-entry-points-exhaustive)
+if(TRUE)
+    set(SPRIV_OPT_FLAGS ${SPRIV_OPT_FLAGS} --set-spec-const-default-value "0:2 1:2 2:2")
+    set(SPRIV_OPT_INLINE_FLAGS --inline-entry-points-exhaustive)
+else(TRUE)
+    set(SPRIV_OPT_INLINE_FLAGS -O)
+    set(SPRIV_OPT_FLAGS ${SPRIV_OPT_FLAGS} --set-spec-const-default-value "0:2 1:2 2:2")
+else()
+    set(SPRIV_OPT_INLINE_FLAGS -O)
+    set(SPRIV_OPT_FLAGS ${SPRIV_OPT_FLAGS} --set-spec-const-default-value "0:2 1:2 2:2")
+    set(SPRIV_OPT_INLINE_FLAGS --eliminate-dead-functions)
+    set(SPRIV_OPT_INLINE_FLAGS --eliminate-dead-code-aggressive)
+endif()
 
 set(OPENCL_KERNELS
     Fills

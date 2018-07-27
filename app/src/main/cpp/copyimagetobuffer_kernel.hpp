@@ -58,8 +58,7 @@ namespace copyimagetobuffer_kernel {
                                                    buffer_size);
         vulkan_utils::image             srcImage(device.mDevice,
                                                  device.mMemoryProperties,
-                                                 buffer_width,
-                                                 buffer_height,
+                                                 vk::Extent3D(buffer_width, buffer_height, 1),
                                                  vk::Format(pixels::traits<ImagePixelType>::vk_pixel_type),
                                                  vulkan_utils::image::kUsage_ReadOnly);
         vulkan_utils::staging_buffer    srcImageStaging = srcImage.createStagingBuffer();
@@ -104,8 +103,8 @@ namespace copyimagetobuffer_kernel {
         dstBufferMap = dst_buffer.map<BufferPixelType>();
         test_utils::check_results(srcImageMap.get(),
                                   dstBufferMap.get(),
-                                  buffer_width, buffer_height,
-                                  buffer_height,
+                                  buffer_width, buffer_height, 1,
+                                  buffer_width,
                                   verbose,
                                   invocationResult);
 

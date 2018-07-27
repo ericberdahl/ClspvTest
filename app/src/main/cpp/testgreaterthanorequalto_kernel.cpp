@@ -27,10 +27,11 @@ namespace testgreaterthanorequalto_kernel {
         scalars->inHeight = height;
         scalars.reset();
 
-        const vk::Extent2D workgroup_sizes = kernel.getWorkgroupSize();
-        const vk::Extent2D num_workgroups(
+        const vk::Extent3D workgroup_sizes = kernel.getWorkgroupSize();
+        const vk::Extent3D num_workgroups(
                 (width + workgroup_sizes.width - 1) / workgroup_sizes.width,
-                (height + workgroup_sizes.height - 1) / workgroup_sizes.height);
+                (height + workgroup_sizes.height - 1) / workgroup_sizes.height,
+                1);
 
         clspv_utils::kernel_invocation invocation = kernel.createInvocation();
 
@@ -82,8 +83,8 @@ namespace testgreaterthanorequalto_kernel {
 
         dstBufferMap = dstBuffer.map<float>();
         test_utils::check_results(expectedResults.data(), dstBufferMap.get(),
-                                  buffer_width, buffer_height,
-                                  buffer_height,
+                                  buffer_width, buffer_height, 1,
+                                  buffer_width,
                                   verbose,
                                   invocationResult);
 

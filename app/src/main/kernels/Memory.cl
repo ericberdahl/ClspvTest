@@ -13,6 +13,11 @@ int KernelY()
     return get_global_id(1);
 }
 
+int KernelZ()
+{
+    return get_global_id(2);
+}
+
 unsigned int ReadUCharIndex(
     __global const int* inSource,
     int                 inIndex)
@@ -208,3 +213,29 @@ __kernel void Resample2DImage(
         outDest[destIndex] = pixel;
     }
 }
+
+__kernel void Resample3DImage(
+    __read_only image3d_t   inImage,
+    __global float4*        outDest,
+    int                     inDestWidth,
+    int                     inDestHeight,
+    int                     inDestDepth)
+{
+    int x = KernelX();
+    int y = KernelY();
+    int z = KernelZ();
+
+    if (x < inDestWidth && y < inDestHeight && z < inDestDepth)
+    {
+        float4 srcCoord = (float4)( ((float)x + 0.5f)/((float)inDestWidth),
+                                    ((float)y + 0.5f)/((float)inDestHeight),
+                                    ((float)z + 0.5f)/((float)inDestDepth),
+                                    0.0f );
+        int destIndex = (((z * inDestHeight) + y) * inDestWidth) + x;
+
+        float4 pixel = read_imagef(inImage, linearSampler, srcCoord);
+
+        outDest[destIndex] = pixel;
+    }
+}
+

@@ -194,8 +194,7 @@ namespace vulkan_utils {
 
         image(vk::Device                                dev,
               const vk::PhysicalDeviceMemoryProperties  memoryProperties,
-              uint32_t                                  width,
-              uint32_t                                  height,
+              vk::Extent3D                              extent,
               vk::Format                                format,
               Usage                                     usage);
 
@@ -221,8 +220,7 @@ namespace vulkan_utils {
         vk::PhysicalDeviceMemoryProperties  mMemoryProperties;
         vk::ImageLayout                     mImageLayout;
         vk::UniqueDeviceMemory              mDeviceMemory;
-        uint32_t                            mWidth;
-        uint32_t                            mHeight;
+        vk::Extent3D                        mExtent;
         vk::UniqueImage                     mImage;
         vk::UniqueImageView                 mImageView;
     };
@@ -243,8 +241,7 @@ namespace vulkan_utils {
         staging_buffer (vk::Device                           device,
                         vk::PhysicalDeviceMemoryProperties   memoryProperties,
                         image*                               image,
-                        uint32_t                             width,
-                        uint32_t                             height,
+                        vk::Extent3D                         extent,
                         std::size_t                          pixelSize);
 
         staging_buffer (const staging_buffer & other) = delete;
@@ -271,8 +268,7 @@ namespace vulkan_utils {
     private:
         vk::Device              mDevice;
         image*                  mImage;
-        uint32_t                mWidth;
-        uint32_t                mHeight;
+        vk::Extent3D            mExtent;
         device_memory           mDeviceMemory;
         vk::UniqueBuffer        mBuffer;
     };

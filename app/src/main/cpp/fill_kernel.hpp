@@ -78,7 +78,7 @@ namespace fill_kernel {
 
         dstBufferMap = dst_buffer.map<PixelType>();
         test_utils::check_results(dstBufferMap.get(),
-                                  buffer_width, buffer_height,
+                                  buffer_width, buffer_height, 1,
                                   buffer_width,
                                   color,
                                   verbose,

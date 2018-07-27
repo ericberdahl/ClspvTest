@@ -241,8 +241,7 @@ namespace vulkan_utils {
               mMemoryProperties(),
               mImageLayout(vk::ImageLayout::eUndefined),
               mDeviceMemory(),
-              mWidth(0),
-              mHeight(0),
+              mExtent(),
               mImage(),
               mImageView()
     {
@@ -257,24 +256,28 @@ namespace vulkan_utils {
         swap(mMemoryProperties, other.mMemoryProperties);
         swap(mImageLayout, other.mImageLayout);
         swap(mDeviceMemory, other.mDeviceMemory);
-        swap(mWidth, other.mWidth);
-        swap(mHeight, other.mHeight);
+        swap(mExtent, other.mExtent);
         swap(mImage, other.mImage);
         swap(mImageView, other.mImageView);
     }
 
     image::image(vk::Device                                 dev,
                  const vk::PhysicalDeviceMemoryProperties   memoryProperties,
-                 uint32_t                                   width,
-                 uint32_t                                   height,
+                 vk::Extent3D                               extent,
                  vk::Format                                 format,
                  Usage                                      usage)
             : image()
     {
+        if (extent.width < 1 || extent.height < 1 || extent.depth < 1)
+        {
+            throw std::runtime_error("Invalid extent for image -- at least one dimension is 0");
+        }
+
+        const bool is3D = (extent.depth > 1);
+
         mDevice = dev;
         mMemoryProperties = memoryProperties;
-        mWidth = width;
-        mHeight = height;
+        mExtent = extent;
 
         vk::ImageUsageFlags imageUsage = vk::ImageUsageFlagBits::eSampled |
                                          vk::ImageUsageFlagBits::eTransferDst |
@@ -285,9 +288,9 @@ namespace vulkan_utils {
         }
 
         vk::ImageCreateInfo imageInfo;
-        imageInfo.setImageType(vk::ImageType::e2D)
+        imageInfo.setImageType(is3D ? vk::ImageType::e3D : vk::ImageType::e2D)
                 .setFormat(format)
-                .setExtent(vk::Extent3D(width, height, 1))
+                .setExtent(mExtent)
                 .setMipLevels(1)
                 .setArrayLayers(1)
                 .setSamples(vk::SampleCountFlagBits::e1)
@@ -309,7 +312,7 @@ namespace vulkan_utils {
         // Allocate the image view
         vk::ImageViewCreateInfo viewInfo;
         viewInfo.setImage(*mImage)
-                .setViewType(vk::ImageViewType::e2D)
+                .setViewType(is3D ? vk::ImageViewType::e3D : vk::ImageViewType::e2D)
                 .setFormat(format)
                 .subresourceRange.setAspectMask(vk::ImageAspectFlagBits::eColor)
                 .setLevelCount(1)
@@ -339,8 +342,7 @@ namespace vulkan_utils {
         return staging_buffer(mDevice,
                               mMemoryProperties,
                               this,
-                              mWidth,
-                              mHeight,
+                              mExtent,
                               16);   // TODO: Get correct pixel size
     }
 
@@ -398,8 +400,7 @@ namespace vulkan_utils {
     staging_buffer::staging_buffer()
             : mDevice(),
               mImage(),
-              mWidth(0),
-              mHeight(0),
+              mExtent(0),
               mDeviceMemory(),
               mBuffer()
     {
@@ -412,8 +413,7 @@ namespace vulkan_utils {
 
         swap(mDevice, other.mDevice);
         swap(mImage, other.mImage);
-        swap(mWidth, other.mWidth);
-        swap(mHeight, other.mHeight);
+        swap(mExtent, other.mExtent);
         swap(mDeviceMemory, other.mDeviceMemory);
         swap(mBuffer, other.mBuffer);
     }
@@ -422,17 +422,15 @@ namespace vulkan_utils {
     staging_buffer::staging_buffer(vk::Device                           device,
                                    vk::PhysicalDeviceMemoryProperties   memoryProperties,
                                    image*                               image,
-                                   uint32_t                             width,
-                                   uint32_t                             height,
+                                   vk::Extent3D                         extent,
                                    std::size_t                          pixelSize)
             : staging_buffer()
     {
         mDevice = device;
         mImage = image;
-        mWidth = width;
-        mHeight = height;
+        mExtent = extent;
 
-        const std::size_t num_bytes = pixelSize * width * height;
+        const std::size_t num_bytes = pixelSize * mExtent.width * mExtent.height * mExtent.depth;
 
         // Allocate the buffer
         vk::BufferCreateInfo buf_info;
@@ -476,9 +474,9 @@ namespace vulkan_utils {
         vk::ImageMemoryBarrier imageBarrier = mImage->prepare(vk::ImageLayout::eTransferDstOptimal);
 
         vk::BufferImageCopy copyRegion;
-        copyRegion.setBufferRowLength(mWidth)
-                .setBufferImageHeight(mHeight)
-                .setImageExtent(vk::Extent3D(mWidth, mHeight, 1));
+        copyRegion.setBufferRowLength(mExtent.width)
+                .setBufferImageHeight(mExtent.height)
+                .setImageExtent(mExtent);
         copyRegion.imageSubresource.setAspectMask(vk::ImageAspectFlagBits::eColor)
                 .setLayerCount(1);
 
@@ -503,9 +501,9 @@ namespace vulkan_utils {
         vk::ImageMemoryBarrier imageBarrier = mImage->prepare(vk::ImageLayout::eTransferSrcOptimal);
 
         vk::BufferImageCopy copyRegion;
-        copyRegion.setBufferRowLength(mWidth)
-                .setBufferImageHeight(mHeight)
-                .setImageExtent(vk::Extent3D(mWidth, mHeight, 1));
+        copyRegion.setBufferRowLength(mExtent.width)
+                .setBufferImageHeight(mExtent.height)
+                .setImageExtent(mExtent);
         copyRegion.imageSubresource.setAspectMask(vk::ImageAspectFlagBits::eColor)
                 .setLayerCount(1);
 
