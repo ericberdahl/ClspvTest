@@ -15,49 +15,68 @@
 #include <utility>
 
 namespace {
-    std::pair<unsigned int, unsigned int> countResults(const test_utils::InvocationResult &ir) {
-        // an invocation passes if it generates at least one correct value and no incorrect values
-        return (ir.mNumCorrect > 0 && ir.mNumErrors == 0 ? std::make_pair(1, 0) : std::make_pair(0,
-                                                                                                 1));
+    struct ResultCounts {
+        static ResultCounts null() { return ResultCounts(0, 0, 0); }
+        static ResultCounts pass() { return ResultCounts(1, 0, 0); }
+        static ResultCounts fail() { return ResultCounts(0, 1, 0); }
+        static ResultCounts skip() { return ResultCounts(0, 0, 1); }
+
+        ResultCounts(unsigned int pass, unsigned int fail, unsigned int skip)
+                : mPass(pass), mFail(fail), mSkip(skip) {}
+
+        ResultCounts&   operator+=(const ResultCounts& addend) {
+            mPass += addend.mPass;
+            mFail += addend.mFail;
+            mSkip += addend.mSkip;
+            return *this;
+        }
+
+        unsigned int    mPass;
+        unsigned int    mFail;
+        unsigned int    mSkip;
     };
 
-    std::pair<unsigned int, unsigned int> countResults(const test_utils::KernelResult &kr) {
+    ResultCounts operator+(ResultCounts lhs, const ResultCounts& rhs) {
+        lhs += rhs;
+        return lhs;
+    }
+
+    ResultCounts countResults(const test_utils::InvocationResult &ir) {
+        if (ir.mSkipped) return ResultCounts::skip();
+
+        // an invocation passes if it generates at least one correct value and no incorrect values
+        return (ir.mNumCorrect > 0 && ir.mNumErrors == 0 ? ResultCounts::pass() : ResultCounts::fail());
+    };
+
+    ResultCounts countResults(const test_utils::KernelResult &kr) {
+        if (kr.mSkipped) {
+            assert(kr.mInvocations.empty());
+            return ResultCounts::skip();
+        }
+
         // a kernel's results are the aggregate sum of its invocations
         return std::accumulate(kr.mInvocations.begin(), kr.mInvocations.end(),
-                               std::make_pair(0, 0),
-                               [](std::pair<unsigned int, unsigned int> r,
-                                  const test_utils::InvocationResult &ir) {
-                                   auto addend = countResults(ir);
-                                   r.first += addend.first;
-                                   r.second += addend.second;
-                                   return r;
+                               ResultCounts::null(),
+                               [](ResultCounts r, const test_utils::InvocationResult &ir) {
+                                   return r + countResults(ir);
                                });
     };
 
-    std::pair<unsigned int, unsigned int> countResults(const test_utils::ModuleResult &mr) {
+    ResultCounts countResults(const test_utils::ModuleResult &mr) {
         // a module's results are the aggregate sum of its kernels, combined with the result of its own
         // loading (i.e. whether it loaded correctly or not)
         return std::accumulate(mr.mKernels.begin(), mr.mKernels.end(),
-                               mr.mLoadedCorrectly ? std::make_pair(1, 0) : std::make_pair(0, 1),
-                               [](std::pair<unsigned int, unsigned int> r,
-                                  const test_utils::KernelResult &kr) {
-                                   auto addend = countResults(kr);
-                                   r.first += addend.first;
-                                   r.second += addend.second;
-                                   return r;
+                               mr.mLoadedCorrectly ? ResultCounts::pass() : ResultCounts::fail(),
+                               [](ResultCounts r, const test_utils::KernelResult &kr) {
+                                   return r + countResults(kr);
                                });
     };
 
-    std::pair<unsigned int, unsigned int>
-    countResults(const test_utils::ModuleResultSet &moduleResultSet) {
+    ResultCounts countResults(const test_utils::ModuleResultSet &moduleResultSet) {
         return std::accumulate(moduleResultSet.begin(), moduleResultSet.end(),
-                               std::make_pair(0, 0),
-                               [](std::pair<unsigned int, unsigned int> r,
-                                  const test_utils::ModuleResult &mr) {
-                                   auto addend = countResults(mr);
-                                   r.first += addend.first;
-                                   r.second += addend.second;
-                                   return r;
+                               ResultCounts::null(),
+                               [](ResultCounts r, const test_utils::ModuleResult &mr) {
+                                   return r + countResults(mr);
                                });
     };
 
@@ -178,18 +197,21 @@ namespace test_result_logging {
         const execution_times times = measureInvocationTime(info, ir);
 
         std::ostringstream os;
-        os << (ir.mNumCorrect > 0 && ir.mNumErrors == 0 ? "PASS" : "FAIL");
+        os << (ir.mSkipped ? "SKIP" :
+                (ir.mNumCorrect > 0 && ir.mNumErrors == 0 ? "PASS" : "FAIL"));
 
         if (!ir.mVariation.empty()) {
             os << " variation:" << ir.mVariation << "";
         }
 
-        os << " correctValues:" << ir.mNumCorrect
-           << " incorrectValues:" << ir.mNumErrors
-           << " wallClockTime:" << times.wallClockTime_s * 1000.0f << "ms"
-           << " executionTime:" << times.executionTime_ns / 1000.0f << "µs"
-           << " hostBarrierTime:" << times.hostBarrierTime_ns / 1000.0f << "µs"
-           << " gpuBarrierTime:" << times.gpuBarrierTime_ns / 1000.0f << "µs";
+        if (!ir.mSkipped) {
+            os << " correctValues:" << ir.mNumCorrect
+               << " incorrectValues:" << ir.mNumErrors
+               << " wallClockTime:" << times.wallClockTime_s * 1000.0f << "ms"
+               << " executionTime:" << times.executionTime_ns / 1000.0f << "µs"
+               << " hostBarrierTime:" << times.hostBarrierTime_ns / 1000.0f << "µs"
+               << " gpuBarrierTime:" << times.gpuBarrierTime_ns / 1000.0f << "µs";
+        }
 
         LOGI("      %s", os.str().c_str());
 
@@ -241,7 +263,9 @@ namespace test_result_logging {
 
         std::ostringstream os;
         os << "Overall Summary"
-           << " pass:" << results.first << " fail:" << results.second;
+           << " pass:" << results.mPass
+           << " fail:" << results.mFail
+           << " skipped:" << results.mSkip;
         LOGI("%s", os.str().c_str());
 
         for (auto mr : moduleResultSet) {

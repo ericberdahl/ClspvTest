@@ -98,6 +98,7 @@ namespace test_utils {
 
     struct InvocationResult {
         std::string                     mVariation;
+        bool                            mSkipped    = false;
         unsigned int                    mNumCorrect = 0;
         unsigned int                    mNumErrors  = 0;
         std::vector<std::string>        mMessages;

@@ -87,6 +87,7 @@ namespace clspv_utils {
         device_t(const device_t&) = delete;
         device_t& operator=(const device_t&) = delete;
 
+        vk::PhysicalDevice                  mPhysicalDevice;
         vk::Device                          mDevice;
         vk::PhysicalDeviceMemoryProperties  mMemoryProperties;
         vk::DescriptorPool                  mDescriptorPool;

@@ -190,6 +190,8 @@ namespace vulkan_utils {
         };
 
     public:
+        static bool supportsFormatUse(vk::PhysicalDevice device, vk::Format format, Usage usage);
+
         image();
 
         image(vk::Device                                dev,

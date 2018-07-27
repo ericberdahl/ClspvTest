@@ -261,6 +261,19 @@ namespace vulkan_utils {
         swap(mImageView, other.mImageView);
     }
 
+    bool image::supportsFormatUse(vk::PhysicalDevice device, vk::Format format, Usage usage)
+    {
+        vk::FormatProperties properties = device.getFormatProperties(format);
+
+        vk::FormatFeatureFlags requiredFeatures = vk::FormatFeatureFlagBits::eSampledImage;
+        if (kUsage_ReadWrite == usage)
+        {
+            requiredFeatures |= vk::FormatFeatureFlagBits::eStorageImage;
+        }
+
+        return (requiredFeatures == (properties.optimalTilingFeatures & requiredFeatures));
+    }
+
     image::image(vk::Device                                 dev,
                  const vk::PhysicalDeviceMemoryProperties   memoryProperties,
                  vk::Extent3D                               extent,

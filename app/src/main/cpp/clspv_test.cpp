@@ -178,6 +178,7 @@ int sample_main(int argc, char *argv[]) {
     my_init_descriptor_pool(info);
 
     clspv_utils::device_t device = {
+            info.gpu,
             *info.device,
             info.memory_properties,
             *info.desc_pool,
