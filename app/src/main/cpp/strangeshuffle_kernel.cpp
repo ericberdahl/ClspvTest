@@ -71,7 +71,7 @@ namespace strangeshuffle_kernel {
         dstBufferMap = dst_buffer.map<gpu_types::float4>();
         test_utils::check_results(srcBufferMap.get(),
                                   dstBufferMap.get(),
-                                  buffer_width, 1, 1,
+                                  vk::Extent3D(buffer_width, 1, 1),
                                   buffer_width,
                                   verbose,
                                   invocationResult);

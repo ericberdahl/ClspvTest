@@ -223,19 +223,17 @@ namespace test_utils {
 
     template<typename ObservedPixelType, typename ExpectedPixelType>
     void check_results(const ObservedPixelType* observed_pixels,
-                       int                      width,
-                       int                      height,
-                       int                      depth,
+                       vk::Extent3D             extent,
                        int                      pitch,
                        ExpectedPixelType        expected,
                        bool                     verbose,
                        InvocationResult&        result) {
         auto row = observed_pixels;
-        for (int s = 0; s < depth; ++s) {
-            for (int r = 0; r < height; ++r, row += pitch) {
+        for (vk::Extent3D coord; coord.depth < extent.depth; ++coord.depth) {
+            for (coord.height = 0; coord.height < extent.height; ++coord.height, row += pitch) {
                 auto p = row;
-                for (int c = 0; c < width; ++c, ++p) {
-                    check_result(expected, *p, vk::Extent3D(c, r, s), verbose, result);
+                for (coord.width = 0; coord.width < extent.width; ++coord.width, ++p) {
+                    check_result(expected, *p, coord, verbose, result);
                 }
             }
         }
@@ -244,20 +242,18 @@ namespace test_utils {
     template<typename ExpectedPixelType, typename ObservedPixelType>
     void check_results(const ExpectedPixelType* expected_pixels,
                        const ObservedPixelType* observed_pixels,
-                       int                      width,
-                       int                      height,
-                       int                      depth,
+                       vk::Extent3D             extent,
                        int                      pitch,
                        bool                     verbose,
                        InvocationResult&        result) {
         auto expected_row = expected_pixels;
         auto observed_row = observed_pixels;
-        for (int s = 0; s < depth; ++s) {
-            for (int r = 0; r < height; ++r, expected_row += pitch, observed_row += pitch) {
+        for (vk::Extent3D coord; coord.depth < extent.depth; ++coord.depth) {
+            for (coord.height = 0; coord.height < extent.height; ++coord.height, expected_row += pitch, observed_row += pitch) {
                 auto expected_p = expected_row;
                 auto observed_p = observed_row;
-                for (int c = 0; c < width; ++c, ++expected_p, ++observed_p) {
-                    check_result(*expected_p, *observed_p, vk::Extent3D(c, r, s), verbose, result);
+                for (coord.width = 0; coord.width < extent.width; ++coord.width, ++expected_p, ++observed_p) {
+                    check_result(*expected_p, *observed_p, coord, verbose, result);
                 }
             }
         }

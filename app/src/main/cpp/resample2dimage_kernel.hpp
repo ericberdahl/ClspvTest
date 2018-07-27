@@ -15,11 +15,10 @@
 namespace resample2dimage_kernel {
 
     clspv_utils::execution_time_t
-    invoke(clspv_utils::kernel &kernel,
-           vulkan_utils::image &src_image,
-           vulkan_utils::storage_buffer &dst_buffer,
-           int width,
-           int height);
+    invoke(clspv_utils::kernel&             kernel,
+           vulkan_utils::image&             src_image,
+           vulkan_utils::storage_buffer&    dst_buffer,
+           vk::Extent3D                     extent);
 
     void test(clspv_utils::kernel &kernel,
               const std::vector<std::string> &args,

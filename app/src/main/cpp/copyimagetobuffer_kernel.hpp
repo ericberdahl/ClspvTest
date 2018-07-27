@@ -46,10 +46,8 @@ namespace copyimagetobuffer_kernel {
 
         auto& device = kernel.getDevice();
 
-        const int buffer_height = 64;
-        const int buffer_width = 64;
-
-        const std::size_t buffer_length = buffer_width * buffer_height;
+        const vk::Extent3D bufferExtent(64, 64, 1);
+        const std::size_t buffer_length = bufferExtent.width * bufferExtent.height * bufferExtent.depth;
         const std::size_t buffer_size = buffer_length * sizeof(BufferPixelType);
 
         // allocate buffers and images
@@ -58,7 +56,7 @@ namespace copyimagetobuffer_kernel {
                                                    buffer_size);
         vulkan_utils::image             srcImage(device.mDevice,
                                                  device.mMemoryProperties,
-                                                 vk::Extent3D(buffer_width, buffer_height, 1),
+                                                 bufferExtent,
                                                  vk::Format(pixels::traits<ImagePixelType>::vk_pixel_type),
                                                  vulkan_utils::image::kUsage_ReadOnly);
         vulkan_utils::staging_buffer    srcImageStaging = srcImage.createStagingBuffer();
@@ -92,19 +90,19 @@ namespace copyimagetobuffer_kernel {
                                                  srcImage,
                                                  dst_buffer,
                                                  0,
-                                                 buffer_width,
+                                                 bufferExtent.width,
                                                  pixels::traits<BufferPixelType>::cl_pixel_order,
                                                  pixels::traits<BufferPixelType>::cl_pixel_type,
                                                  false,
-                                                 buffer_width,
-                                                 buffer_height);
+                                                 bufferExtent.width,
+                                                 bufferExtent.height);
 
         srcImageMap = srcImageStaging.map<ImagePixelType>();
         dstBufferMap = dst_buffer.map<BufferPixelType>();
         test_utils::check_results(srcImageMap.get(),
                                   dstBufferMap.get(),
-                                  buffer_width, buffer_height, 1,
-                                  buffer_width,
+                                  bufferExtent,
+                                  bufferExtent.width,
                                   verbose,
                                   invocationResult);
 

@@ -45,10 +45,8 @@ namespace readconstantdata_kernel {
         test_utils::InvocationResult invocationResult;
         auto& device = kernel.getDevice();
 
-        const int buffer_height = 1;
-        const int buffer_width = 64;
-
-        const std::size_t buffer_length = buffer_width * buffer_height;
+        const vk::Extent3D bufferExtent(64, 1, 1);
+        const std::size_t buffer_length = bufferExtent.width * bufferExtent.height * bufferExtent.depth;
         const std::size_t buffer_size = buffer_length * sizeof(float);
 
         // number of elements in the constant data array (in the kernel itself)
@@ -78,13 +76,13 @@ namespace readconstantdata_kernel {
 
         invocationResult.mExecutionTime = invoke(kernel,
                                                  dstBuffer,
-                                                 buffer_width);
+                                                 bufferExtent.width);
 
         dstBufferMap = dstBuffer.map<float>();
         test_utils::check_results(expectedResults.data(),
                                   dstBufferMap.get(),
-                                  buffer_width, buffer_height, 1,
-                                  buffer_width,
+                                  bufferExtent,
+                                  bufferExtent.width,
                                   verbose,
                                   invocationResult);
 

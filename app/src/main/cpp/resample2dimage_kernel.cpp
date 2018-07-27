@@ -52,9 +52,13 @@ namespace resample2dimage_kernel {
     invoke(clspv_utils::kernel&             kernel,
            vulkan_utils::image&             src_image,
            vulkan_utils::storage_buffer&    dst_buffer,
-           int                              width,
-           int                              height)
+           vk::Extent3D                     extent)
     {
+        if (1 != extent.depth)
+        {
+            throw std::runtime_error("Depth of extent must be 1");
+        }
+
         struct scalar_args {
             int inWidth;            // offset 0
             int inHeight;           // offset 4
@@ -66,14 +70,14 @@ namespace resample2dimage_kernel {
                                                   kernel.getDevice().mMemoryProperties,
                                                   sizeof(scalar_args));
         auto scalars = scalarBuffer.map<scalar_args>();
-        scalars->inWidth = width;
-        scalars->inHeight = height;
+        scalars->inWidth = extent.width;
+        scalars->inHeight = extent.height;
         scalars.reset();
 
         const vk::Extent3D workgroup_sizes = kernel.getWorkgroupSize();
         const vk::Extent3D num_workgroups(
-                (width + workgroup_sizes.width - 1) / workgroup_sizes.width,
-                (height + workgroup_sizes.height - 1) / workgroup_sizes.height,
+                (extent.width + workgroup_sizes.width - 1) / workgroup_sizes.width,
+                (extent.height + workgroup_sizes.height - 1) / workgroup_sizes.height,
                 1);
 
         clspv_utils::kernel_invocation invocation = kernel.createInvocation();
@@ -111,10 +115,8 @@ namespace resample2dimage_kernel {
                 { 0.0f, 1.0f, 0.0f, 0.0f }, { 0.5f, 1.0f, 0.0f, 0.0f }, { 1.0f, 1.0f, 0.0f, 0.0f }
         };
 
-        const int buffer_height = 64;
-        const int buffer_width = 64;
-
-        const std::size_t buffer_length = buffer_width * buffer_height;
+        const vk::Extent3D bufferExtent(64, 64, 1);
+        const std::size_t buffer_length = bufferExtent.width * bufferExtent.height * bufferExtent.depth;
         const std::size_t buffer_size = buffer_length * sizeof(BufferPixelType);
 
         // allocate buffers and images
@@ -137,20 +139,21 @@ namespace resample2dimage_kernel {
         std::fill(dstBufferMap.get(), dstBufferMap.get() + buffer_length, gpu_types::float4(0.0f, 0.0f, 0.0f, 0.0f));
 
         std::vector<gpu_types::float4> expectedDstBuffer(buffer_length);
-        for (int row = 0; row < buffer_height; ++row)
+        for (int row = 0; row < bufferExtent.height; ++row)
         {
-            for (int col = 0; col < buffer_width; ++col)
+            for (int col = 0; col < bufferExtent.width; ++col)
             {
-                gpu_types::float2 normalizedCoordinate(((float)col + 0.5f) / ((float)buffer_width),
-                                                       ((float)row + 0.5f) / ((float)buffer_height));
+                gpu_types::float2 normalizedCoordinate(((float)col + 0.5f) / ((float)bufferExtent.width),
+                                                       ((float)row + 0.5f) / ((float)bufferExtent.height));
 
                 gpu_types::float2 sampledCoordinate(clampf(normalizedCoordinate.x*image_width - 0.5f, 0.0f, image_width - 1)/(image_width - 1),
                                                     clampf(normalizedCoordinate.y*image_height - 0.5f, 0.0f, image_height - 1)/(image_height - 1));
 
-                expectedDstBuffer[(row * buffer_width) + col] = gpu_types::float4(sampledCoordinate.x,
-                                                                                  sampledCoordinate.y,
-                                                                                  0.0f,
-                                                                                  0.0f);
+                auto index = (row * bufferExtent.width) + col;
+                expectedDstBuffer[index] = gpu_types::float4(sampledCoordinate.x,
+                                                             sampledCoordinate.y,
+                                                             0.0f,
+                                                             0.0f);
             }
         }
 
@@ -175,15 +178,14 @@ namespace resample2dimage_kernel {
         invocationResult.mExecutionTime = invoke(kernel,
                                                  srcImage,
                                                  dst_buffer,
-                                                 buffer_width,
-                                                 buffer_height);
+                                                 bufferExtent);
 
         srcImageMap = srcImageStaging.map<ImagePixelType>();
         dstBufferMap = dst_buffer.map<BufferPixelType>();
         test_utils::check_results(expectedDstBuffer.data(),
                                   dstBufferMap.get(),
-                                  buffer_width, buffer_height, 1,
-                                  buffer_width,
+                                  bufferExtent,
+                                  bufferExtent.width,
                                   verbose,
                                   invocationResult);
 

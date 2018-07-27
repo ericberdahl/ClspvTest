@@ -38,48 +38,48 @@ namespace fill_kernel {
         test_utils::InvocationResult invocationResult;
         auto& device = kernel.getDevice();
 
-        int buffer_height = 64;
-        int buffer_width = 64;
+        vk::Extent3D bufferExtent(64, 64, 1);
         const gpu_types::float4 color = { 0.25f, 0.50f, 0.75f, 1.0f };
 
         for (auto arg = args.begin(); arg != args.end(); arg = std::next(arg)) {
             if (*arg == "-w") {
                 arg = std::next(arg);
                 if (arg == args.end()) throw std::runtime_error("badly formed arguments to fill test");
-                buffer_width = std::atoi(arg->c_str());
+                bufferExtent.width = std::atoi(arg->c_str());
             }
             else if (*arg == "-h") {
                 arg = std::next(arg);
                 if (arg == args.end()) throw std::runtime_error("badly formed arguments to fill test");
-                buffer_height = std::atoi(arg->c_str());
+                bufferExtent.height = std::atoi(arg->c_str());
             }
         }
 
         std::ostringstream os;
-        os << "<dst:" << pixels::traits<PixelType>::type_name << " w:" << buffer_width << " h:" << buffer_height << ">";
+        os << "<dst:" << pixels::traits<PixelType>::type_name << " w:" << bufferExtent.width << " h:" << bufferExtent.height << " d:" << bufferExtent.depth << ">";
         invocationResult.mVariation = os.str();
 
         // allocate image buffer
-        const std::size_t buffer_size = buffer_width * buffer_height * sizeof(PixelType);
+        const std::size_t buffer_length = bufferExtent.width * bufferExtent.height * bufferExtent.depth;
+        const std::size_t buffer_size = buffer_length * sizeof(PixelType);
         vulkan_utils::storage_buffer dst_buffer(device.mDevice, device.mMemoryProperties, buffer_size);
 
         const PixelType src_value = pixels::traits<PixelType>::translate((gpu_types::float4){ 0.0f, 0.0f, 0.0f, 0.0f });
         auto dstBufferMap = dst_buffer.map<PixelType>();
-        std::fill(dstBufferMap.get(), dstBufferMap.get() + (buffer_width * buffer_height), src_value);
+        std::fill(dstBufferMap.get(), dstBufferMap.get() + buffer_length, src_value);
         dstBufferMap.reset();
 
         invocationResult.mExecutionTime = invoke(kernel,
                                                  dst_buffer, // dst_buffer
-                                                 buffer_width,   // pitch
+                                                 bufferExtent.width,   // pitch
                                                  pixels::traits<PixelType>::device_pixel_format, // device_format
                                                  0, 0, // offset_x, offset_y
-                                                 buffer_width, buffer_height, // width, height
+                                                 bufferExtent.width, bufferExtent.height, // width, height
                                                  color); // color
 
         dstBufferMap = dst_buffer.map<PixelType>();
         test_utils::check_results(dstBufferMap.get(),
-                                  buffer_width, buffer_height, 1,
-                                  buffer_width,
+                                  bufferExtent,
+                                  bufferExtent.width,
                                   color,
                                   verbose,
                                   invocationResult);

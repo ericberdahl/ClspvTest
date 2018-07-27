@@ -359,11 +359,10 @@ namespace readlocalsize_kernel {
         invocationResult.mVariation = (args.empty() ? std::string("global_id_x") : args[0]);
 
         const idtype_t idtype = idtype_from_string(invocationResult.mVariation);
-        const int buffer_height   = 64;
-        const int buffer_width    = 64;
+        const vk::Extent3D bufferExtent(64, 64, 1);
 
         // allocate data buffer
-        auto num_elements = buffer_width * buffer_height;
+        auto num_elements = bufferExtent.width * bufferExtent.height * bufferExtent.depth;
         const std::size_t buffer_size = num_elements * sizeof(std::int32_t);
         vulkan_utils::storage_buffer dst_buffer(device.mDevice, device.mMemoryProperties, buffer_size);
 
@@ -372,22 +371,22 @@ namespace readlocalsize_kernel {
         dstBufferMap.reset();
 
         auto expectedResults = compute_expected_results(idtype,
-                                                        buffer_width,
-                                                        buffer_height,
+                                                        bufferExtent.width,
+                                                        bufferExtent.height,
                                                         kernel.getWorkgroupSize());
 
         invocationResult.mExecutionTime = invoke(kernel,
                                                  dst_buffer,
-                                                 buffer_width,
-                                                 buffer_height,
-                                                 buffer_width,
+                                                 bufferExtent.width,
+                                                 bufferExtent.height,
+                                                 bufferExtent.width,
                                                  idtype);
 
         dstBufferMap = dst_buffer.map<std::int32_t>();
         test_utils::check_results(expectedResults.data(),
                                   dstBufferMap.get(),
-                                  buffer_width, buffer_height, 1,
-                                  buffer_width,
+                                  bufferExtent,
+                                  bufferExtent.width,
                                   verbose,
                                   invocationResult);
 

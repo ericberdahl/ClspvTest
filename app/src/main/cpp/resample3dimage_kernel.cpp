@@ -168,7 +168,7 @@ namespace resample3dimage_kernel {
         dstBufferMap = dst_buffer.map<BufferPixelType>();
         test_utils::check_results(expectedDstBuffer.data(),
                                   dstBufferMap.get(),
-                                  bufferExtent.width, bufferExtent.height, bufferExtent.depth,
+                                  bufferExtent,
                                   bufferExtent.width,
                                   verbose,
                                   invocationResult);
