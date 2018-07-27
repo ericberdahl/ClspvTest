@@ -88,18 +88,8 @@ set(CLSPV_FLAGS ${CLSPV_FLAGS} -hack-undef)
 set(CLSPV_FLAGS ${CLSPV_FLAGS} -pod-ubo)
 
 set(SPRIV_OPT_FLAGS)
-if(TRUE)
-    set(SPRIV_OPT_FLAGS ${SPRIV_OPT_FLAGS} --set-spec-const-default-value "0:2 1:2 2:2")
-    set(SPRIV_OPT_INLINE_FLAGS --inline-entry-points-exhaustive)
-else(TRUE)
-    set(SPRIV_OPT_INLINE_FLAGS -O)
-    set(SPRIV_OPT_FLAGS ${SPRIV_OPT_FLAGS} --set-spec-const-default-value "0:2 1:2 2:2")
-else()
-    set(SPRIV_OPT_INLINE_FLAGS -O)
-    set(SPRIV_OPT_FLAGS ${SPRIV_OPT_FLAGS} --set-spec-const-default-value "0:2 1:2 2:2")
-    set(SPRIV_OPT_INLINE_FLAGS --eliminate-dead-functions)
-    set(SPRIV_OPT_INLINE_FLAGS --eliminate-dead-code-aggressive)
-endif()
+set(SPRIV_OPT_FLAGS ${SPRIV_OPT_FLAGS} --set-spec-const-default-value "0:2 1:2 2:2")
+set(SPRIV_OPT_INLINE_FLAGS --inline-entry-points-exhaustive)
 
 set(OPENCL_KERNELS
     Fills
