@@ -237,15 +237,17 @@ namespace test_result_logging {
     void logResults(const sample_info &info, const test_utils::ModuleResultSet &moduleResultSet) {
         logPhysicalDeviceInfo(info);
 
-        for (auto mr : moduleResultSet) {
-            logResults(info, mr);
-        }
-
         auto results = countResults(moduleResultSet);
 
         std::ostringstream os;
         os << "Overall Summary"
            << " pass:" << results.first << " fail:" << results.second;
+        LOGI("%s", os.str().c_str());
+
+        for (auto mr : moduleResultSet) {
+            logResults(info, mr);
+        }
+
         LOGI("%s", os.str().c_str());
     }
 
