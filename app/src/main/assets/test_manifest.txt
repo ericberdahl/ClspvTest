@@ -40,7 +40,7 @@
 # end
 # Stops processing the manifest. Everything after the end verb is ignored by the manifest parser
 #
-vkValidation none
+vkValidation all
 #
 #
 #
@@ -116,7 +116,7 @@ test2d Resample2DImage resample2dimage 32 32
 test3d Resample3DImage resample3dimage 32 32 32
 #
 module shaders_small_cl/Memory
-# test2d CopyBufferToImageKernel copyBufferToImage 32 32
+test2d CopyBufferToImageKernel copyBufferToImage 32 32
 test2d CopyImageToBufferKernel copyImageToBuffer 32 32
 #
 #
