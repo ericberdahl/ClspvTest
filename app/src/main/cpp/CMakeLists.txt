@@ -87,10 +87,6 @@ set(CLSPV_FLAGS ${CLSPV_FLAGS} -hack-inserts)
 set(CLSPV_FLAGS ${CLSPV_FLAGS} -hack-undef)
 set(CLSPV_FLAGS ${CLSPV_FLAGS} -pod-ubo)
 
-set(SPRIV_OPT_FLAGS)
-set(SPRIV_OPT_FLAGS ${SPRIV_OPT_FLAGS} --set-spec-const-default-value "0:2 1:2 2:2")
-set(SPRIV_OPT_INLINE_FLAGS --inline-entry-points-exhaustive)
-
 set(OPENCL_KERNELS
     Fills
     LocalMemory
@@ -111,8 +107,8 @@ foreach (kernel ${OPENCL_KERNELS})
     add_custom_command(
         OUTPUT ${kernel_outputs_i}
         COMMAND ${CLSPV_COMMAND} ${CLSHADER_SOURCE_DIR}/${kernel}.cl -o=${CLSHADER_OUTPUT_DIR}/${kernel}.spvx -descriptormap=${CLSHADER_OUTPUT_DIR}/${kernel}.spvmap ${CLSPV_FLAGS}
-        COMMAND ${SPRIV_OPT_COMMAND} ${CLSHADER_OUTPUT_DIR}/${kernel}.spvx -o ${CLSHADER_NOINLINE_DIR}/${kernel}.spv ${SPRIV_OPT_FLAGS}
-        COMMAND ${SPRIV_OPT_COMMAND} ${CLSHADER_NOINLINE_DIR}/${kernel}.spv -o ${CLSHADER_OUTPUT_DIR}/${kernel}.spv ${SPRIV_OPT_INLINE_FLAGS}
+        COMMAND ${SPRIV_OPT_COMMAND} --set-spec-const-default-value "0:2 1:2 2:2" -Oconfig=${CLSHADER_SOURCE_DIR}/spirv-opt.config ${CLSHADER_OUTPUT_DIR}/${kernel}.spvx -o ${CLSHADER_NOINLINE_DIR}/${kernel}.spv
+        COMMAND ${SPRIV_OPT_COMMAND} --set-spec-const-default-value "0:2 1:2 2:2" -Oconfig=${CLSHADER_SOURCE_DIR}/spirv-opt-inline.config -Oconfig=${CLSHADER_SOURCE_DIR}/spirv-opt.config ${CLSHADER_OUTPUT_DIR}/${kernel}.spvx -o ${CLSHADER_OUTPUT_DIR}/${kernel}.spv
         COMMAND ${CMAKE_COMMAND} -E copy ${CLSHADER_OUTPUT_DIR}/${kernel}.spvmap ${CLSHADER_NOINLINE_DIR}/${kernel}.spvmap
         COMMAND ${CMAKE_COMMAND} -E remove ${CLSHADER_OUTPUT_DIR}/${kernel}.spvx
         DEPENDS ${CLSHADER_SOURCE_DIR}/${kernel}.cl ${CLSHADER_SOURCE_DIR}/sampler_map
