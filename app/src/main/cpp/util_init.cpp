@@ -99,11 +99,15 @@ void init_device(struct sample_info &info) {
             .setPQueuePriorities(queue_priorities)
             .setQueueFamilyIndex(info.graphics_queue_family_index);
 
+    vk::PhysicalDeviceFeatures device_features;
+    device_features.setShaderStorageImageWriteWithoutFormat(true);
+
     vk::DeviceCreateInfo device_info;
     device_info.setQueueCreateInfoCount(1)
             .setPQueueCreateInfos(&queue_info)
             .setEnabledExtensionCount(info.device_extension_names.size())
-            .setPpEnabledExtensionNames(info.device_extension_names.size() ? info.device_extension_names.data() : NULL);
+            .setPpEnabledExtensionNames(info.device_extension_names.size() ? info.device_extension_names.data() : NULL)
+            .setPEnabledFeatures(&device_features);
 
     info.device = info.gpu.createDeviceUnique(device_info);
 }
