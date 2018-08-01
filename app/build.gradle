@@ -26,8 +26,7 @@ android {
         }
         externalNativeBuild {
             cmake {
-                arguments '-DANDROID_PLATFORM=android-24',
-                        '-DANDROID_TOOLCHAIN=clang', '-DANDROID_STL=gnustl_static'
+                arguments '-DANDROID_TOOLCHAIN=clang', '-DANDROID_STL=c++_shared'
             }
         }
     }
@@ -46,7 +45,7 @@ android {
 
     sourceSets.main.jniLibs.srcDirs file(ndkDir).absolutePath +
             '/sources/third_party/vulkan/src/build-android/jniLibs'
-    buildToolsVersion '27.0.3'
+    buildToolsVersion '28.0.1'
 }
 
 dependencies {
