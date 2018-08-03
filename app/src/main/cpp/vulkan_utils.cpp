@@ -2,13 +2,19 @@
 // Created by Eric Berdahl on 10/22/17.
 //
 
+#include "vulkan_utils.hpp"
+
+#include <algorithm>
 #include <cassert>
+#include <cstdint>
 #include <ios>
 #include <iostream>
 #include <iterator>
 #include <limits>
-
-#include "vulkan_utils.hpp"
+#include <memory>
+#include <stdexcept>
+#include <utility>
+#include <vector>
 
 VkResult vkCreateDebugReportCallbackEXT(
         VkInstance                                  instance,
@@ -33,29 +39,26 @@ void vkDestroyDebugReportCallbackEXT(
 namespace vulkan_utils {
 
     namespace {
-        uint32_t find_compatible_memory_index(const vk::PhysicalDeviceMemoryProperties& mem_props,
-                                              uint32_t   typeBits,
-                                              vk::MemoryPropertyFlags   requirements_mask) {
-            uint32_t result = std::numeric_limits<uint32_t>::max();
-            assert(mem_props.memoryTypeCount < std::numeric_limits<uint32_t>::max());
-
-            // Search memtypes to find first index with those properties
-            for (uint32_t i = 0; i < mem_props.memoryTypeCount; i++) {
-                if ((typeBits & 1) == 1) {
+        const vk::MemoryType* find_compatible_memory(const vk::MemoryType*    first,
+                                                     const vk::MemoryType*    last,
+                                                     std::uint32_t            typeBits,
+                                                     vk::MemoryPropertyFlags  requirements_mask)
+        {
+            // Search the sequence to find the first MemoryType with the indicated properties
+            for (; first != last; ++first)
+            {
+                if ((typeBits & 1) == 1)
+                {
                     // Type is available, does it match user properties?
-                    if ((mem_props.memoryTypes[i].propertyFlags & requirements_mask) == requirements_mask) {
-                        result = i;
-                        break;
+                    if ((first->propertyFlags & requirements_mask) == requirements_mask)
+                    {
+                        return first;
                     }
                 }
                 typeBits >>= 1;
             }
 
-            if (result == std::numeric_limits<uint32_t>::max()) {
-                throw std::runtime_error("no compatible memory for allocation");
-            }
-
-            return result;
+            return last;
         }
     }
 
@@ -64,14 +67,17 @@ namespace vulkan_utils {
                                                   const vk::PhysicalDeviceMemoryProperties& mem_props,
                                                   vk::MemoryPropertyFlags                   property_flags)
     {
+        auto last = mem_props.memoryTypes + mem_props.memoryTypeCount;
+        auto found = find_compatible_memory(mem_props.memoryTypes, last, mem_reqs.memoryTypeBits, property_flags);
+        if (found == last)
+        {
+            throw std::runtime_error("No mappable device memory");
+        }
+
         // Allocate memory for the buffer
         vk::MemoryAllocateInfo alloc_info;
         alloc_info.setAllocationSize(mem_reqs.size)
-                .setMemoryTypeIndex(find_compatible_memory_index(mem_props,
-                                                                 mem_reqs.memoryTypeBits,
-                                                                 property_flags));
-        assert(alloc_info.memoryTypeIndex < std::numeric_limits<uint32_t>::max() &&
-               "No mappable memory");
+                .setMemoryTypeIndex(std::distance(mem_props.memoryTypes, found));
         return device.allocateMemoryUnique(alloc_info);
     }
 
@@ -532,16 +538,16 @@ namespace vulkan_utils {
         commandBuffer.copyImageToBuffer(imageBarrier.image, imageBarrier.newLayout, *mBuffer, copyRegion);
     }
 
-    double timestamp_delta_ns(uint64_t                              startTimestamp,
-                              uint64_t                              endTimestamp,
+    double timestamp_delta_ns(std::uint64_t                         startTimestamp,
+                              std::uint64_t                         endTimestamp,
                               const vk::PhysicalDeviceProperties&   deviceProperties,
                               const vk::QueueFamilyProperties&      queueFamilyProperties) {
-        uint64_t timestampDelta;
+        std::uint64_t timestampDelta;
         if (endTimestamp >= startTimestamp) {
             timestampDelta = endTimestamp - startTimestamp;
         }
         else {
-            const uint64_t maxTimestamp = std::numeric_limits<uint64_t>::max() >> (64 - queueFamilyProperties.timestampValidBits);
+            const std::uint64_t maxTimestamp = std::numeric_limits<std::uint64_t>::max() >> (64 - queueFamilyProperties.timestampValidBits);
             timestampDelta = maxTimestamp - startTimestamp + endTimestamp + 1;
         }
 

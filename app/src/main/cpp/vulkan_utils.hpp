@@ -5,10 +5,12 @@
 #ifndef VULKAN_UTILS_HPP
 #define VULKAN_UTILS_HPP
 
-#include <stdexcept>
-#include <string>
-
 #include <vulkan/vulkan.hpp>
+
+#include <cstdint>
+#include <memory>
+#include <ostream>
+#include <vector>
 
 namespace vulkan_utils {
 
@@ -280,8 +282,8 @@ namespace vulkan_utils {
         lhs.swap(rhs);
     }
 
-    double timestamp_delta_ns(uint64_t                              startTimestamp,
-                              uint64_t                              endTimestamp,
+    double timestamp_delta_ns(std::uint64_t                         startTimestamp,
+                              std::uint64_t                         endTimestamp,
                               const vk::PhysicalDeviceProperties&   deviceProperties,
                               const vk::QueueFamilyProperties&      queueFamilyProperties);
 }
