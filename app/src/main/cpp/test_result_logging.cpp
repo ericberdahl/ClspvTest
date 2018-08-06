@@ -41,6 +41,13 @@ namespace {
         return lhs;
     }
 
+    std::ostream& operator<<(std::ostream& os, const ResultCounts& results) {
+        os << "pass:" << results.mPass
+           << " fail:" << results.mFail
+           << " skipped:" << results.mSkip;
+        return os;
+    }
+
     ResultCounts countResults(const test_utils::InvocationResult &ir) {
         if (ir.mSkipped) return ResultCounts::skip();
 
@@ -56,7 +63,7 @@ namespace {
 
         // a kernel's results are the aggregate sum of its invocations
         return std::accumulate(kr.mInvocations.begin(), kr.mInvocations.end(),
-                               ResultCounts::null(),
+                               kr.mCompiledCorrectly ? ResultCounts::pass() : ResultCounts::fail(),
                                [](ResultCounts r, const test_utils::InvocationResult &ir) {
                                    return r + countResults(ir);
                                });
@@ -79,6 +86,11 @@ namespace {
                                    return r + countResults(mr);
                                });
     };
+
+    const char* resultString(bool passed, bool skipped = false) {
+        if (skipped) return "SKIP";
+        return (passed ? "PASS" : "FAIL");
+    }
 
     struct execution_times {
         double wallClockTime_s = 0.0;
@@ -197,8 +209,7 @@ namespace test_result_logging {
         const execution_times times = measureInvocationTime(info, ir);
 
         std::ostringstream os;
-        os << (ir.mSkipped ? "SKIP" :
-                (ir.mNumCorrect > 0 && ir.mNumErrors == 0 ? "PASS" : "FAIL"));
+        os << resultString(ir.mNumCorrect > 0 && ir.mNumErrors == 0, ir.mSkipped);
 
         if (!ir.mVariation.empty()) {
             os << " variation:" << ir.mVariation << "";
@@ -221,18 +232,27 @@ namespace test_result_logging {
     }
 
     void logResults(const sample_info &info, const test_utils::KernelResult &kr) {
-        std::ostringstream os;
+        auto results = countResults(kr);
 
-        os << "Kernel:" << kr.mEntryName;
-        if (kr.mSkipped) {
-            os << " SKIPPED";
-        } else if (!kr.mCompiledCorrectly) {
-            os << " COMPILE-FAILURE";
+        {
+            std::ostringstream os;
+            os << "Kernel:" << kr.mEntryName << " " << results;
+            LOGI("   %s", os.str().c_str());
         }
-        if (!kr.mExceptionString.empty()) {
-            os << " " << kr.mExceptionString;
+        {
+            std::ostringstream os;
+
+            if (kr.mSkipped) {
+                os << "SKIP";
+            }
+            else {
+                os << resultString(kr.mCompiledCorrectly) << " compilation";
+            }
+            if (!kr.mExceptionString.empty()) {
+                os << " exception:" << kr.mExceptionString;
+            }
+            LOGI("      %s", os.str().c_str());
         }
-        LOGI("   %s", os.str().c_str());
 
         for (auto ir : kr.mInvocations) {
             logResults(info, ir);
@@ -244,12 +264,22 @@ namespace test_result_logging {
     }
 
     void logResults(const sample_info &info, const test_utils::ModuleResult &mr) {
-        std::ostringstream os;
-        os << "Module:" << mr.mModuleName;
-        if (!mr.mExceptionString.empty()) {
-            os << " loadException:" << mr.mExceptionString;
+        auto results = countResults(mr);
+
+        {
+            std::ostringstream os;
+            os << "Module:" << mr.mModuleName << " " << results;
+            LOGI("%s", os.str().c_str());
         }
-        LOGI("%s", os.str().c_str());
+
+        {
+            std::ostringstream os;
+            os << (mr.mLoadedCorrectly ? "PASS" : "FAIL") << " moduleLoading";
+            if (!mr.mExceptionString.empty()) {
+                os << " exception:" << mr.mExceptionString;
+            }
+            LOGI("   %s", os.str().c_str());
+        }
 
         for (auto kr : mr.mKernels) {
             logResults(info, kr);
@@ -262,10 +292,7 @@ namespace test_result_logging {
         auto results = countResults(moduleResultSet);
 
         std::ostringstream os;
-        os << "Overall Summary"
-           << " pass:" << results.mPass
-           << " fail:" << results.mFail
-           << " skipped:" << results.mSkip;
+        os << "Overall Summary " << results;
         LOGI("%s", os.str().c_str());
 
         for (auto mr : moduleResultSet) {
