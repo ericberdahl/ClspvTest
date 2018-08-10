@@ -348,10 +348,9 @@ namespace readlocalsize_kernel {
         return invocation.run(num_workgroups);
     }
 
-    void test(clspv_utils::kernel&              kernel,
-              const std::vector<std::string>&   args,
-              bool                              verbose,
-              test_utils::InvocationResultSet&  resultSet)
+    test_utils::InvocationResult test(clspv_utils::kernel&              kernel,
+                                      const std::vector<std::string>&   args,
+                                      bool                              verbose)
     {
         test_utils::InvocationResult    invocationResult;
         auto& device = kernel.getDevice();
@@ -390,6 +389,12 @@ namespace readlocalsize_kernel {
                                   verbose,
                                   invocationResult);
 
-        resultSet.push_back(std::move(invocationResult));
-    };
+        return invocationResult;
+    }
+
+    test_utils::test_kernel_series getAllTestVariants()
+    {
+        return test_utils::test_kernel_series({ test_utils::test_kernel_fn(test) });
+    }
+
 }

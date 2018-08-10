@@ -21,10 +21,11 @@ namespace strangeshuffle_kernel {
            vulkan_utils::storage_buffer&    destination_buffer,
            std::size_t                      num_elements);
 
-    void test(clspv_utils::kernel&              kernel,
-              const std::vector<std::string>&   args,
-              bool                              verbose,
-              test_utils::InvocationResultSet&  resultSet);
+    test_utils::InvocationResult test(clspv_utils::kernel&              kernel,
+                                      const std::vector<std::string>&   args,
+                                      bool                              verbose);
+
+    test_utils::test_kernel_series getAllTestVariants();
 }
 
 #endif //CLSPVTEST_STRANGESHUFFLE_KERNEL_HPP

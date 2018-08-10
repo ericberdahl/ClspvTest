@@ -4,18 +4,38 @@
 
 #include "test_utils.hpp"
 
-namespace test_utils {
+namespace {
+    std::string current_exception_to_string()
+    {
+        std::string result;
 
-    void test_kernel_invocations(clspv_utils::kernel&               kernel,
-                                 const test_kernel_fn*              first,
-                                 const test_kernel_fn*              last,
-                                 const std::vector<std::string>&    args,
-                                 bool                               verbose,
-                                 InvocationResultSet&               resultSet) {
-        for (; first != last; ++first) {
-            (*first)(kernel, args, verbose, resultSet);
+        try {
+            throw;
         }
+        catch (const vk::SystemError &e) {
+            std::ostringstream os;
+            os << "vk::SystemError : " << e.code() << " (" << e.code().message() << ')';
+            result = os.str();
+        }
+        catch (const std::system_error &e) {
+            std::ostringstream os;
+            os << "std::system_error : " << e.code() << " (" << e.code().message() << ')';
+            result = os.str();
+        }
+        catch (const std::exception &e) {
+            std::ostringstream os;
+            os << "std::exception : " << e.what();
+            result = os.str();
+        }
+        catch (...) {
+            result = "unknown exception";
+        }
+
+        return result;
     }
+}
+
+namespace test_utils {
 
     KernelResult test_kernel(clspv_utils::kernel_module&    module,
                              const kernel_test_map&         kernelTest) {
@@ -27,33 +47,19 @@ namespace test_utils {
 	        clspv_utils::kernel kernel(module, kernelTest.entry, kernelTest.workgroupSize);
 	        kernelResult.mCompiledCorrectly = true;
 
-			if (kernelTest.test) {
+			if (!kernelTest.tests.empty()) {
                 kernelResult.mIterations = kernelTest.iterations;
                 for (unsigned int i = kernelTest.iterations; i > 0; --i) {
-                    kernelTest.test(kernel,
-                                    kernelTest.args,
-                                    kernelTest.verbose,
-                                    kernelResult.mInvocations);
+                    for (auto oneTest : kernelTest.tests) {
+                        kernelResult.mInvocations.push_back(oneTest(kernel,
+                                                                    kernelTest.args,
+                                                                    kernelTest.verbose));
+                    }
                 }
 			}
 		}
-        catch (const vk::SystemError &e) {
-            std::ostringstream os;
-            os << "vk::SystemError : " << e.code() << " (" << e.code().message() << ')';
-            kernelResult.mExceptionString = os.str();
-        }
-        catch (const std::system_error &e) {
-            std::ostringstream os;
-            os << "std::system_error : " << e.code() << " (" << e.code().message() << ')';
-            kernelResult.mExceptionString = os.str();
-        }
-        catch (const std::exception &e) {
-            std::ostringstream os;
-            os << "std::exception : " << e.what();
-            kernelResult.mExceptionString = os.str();
-        }
         catch (...) {
-            kernelResult.mExceptionString = "unknonwn exception";
+            kernelResult.mExceptionString = current_exception_to_string();
         }
 
         return kernelResult;
@@ -105,23 +111,8 @@ namespace test_utils {
                 }
             }
         }
-        catch (const vk::SystemError &e) {
-            std::ostringstream os;
-            os << "vk::SystemError : " << e.code() << " (" << e.code().message() << ')';
-            moduleResult.mExceptionString = os.str();
-        }
-        catch (const std::system_error &e) {
-            std::ostringstream os;
-            os << "std::system_error : " << e.code() << " (" << e.code().message() << ')';
-            moduleResult.mExceptionString = os.str();
-        }
-        catch (const std::exception &e) {
-            std::ostringstream os;
-            os << "std::exception : " << e.what();
-            moduleResult.mExceptionString = os.str();
-        }
         catch (...) {
-            moduleResult.mExceptionString = "unknonwn exception";
+            moduleResult.mExceptionString = current_exception_to_string();
         }
 
         return moduleResult;

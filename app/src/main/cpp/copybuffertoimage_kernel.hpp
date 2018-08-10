@@ -27,11 +27,12 @@ namespace copybuffertoimage_kernel {
            int                              width,
            int                              height);
 
+    test_utils::test_kernel_series getAllTestVariants();
+
     template <typename BufferPixelType, typename ImagePixelType>
-    void test(clspv_utils::kernel&              kernel,
-              const std::vector<std::string>&   args,
-              bool                              verbose,
-              test_utils::InvocationResultSet&  resultSet)
+    test_utils::InvocationResult test(clspv_utils::kernel&              kernel,
+                                      const std::vector<std::string>&   args,
+                                      bool                              verbose)
     {
         test_utils::InvocationResult invocationResult;
         invocationResult.mVariation = "<src:";
@@ -121,37 +122,8 @@ namespace copybuffertoimage_kernel {
             invocationResult.mMessages.push_back("Format not supported for storage");
         }
 
-        resultSet.push_back(std::move(invocationResult));
+        return invocationResult;
     }
-
-    void test_matrix(clspv_utils::kernel&               kernel,
-                     const std::vector<std::string>&    args,
-                     bool                               verbose,
-                     test_utils::InvocationResultSet&   resultSet);
-
-    template <typename ImagePixelType>
-    void test_series(clspv_utils::kernel&               kernel,
-                     const std::vector<std::string>&    args,
-                     bool                               verbose,
-                     test_utils::InvocationResultSet&   resultSet)
-    {
-        const test_utils::test_kernel_fn tests[] = {
-                test<gpu_types::uchar, ImagePixelType>,
-                test<gpu_types::uchar4, ImagePixelType>,
-                test<gpu_types::half, ImagePixelType>,
-                test<gpu_types::half4, ImagePixelType>,
-                test<float, ImagePixelType>,
-                test<gpu_types::float2, ImagePixelType>,
-                test<gpu_types::float4, ImagePixelType>,
-        };
-
-        test_utils::test_kernel_invocations(kernel,
-                                            std::begin(tests), std::end(tests),
-                                            args,
-                                            verbose,
-                                            resultSet);
-    }
-
 }
 
 #endif //CLSPVTEST_COPYBUFFERTOIMAGE_KERNEL_HPP

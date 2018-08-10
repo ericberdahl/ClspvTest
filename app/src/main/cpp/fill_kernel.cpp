@@ -60,20 +60,14 @@ namespace fill_kernel {
         return invocation.run(num_workgroups);
     }
 
-    void test_series(clspv_utils::kernel&               kernel,
-                     const std::vector<std::string>&    args,
-                     bool                               verbose,
-                     test_utils::InvocationResultSet&   resultSet) {
-        const test_utils::test_kernel_fn tests[] = {
-                test<gpu_types::float4>,
-                test<gpu_types::half4>,
+    test_utils::test_kernel_series getAllTestVariants()
+    {
+        const auto test_variants = {
+                test_utils::test_kernel_fn(fill_kernel::test<gpu_types::float4>),
+                test_utils::test_kernel_fn(fill_kernel::test<gpu_types::half4>),
         };
 
-        test_utils::test_kernel_invocations(kernel,
-                                            std::begin(tests), std::end(tests),
-                                            args,
-                                            verbose,
-                                            resultSet);
+        return test_utils::test_kernel_series(test_variants);
     }
 
 }

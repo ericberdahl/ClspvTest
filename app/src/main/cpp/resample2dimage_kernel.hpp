@@ -20,10 +20,11 @@ namespace resample2dimage_kernel {
            vulkan_utils::storage_buffer&    dst_buffer,
            vk::Extent3D                     extent);
 
-    void test(clspv_utils::kernel &kernel,
-              const std::vector<std::string> &args,
-              bool verbose,
-              test_utils::InvocationResultSet &resultSet);
+    test_utils::InvocationResult test(clspv_utils::kernel &kernel,
+                                      const std::vector<std::string> &args,
+                                      bool verbose);
+
+    test_utils::test_kernel_series getAllTestVariants();
 
 }
 

@@ -18,21 +18,22 @@
 
 namespace {
     const auto test_map = {
-            std::make_pair("copyBufferToImage",  copybuffertoimage_kernel::test_matrix),
-            std::make_pair("copyImageToBuffer",  copyimagetobuffer_kernel::test_matrix),
-            std::make_pair("fill",               fill_kernel::test_series),
-            std::make_pair("fill<float4>",       fill_kernel::test<gpu_types::float4>),
-            std::make_pair("fill<half4>",        fill_kernel::test<gpu_types::half4>),
-            std::make_pair("resample2dimage",    resample2dimage_kernel::test),
-            std::make_pair("resample3dimage",    resample3dimage_kernel::test),
-            std::make_pair("readLocalSize",      readlocalsize_kernel::test),
-            std::make_pair("readConstantData",   readconstantdata_kernel::test_all),
-            std::make_pair("strangeShuffle",     strangeshuffle_kernel::test),
-            std::make_pair("testGtEq",           testgreaterthanorequalto_kernel::test_all),
+            std::make_pair("copyBufferToImage",  copybuffertoimage_kernel::getAllTestVariants()),
+            std::make_pair("copyImageToBuffer",  copyimagetobuffer_kernel::getAllTestVariants()),
+            std::make_pair("fill",               fill_kernel::getAllTestVariants()),
+            std::make_pair("fill<float4>",       test_utils::test_kernel_series({ test_utils::test_kernel_fn(fill_kernel::test<gpu_types::float4>) })),
+            std::make_pair("fill<half4>",        test_utils::test_kernel_series({ test_utils::test_kernel_fn(fill_kernel::test<gpu_types::half4>) })),
+            std::make_pair("resample2dimage",    resample2dimage_kernel::getAllTestVariants()),
+            std::make_pair("resample3dimage",    resample3dimage_kernel::getAllTestVariants()),
+            std::make_pair("readLocalSize",      readlocalsize_kernel::getAllTestVariants()),
+            std::make_pair("readConstantData",   readconstantdata_kernel::getAllTestVariants()),
+            std::make_pair("strangeShuffle",     strangeshuffle_kernel::getAllTestVariants()),
+            std::make_pair("testGtEq",           testgreaterthanorequalto_kernel::getAllTestVariants()),
     };
 
-    test_utils::test_kernel_fn lookup_test_fn(const std::string& testName) {
-        test_utils::test_kernel_fn result = nullptr;
+
+    test_utils::test_kernel_series lookup_test_series(const std::string& testName) {
+        test_utils::test_kernel_series result;
 
         auto found = std::find_if(std::begin(test_map), std::end(test_map),
                                   [&testName](decltype(test_map)::const_reference entry){
@@ -111,12 +112,12 @@ namespace test_manifest {
                         testEntry.args.push_back(arg);
                     }
 
-                    testEntry.test = lookup_test_fn(testName);
+                    testEntry.tests = lookup_test_series(testName);
 
                     bool lineIsGood = true;
 
-                    if (!testEntry.test) {
-                        LOGE("%s: cannot find test '%s' from command '%s'",
+                    if (testEntry.tests.empty()) {
+                        LOGE("%s: cannot find tests '%s' from command '%s'",
                              __func__,
                              testName.c_str(),
                              line.c_str());

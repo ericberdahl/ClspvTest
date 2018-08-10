@@ -4,6 +4,24 @@
 
 #include "copybuffertoimage_kernel.hpp"
 
+namespace  {
+    template <typename ImagePixelType>
+    test_utils::test_kernel_series compose_test_series()
+    {
+        const auto tests = {
+                test_utils::test_kernel_fn(copybuffertoimage_kernel::test<gpu_types::uchar, ImagePixelType>),
+                test_utils::test_kernel_fn(copybuffertoimage_kernel::test<gpu_types::uchar4, ImagePixelType>),
+                test_utils::test_kernel_fn(copybuffertoimage_kernel::test<gpu_types::half, ImagePixelType>),
+                test_utils::test_kernel_fn(copybuffertoimage_kernel::test<gpu_types::half4, ImagePixelType>),
+                test_utils::test_kernel_fn(copybuffertoimage_kernel::test<float, ImagePixelType>),
+                test_utils::test_kernel_fn(copybuffertoimage_kernel::test<gpu_types::float2, ImagePixelType>),
+                test_utils::test_kernel_fn(copybuffertoimage_kernel::test<gpu_types::float4, ImagePixelType>),
+        };
+
+        return test_utils::test_kernel_series(std::begin(tests), std::end(tests));
+    }
+}
+
 namespace copybuffertoimage_kernel {
 
     clspv_utils::execution_time_t
@@ -70,27 +88,27 @@ namespace copybuffertoimage_kernel {
         return invocation.run(num_workgroups);
     }
 
-    void test_matrix(clspv_utils::kernel&               kernel,
-                     const std::vector<std::string>&    args,
-                     bool                               verbose,
-                     test_utils::InvocationResultSet&   resultSet)
+    test_utils::test_kernel_series getAllTestVariants()
     {
-        const test_utils::test_kernel_fn tests[] = {
-                test_series<gpu_types::float4>,
-                test_series<gpu_types::half4>,
-                test_series<gpu_types::uchar4>,
-                test_series<gpu_types::float2>,
-                test_series<gpu_types::half2>,
-                test_series<gpu_types::uchar2>,
-                test_series<float>,
-                test_series<gpu_types::half>,
-                test_series<gpu_types::uchar>,
+        const auto series = {
+                compose_test_series<gpu_types::float4>,
+                compose_test_series<gpu_types::half4>,
+                compose_test_series<gpu_types::uchar4>,
+                compose_test_series<gpu_types::float2>,
+                compose_test_series<gpu_types::half2>,
+                compose_test_series<gpu_types::uchar2>,
+                compose_test_series<float>,
+                compose_test_series<gpu_types::half>,
+                compose_test_series<gpu_types::uchar>,
         };
 
-        test_utils::test_kernel_invocations(kernel,
-                                            std::begin(tests), std::end(tests),
-                                            args,
-                                            verbose,
-                                            resultSet);
+        test_utils::test_kernel_series result;
+        for (auto& s : series) {
+            test_utils::test_kernel_series nextSeries = s();
+            result.insert(result.end(), nextSeries.begin(), nextSeries.end());
+        }
+
+        return result;
     }
+
 }

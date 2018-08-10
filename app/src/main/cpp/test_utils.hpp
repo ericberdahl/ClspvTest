@@ -11,6 +11,7 @@
 #include "pixels.hpp"
 
 #include <cmath>
+#include <functional>
 #include <random>
 #include <sstream>
 #include <string>
@@ -127,14 +128,17 @@ namespace test_utils {
 
     typedef std::vector<ModuleResult> ModuleResultSet;
 
-    typedef void (*test_kernel_fn)(clspv_utils::kernel&             kernel,
-                                   const std::vector<std::string>&  args,
-                                   bool                             verbose,
-                                   InvocationResultSet&             resultSet);
+    typedef InvocationResult (test_fn_signature)(clspv_utils::kernel&             kernel,
+                                                 const std::vector<std::string>&  args,
+                                                 bool                             verbose);
+
+    typedef std::function<test_fn_signature> test_kernel_fn;
+
+    typedef std::vector<test_kernel_fn> test_kernel_series;
 
     struct kernel_test_map {
         std::string                 entry;
-        test_kernel_fn              test            = nullptr;
+        test_kernel_series          tests;
         vk::Extent3D                workgroupSize;
         std::vector<std::string>    args;
         unsigned int                iterations      = 1;
@@ -259,13 +263,6 @@ namespace test_utils {
             }
         }
     }
-
-    void test_kernel_invocations(clspv_utils::kernel&               kernel,
-                                 const test_kernel_fn*              first,
-                                 const test_kernel_fn*              last,
-                                 const std::vector<std::string>&    args,
-                                 bool                               verbose,
-                                 InvocationResultSet&               resultSet);
 
     KernelResult test_kernel(clspv_utils::kernel_module&        module,
                              const kernel_test_map&             kernelTest);

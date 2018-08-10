@@ -19,11 +19,12 @@ namespace readconstantdata_kernel {
            vulkan_utils::storage_buffer&    dst_buffer,
            int                              width);
 
-    void test_all(clspv_utils::kernel&              kernel,
-                  const std::vector<std::string>&   args,
-                  bool                              verbose,
-                  test_utils::InvocationResultSet&  resultSet);
+    test_utils::InvocationResult test(clspv_utils::kernel&              kernel,
+                                      const std::vector<std::string>&   args,
+                                      bool                              verbose);
 
+
+    test_utils::test_kernel_series getAllTestVariants();
 }
 
 #endif // CLSPVTEST_READCONSTANTDATA_KERNEL_HPP
