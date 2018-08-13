@@ -72,6 +72,7 @@ namespace test_utils {
 
         try {
             clspv_utils::kernel_module module(device, moduleTest.mName);
+            module.load();
             result.second.mLoadedCorrectly = true;
 
             std::vector<std::string> entryPoints(module.getEntryPoints());

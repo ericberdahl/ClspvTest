@@ -106,6 +106,9 @@ namespace clspv_utils {
 
         ~kernel_module();
 
+        void                        load();
+        bool                        isLoaded() const { return (bool)getShaderModule(); }
+
         std::string                 getName() const { return mName; }
         std::vector<std::string>    getEntryPoints() const;
         vk::ShaderModule            getShaderModule() const { return *mShaderModule; }

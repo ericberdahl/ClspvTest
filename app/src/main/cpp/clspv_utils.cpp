@@ -538,10 +538,7 @@ namespace clspv_utils {
             mSpvMap(),
             mSamplers()
     {
-        const std::string spvFilename = moduleName + ".spv";
-        mShaderModule = create_shader(device.mDevice, spvFilename.c_str());
-
-        const std::string mapFilename = moduleName + ".spvmap";
+        const std::string mapFilename = mName + ".spvmap";
         mSpvMap = create_spv_map(mapFilename.c_str());
 
         std::transform(std::begin(mSpvMap.samplers),
@@ -550,10 +547,18 @@ namespace clspv_utils {
                        std::bind(getCachedSampler, std::ref(device), std::placeholders::_1));
 
         // TODO create the shared "literal sampler descriptor set"
-
     }
 
     kernel_module::~kernel_module() {
+    }
+
+    void kernel_module::load() {
+        if (getShaderModule()) {
+            throw std::runtime_error("kernel_module already loaded");
+        }
+
+        const std::string spvFilename = mName + ".spv";
+        mShaderModule = create_shader(mDevice.get().mDevice, spvFilename.c_str());
     }
 
     std::vector<std::string> kernel_module::getEntryPoints() const {
@@ -598,6 +603,10 @@ namespace clspv_utils {
     }
 
     void kernel::updatePipeline(vk::ArrayProxy<int32_t> otherSpecConstants) {
+        if (!mModule.get().isLoaded()) {
+            throw std::runtime_error("kernel's kernel_module is not yet loaded");
+        }
+
         std::vector<std::uint32_t> specConstants = {
                 mWorkgroupSizes.width,
                 mWorkgroupSizes.height,
