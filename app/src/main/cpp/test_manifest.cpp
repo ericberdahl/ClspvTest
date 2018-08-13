@@ -16,7 +16,8 @@
 
 #include "util.hpp" // for LOGxx macros
 
-namespace {
+namespace
+{
     using namespace test_manifest;
 
     typedef test_utils::KernelTest::invocation_tests (series_gen_signature)();
@@ -35,7 +36,8 @@ namespace {
         return genFn;
     }
 
-    test_utils::KernelTest::invocation_tests lookup_test_series(const std::string& testName) {
+    test_utils::KernelTest::invocation_tests lookup_test_series(const std::string& testName)
+    {
         static const auto test_map = {
                 std::make_pair("copyBufferToImage",  createGenerator(copybuffertoimage_kernel::getAllTestVariants)),
                 std::make_pair("copyImageToBuffer",  createGenerator(copyimagetobuffer_kernel::getAllTestVariants)),
@@ -56,14 +58,16 @@ namespace {
                                   [&testName](decltype(test_map)::const_reference entry){
                                       return testName == entry.first;
                                   });
-        if (found != std::end(test_map)) {
+        if (found != std::end(test_map))
+        {
             result = found->second();
         }
 
         return result;
     }
 
-    void read_module_op(std::istream& is, manifest_t& manifest) {
+    void read_module_op(std::istream& is, manifest_t& manifest)
+    {
         // add module to list of modules to load
         test_utils::ModuleTest moduleEntry;
         is >> moduleEntry.mName;
@@ -71,8 +75,10 @@ namespace {
         manifest.tests.push_back(moduleEntry);
     }
 
-    void read_skip_op(std::istream& is, manifest_t& manifest) {
-        if (manifest.tests.empty()) {
+    void read_skip_op(std::istream& is, manifest_t& manifest)
+    {
+        if (manifest.tests.empty())
+        {
             throw std::runtime_error("no module for skip");
         }
 
@@ -85,44 +91,58 @@ namespace {
         manifest.tests.back().mKernelTests.push_back(skipEntry);
     }
 
-    void read_vkvalidation_op(std::istream& is, manifest_t& manifest) {
+    void read_vkvalidation_op(std::istream& is, manifest_t& manifest)
+    {
         // turn vulkan validation layers on/off
         std::string on_off;
         is >> on_off;
 
-        if (on_off == "all") {
+        if (on_off == "all")
+        {
             manifest.use_validation_layer = true;
-        } else if (on_off == "none") {
+        }
+        else if (on_off == "none")
+        {
             manifest.use_validation_layer = false;
-        } else {
+        }
+        else
+        {
             throw std::runtime_error("unrecognized vkValidation value");
         }
     }
 
-    bool read_verbosity_op(std::istream& is) {
+    bool read_verbosity_op(std::istream& is)
+    {
         bool result = false;
 
         // set verbosity of tests
         std::string verbose_level;
         is >> verbose_level;
 
-        if (verbose_level == "full") {
+        if (verbose_level == "full")
+        {
             result = true;
-        } else if (verbose_level == "silent") {
+        }
+        else if (verbose_level == "silent")
+        {
             result = false;
-        } else {
+        }
+        else
+        {
             throw std::runtime_error("unrecognized verbosity value");
         }
 
         return result;
     }
 
-    unsigned int read_itereations_op(std::istream& is) {
+    unsigned int read_itereations_op(std::istream& is)
+    {
         // set number of iterations for tests
         int iterations_requested;
         is >> iterations_requested;
 
-        if (0 >= iterations_requested) {
+        if (0 >= iterations_requested)
+        {
             throw std::runtime_error("illegal iteration count requested");
         }
 
@@ -133,8 +153,10 @@ namespace {
                       const std::string&    op,
                       manifest_t&           manifest,
                       bool                  verbose,
-                      unsigned int          iterations) {
-        if (manifest.tests.empty()) {
+                      unsigned int          iterations)
+    {
+        if (manifest.tests.empty())
+        {
             throw std::runtime_error("no module for test");
         }
 
@@ -147,13 +169,17 @@ namespace {
            >> testName
            >> testEntry.mWorkgroupSize.width
            >> testEntry.mWorkgroupSize.height;
-        if (op == "test3d") {
+        if (op == "test3d")
+        {
             is >> testEntry.mWorkgroupSize.depth;
-        } else {
+        }
+        else
+        {
             testEntry.mWorkgroupSize.depth = 1;
         }
 
-        while (!is.eof()) {
+        while (!is.eof())
+        {
             std::string arg;
             is >> arg;
 
@@ -165,10 +191,12 @@ namespace {
 
         testEntry.mInvocationTests = lookup_test_series(testName);
 
-        if (testEntry.mInvocationTests.empty()) {
+        if (testEntry.mInvocationTests.empty())
+        {
             throw std::runtime_error("cannot find tests " + testName);
         }
-        if (1 > testEntry.mWorkgroupSize.width || 1 > testEntry.mWorkgroupSize.height || 1 > testEntry.mWorkgroupSize.depth) {
+        if (1 > testEntry.mWorkgroupSize.width || 1 > testEntry.mWorkgroupSize.height || 1 > testEntry.mWorkgroupSize.depth)
+        {
             std::ostringstream os;
             os << "bad workgroup dimensions {"
                   << testEntry.mWorkgroupSize.width
@@ -183,56 +211,80 @@ namespace {
     }
 }
 
-namespace test_manifest {
+namespace test_manifest
+{
+
     test_manifest::results run(const manifest_t &manifest,
-             clspv_utils::device_t &device)
+                               clspv_utils::device_t &device)
     {
         test_manifest::results results;
 
-        for (auto& m : manifest.tests) {
+        for (auto& m : manifest.tests)
+        {
             results.push_back(test_utils::test_module(device, m));
         }
 
         return results;
     }
 
-    manifest_t read(const std::string &inManifest) {
+    manifest_t read(const std::string &inManifest)
+    {
         std::istringstream is(inManifest);
         return read(is);
     }
 
-    manifest_t read(std::istream &in) {
+    manifest_t read(std::istream &in)
+    {
         manifest_t result;
         unsigned int iterations = 1;
         bool verbose = false;
 
-        while (!in.eof()) {
+        while (!in.eof())
+        {
             std::string line;
             std::getline(in, line);
 
-            try {
+            try
+            {
                 std::istringstream in_line(line);
 
                 std::string op;
                 in_line >> op;
-                if (op.empty() || op[0] == '#') {
+                if (op.empty() || op[0] == '#')
+                {
                     // line is either blank or a comment, skip it
-                } else if (op == "module") {
+                }
+                else if (op == "module")
+                {
                     read_module_op(in_line, result);
-                } else if (op == "test" || op == "test2d" || op == "test3d") {
+                }
+                else if (op == "test" || op == "test2d" || op == "test3d")
+                {
                     read_test_op(in_line, op, result, verbose, iterations);
-                } else if (op == "skip") {
+                }
+                else if (op == "skip")
+                {
                     read_skip_op(in_line, result);
-                } else if (op == "vkValidation") {
+                }
+                else if (op == "vkValidation")
+                {
                     read_vkvalidation_op(in_line, result);
-                } else if (op == "verbosity") {
+                }
+                else if (op == "verbosity")
+                {
                     verbose = read_verbosity_op(in_line);
-                } else if (op == "iterations") {
+                }
+                else if (op == "iterations")
+                {
                     iterations = read_itereations_op(in_line);
-                } else if (op == "end") {
+                }
+                else if (op == "end")
+                {
                     // terminate reading the manifest
                     break;
-                } else {
+                }
+                else
+                {
                     throw std::runtime_error("ill-formed line");
                 }
             }
@@ -248,5 +300,4 @@ namespace test_manifest {
 
         return result;
     }
-
 }
