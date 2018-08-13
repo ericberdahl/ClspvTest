@@ -97,11 +97,6 @@ namespace resample2dimage_kernel {
         typedef gpu_types::float4 ImagePixelType;
 
         test_utils::InvocationResult invocationResult;
-        invocationResult.mVariation = "<src:";
-        invocationResult.mVariation += pixels::traits<ImagePixelType>::type_name;
-        invocationResult.mVariation += " dst:";
-        invocationResult.mVariation += pixels::traits<BufferPixelType>::type_name;
-        invocationResult.mVariation += ">";
 
         auto &device = kernel.getDevice();
 
@@ -191,9 +186,10 @@ namespace resample2dimage_kernel {
         return invocationResult;
     }
 
-    test_utils::test_kernel_series getAllTestVariants()
+    test_utils::KernelTest::invocation_tests getAllTestVariants()
     {
-        return test_utils::test_kernel_series({ test_utils::test_kernel_fn(test) });
+        test_utils::InvocationTest t({ "", test });
+        return test_utils::KernelTest::invocation_tests({ t });
     }
 
 }

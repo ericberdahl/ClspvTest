@@ -17,30 +17,45 @@
 #include "util.hpp" // for LOGxx macros
 
 namespace {
-    const auto test_map = {
-            std::make_pair("copyBufferToImage",  copybuffertoimage_kernel::getAllTestVariants()),
-            std::make_pair("copyImageToBuffer",  copyimagetobuffer_kernel::getAllTestVariants()),
-            std::make_pair("fill",               fill_kernel::getAllTestVariants()),
-            std::make_pair("fill<float4>",       test_utils::test_kernel_series({ test_utils::test_kernel_fn(fill_kernel::test<gpu_types::float4>) })),
-            std::make_pair("fill<half4>",        test_utils::test_kernel_series({ test_utils::test_kernel_fn(fill_kernel::test<gpu_types::half4>) })),
-            std::make_pair("resample2dimage",    resample2dimage_kernel::getAllTestVariants()),
-            std::make_pair("resample3dimage",    resample3dimage_kernel::getAllTestVariants()),
-            std::make_pair("readLocalSize",      readlocalsize_kernel::getAllTestVariants()),
-            std::make_pair("readConstantData",   readconstantdata_kernel::getAllTestVariants()),
-            std::make_pair("strangeShuffle",     strangeshuffle_kernel::getAllTestVariants()),
-            std::make_pair("testGtEq",           testgreaterthanorequalto_kernel::getAllTestVariants()),
-    };
+    typedef test_utils::KernelTest::invocation_tests (series_gen_signature)();
 
+    typedef std::function<series_gen_signature>  series_gen_fn;
 
-    test_utils::test_kernel_series lookup_test_series(const std::string& testName) {
-        test_utils::test_kernel_series result;
+    series_gen_fn createGenerator(std::function<test_utils::InvocationTest ()> delegate)
+    {
+        return series_gen_fn([delegate]() {
+            return test_utils::KernelTest::invocation_tests({ delegate() });
+        });
+    }
+
+    series_gen_fn createGenerator(series_gen_fn genFn)
+    {
+        return genFn;
+    }
+
+    test_utils::KernelTest::invocation_tests lookup_test_series(const std::string& testName) {
+        static const auto test_map = {
+                std::make_pair("copyBufferToImage",  createGenerator(copybuffertoimage_kernel::getAllTestVariants)),
+                std::make_pair("copyImageToBuffer",  createGenerator(copyimagetobuffer_kernel::getAllTestVariants)),
+                std::make_pair("fill",               createGenerator(fill_kernel::getAllTestVariants)),
+                std::make_pair("fill<float4>",       createGenerator(fill_kernel::getTestVariant<gpu_types::float4>)),
+                std::make_pair("fill<half4>",        createGenerator(fill_kernel::getTestVariant<gpu_types::half4>)),
+                std::make_pair("resample2dimage",    createGenerator(resample2dimage_kernel::getAllTestVariants)),
+                std::make_pair("resample3dimage",    createGenerator(resample3dimage_kernel::getAllTestVariants)),
+                std::make_pair("readLocalSize",      createGenerator(readlocalsize_kernel::getAllTestVariants)),
+                std::make_pair("readConstantData",   createGenerator(readconstantdata_kernel::getAllTestVariants)),
+                std::make_pair("strangeShuffle",     createGenerator(strangeshuffle_kernel::getAllTestVariants)),
+                std::make_pair("testGtEq",           createGenerator(testgreaterthanorequalto_kernel::getAllTestVariants)),
+        };
+
+        test_utils::KernelTest::invocation_tests result;
 
         auto found = std::find_if(std::begin(test_map), std::end(test_map),
                                   [&testName](decltype(test_map)::const_reference entry){
                                       return testName == entry.first;
                                   });
         if (found != std::end(test_map)) {
-            result = found->second;
+            result = found->second();
         }
 
         return result;
@@ -48,12 +63,16 @@ namespace {
 }
 
 namespace test_manifest {
-    void run(const manifest_t &manifest,
-             clspv_utils::device_t &device,
-             test_utils::ModuleResultSet &resultSet) {
-        for (auto m : manifest.tests) {
-            resultSet.push_back(test_utils::test_module(device, m.name, m.kernelTests));
+    test_manifest::results run(const manifest_t &manifest,
+             clspv_utils::device_t &device)
+    {
+        test_manifest::results results;
+
+        for (auto& m : manifest.tests) {
+            results.push_back(test_utils::test_module(device, m));
         }
+
+        return results;
     }
 
     manifest_t read(const std::string &inManifest) {
@@ -66,7 +85,7 @@ namespace test_manifest {
         unsigned int iterations = 1;
         bool verbose = false;
 
-        test_utils::module_test_bundle *currentModule = NULL;
+        test_utils::ModuleTest* currentModule = NULL;
         while (!in.eof()) {
             std::string line;
             std::getline(in, line);
@@ -79,27 +98,27 @@ namespace test_manifest {
                 // line is either blank or a comment, skip it
             } else if (op == "module") {
                 // add module to list of modules to load
-                test_utils::module_test_bundle moduleEntry;
-                in_line >> moduleEntry.name;
+                test_utils::ModuleTest moduleEntry;
+                in_line >> moduleEntry.mName;
 
                 result.tests.push_back(moduleEntry);
                 currentModule = &result.tests.back();
             } else if (op == "test" || op == "test2d" || op == "test3d") {
                 // test kernel in module
                 if (currentModule) {
-                    test_utils::kernel_test_map testEntry;
-                    testEntry.verbose = verbose;
-                    testEntry.iterations = iterations;
+                    test_utils::KernelTest testEntry;
+                    testEntry.mIsVerbose = verbose;
+                    testEntry.mIterations = iterations;
 
                     std::string testName;
-                    in_line >> testEntry.entry
+                    in_line >> testEntry.mEntryName
                             >> testName
-                            >> testEntry.workgroupSize.width
-                            >> testEntry.workgroupSize.height;
+                            >> testEntry.mWorkgroupSize.width
+                            >> testEntry.mWorkgroupSize.height;
                     if (op == "test3d") {
-                        in_line >> testEntry.workgroupSize.depth;
+                        in_line >> testEntry.mWorkgroupSize.depth;
                     } else {
-                        testEntry.workgroupSize.depth = 1;
+                        testEntry.mWorkgroupSize.depth = 1;
                     }
 
                     while (!in_line.eof()) {
@@ -109,32 +128,32 @@ namespace test_manifest {
                         // comment delimiter halts collection of test arguments
                         if (arg[0] == '#') break;
 
-                        testEntry.args.push_back(arg);
+                        testEntry.mArguments.push_back(arg);
                     }
 
-                    testEntry.tests = lookup_test_series(testName);
+                    testEntry.mInvocationTests = lookup_test_series(testName);
 
                     bool lineIsGood = true;
 
-                    if (testEntry.tests.empty()) {
+                    if (testEntry.mInvocationTests.empty()) {
                         LOGE("%s: cannot find tests '%s' from command '%s'",
                              __func__,
                              testName.c_str(),
                              line.c_str());
                         lineIsGood = false;
                     }
-                    if (1 > testEntry.workgroupSize.width || 1 > testEntry.workgroupSize.height || 1 > testEntry.workgroupSize.depth) {
+                    if (1 > testEntry.mWorkgroupSize.width || 1 > testEntry.mWorkgroupSize.height || 1 > testEntry.mWorkgroupSize.depth) {
                         LOGE("%s: bad workgroup dimensions {%d,%d,%d} from command '%s'",
                              __func__,
-                             testEntry.workgroupSize.width,
-                             testEntry.workgroupSize.height,
-                             testEntry.workgroupSize.depth,
+                             testEntry.mWorkgroupSize.width,
+                             testEntry.mWorkgroupSize.height,
+                             testEntry.mWorkgroupSize.depth,
                              line.c_str());
                         lineIsGood = false;
                     }
 
                     if (lineIsGood) {
-                        currentModule->kernelTests.push_back(testEntry);
+                        currentModule->mKernelTests.push_back(testEntry);
                     }
                 } else {
                     LOGE("%s: no module for test '%s'", __func__, line.c_str());
@@ -142,12 +161,12 @@ namespace test_manifest {
             } else if (op == "skip") {
                 // skip kernel in module
                 if (currentModule) {
-                    test_utils::kernel_test_map skipEntry;
-                    skipEntry.workgroupSize = vk::Extent3D(0, 0, 0);
+                    test_utils::KernelTest skipEntry;
+                    skipEntry.mWorkgroupSize = vk::Extent3D(0, 0, 0);
 
-                    in_line >> skipEntry.entry;
+                    in_line >> skipEntry.mEntryName;
 
-                    currentModule->kernelTests.push_back(skipEntry);
+                    currentModule->mKernelTests.push_back(skipEntry);
                 } else {
                     LOGE("%s: no module for skip '%s'", __func__, line.c_str());
                 }

@@ -37,85 +37,87 @@ namespace {
 
 namespace test_utils {
 
-    KernelResult test_kernel(clspv_utils::kernel_module&    module,
-                             const kernel_test_map&         kernelTest) {
-        KernelResult kernelResult;
-        kernelResult.mEntryName = kernelTest.entry;
-        kernelResult.mSkipped = false;
+    KernelTest::result test_kernel(clspv_utils::kernel_module&    module,
+                                   const KernelTest&              kernelTest) {
+        KernelTest::result result;
+        result.first = &kernelTest;
+        result.second.mSkipped = false;
 
 		try {
-	        clspv_utils::kernel kernel(module, kernelTest.entry, kernelTest.workgroupSize);
-	        kernelResult.mCompiledCorrectly = true;
+	        clspv_utils::kernel kernel(module, kernelTest.mEntryName, kernelTest.mWorkgroupSize);
+            result.second.mCompiledCorrectly = true;
 
-			if (!kernelTest.tests.empty()) {
-                kernelResult.mIterations = kernelTest.iterations;
-                for (unsigned int i = kernelTest.iterations; i > 0; --i) {
-                    for (auto oneTest : kernelTest.tests) {
-                        kernelResult.mInvocations.push_back(oneTest(kernel,
-                                                                    kernelTest.args,
-                                                                    kernelTest.verbose));
+			if (!kernelTest.mInvocationTests.empty()) {
+                for (unsigned int i = kernelTest.mIterations; i > 0; --i) {
+                    for (auto& oneTest : kernelTest.mInvocationTests) {
+                        result.second.mInvocationResults.push_back(InvocationTest::result(&oneTest,
+                                                                                          oneTest.mTestFn(kernel,
+                                                                                                          kernelTest.mArguments,
+                                                                                                          kernelTest.mIsVerbose)));
                     }
                 }
 			}
 		}
         catch (...) {
-            kernelResult.mExceptionString = current_exception_to_string();
+            result.second.mExceptionString = current_exception_to_string();
         }
 
-        return kernelResult;
+        return result;
     }
 
-    ModuleResult test_module(clspv_utils::device_t&                 device,
-                             const std::string&                     moduleName,
-                             const std::vector<kernel_test_map>&    kernelTests) {
-        ModuleResult moduleResult;
-        moduleResult.mModuleName = moduleName;
+    ModuleTest::result test_module(clspv_utils::device_t& device,
+                                   const ModuleTest&      moduleTest) {
+        ModuleTest::result result;
+        result.first = &moduleTest;
 
         try {
-            clspv_utils::kernel_module module(device, moduleName);
-            moduleResult.mLoadedCorrectly = true;
+            clspv_utils::kernel_module module(device, moduleTest.mName);
+            result.second.mLoadedCorrectly = true;
 
             std::vector<std::string> entryPoints(module.getEntryPoints());
-            for (auto ep : entryPoints) {
-                std::vector<kernel_test_map> entryTests;
-                std::copy_if(kernelTests.begin(), kernelTests.end(),
-                             std::back_inserter(entryTests),
-                             [&ep](const kernel_test_map &ktm) {
-                                 return ktm.entry == ep;
-                             });
+            for (const auto& ep : entryPoints) {
+                std::vector<const KernelTest*> entryTests;
+                for (auto& kt : moduleTest.mKernelTests) {
+                    if (kt.mEntryName == ep) {
+                        entryTests.push_back(&kt);
+                    }
+                }
 
                 if (entryTests.empty()) {
+#if 0 // TODO
                     // This entry point was not called out specifically in the test map. Just
                     // compile the kernel with a default workgroup, but don't execute any specific
                     // test.
-                    kernel_test_map dummyMap;
-                    dummyMap.entry = ep;
+                    KernelTest dummyTest;
+                    dummyTest.mEntryName = ep;
 
-                    entryTests.push_back(dummyMap);
+                    entryTests.push_back(dummyTest);
+#endif
+
+                    result.second.mUntestedEntryPoints.push_back(ep);
                 }
 
                 // Iterate through all entries for the entry point in the test map.
-                for (auto& epTest : entryTests) {
-                    if (vk::Extent3D(0, 0, 0) == epTest.workgroupSize) {
+                for (auto epTest : entryTests) {
+                    if (vk::Extent3D(0, 0, 0) == epTest->mWorkgroupSize) {
                         // vk::Extent3D(0, 0, 0) is a sentinel to skip this kernel entirely
 
-                        KernelResult kernelResult;
-                        kernelResult.mEntryName = ep;
+                        KernelTest::result kernelResult;
+                        kernelResult.first = epTest;
+                        kernelResult.second.mSkipped = true;
 
-                        moduleResult.mKernels.push_back(std::move(kernelResult));
+                        result.second.mKernelResults.push_back(kernelResult);
                     } else {
-                        KernelResult kernelResult = test_kernel(module, epTest);
-
-                        moduleResult.mKernels.push_back(kernelResult);
+                        result.second.mKernelResults.push_back(test_kernel(module, *epTest));
                     }
                 }
             }
         }
         catch (...) {
-            moduleResult.mExceptionString = current_exception_to_string();
+            result.second.mExceptionString = current_exception_to_string();
         }
 
-        return moduleResult;
+        return result;
     }
 
 } // namespace test_utils

@@ -25,7 +25,7 @@ namespace fill_kernel {
            int                              height,
            const gpu_types::float4&         color);
 
-    test_utils::test_kernel_series getAllTestVariants();
+    test_utils::KernelTest::invocation_tests getAllTestVariants();
 
     template <typename PixelType>
     test_utils::InvocationResult test(clspv_utils::kernel&              kernel,
@@ -51,8 +51,8 @@ namespace fill_kernel {
         }
 
         std::ostringstream os;
-        os << "<dst:" << pixels::traits<PixelType>::type_name << " w:" << bufferExtent.width << " h:" << bufferExtent.height << " d:" << bufferExtent.depth << ">";
-        invocationResult.mVariation = os.str();
+        os << "<w:" << bufferExtent.width << " h:" << bufferExtent.height << " d:" << bufferExtent.depth << ">";
+        invocationResult.mParameters = os.str();
 
         // allocate image buffer
         const std::size_t buffer_length = bufferExtent.width * bufferExtent.height * bufferExtent.depth;
@@ -82,6 +82,22 @@ namespace fill_kernel {
 
         return invocationResult;
     }
+
+    template <typename PixelType>
+    test_utils::InvocationTest getTestVariant()
+    {
+        test_utils::InvocationTest result;
+
+        std::ostringstream os;
+        os << "<dst:" << pixels::traits<PixelType>::type_name << ">";
+        result.mVariation = os.str();
+
+        result.mTestFn = test<PixelType>;
+
+        return result;
+    }
+
+
 }
 
 #endif //CLSPVTEST_FILL_KERNEL_HPP

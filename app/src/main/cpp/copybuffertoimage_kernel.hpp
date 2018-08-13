@@ -27,7 +27,7 @@ namespace copybuffertoimage_kernel {
            int                              width,
            int                              height);
 
-    test_utils::test_kernel_series getAllTestVariants();
+    test_utils::KernelTest::invocation_tests getAllTestVariants();
 
     template <typename BufferPixelType, typename ImagePixelType>
     test_utils::InvocationResult test(clspv_utils::kernel&              kernel,
@@ -35,12 +35,6 @@ namespace copybuffertoimage_kernel {
                                       bool                              verbose)
     {
         test_utils::InvocationResult invocationResult;
-        invocationResult.mVariation = "<src:";
-        invocationResult.mVariation += pixels::traits<BufferPixelType>::type_name;
-        invocationResult.mVariation += " dst:";
-        invocationResult.mVariation += pixels::traits<ImagePixelType>::type_name;
-        invocationResult.mVariation += ">";
-
         auto& device = kernel.getDevice();
 
         if (vulkan_utils::image::supportsFormatUse(device.mPhysicalDevice,
@@ -123,6 +117,20 @@ namespace copybuffertoimage_kernel {
         }
 
         return invocationResult;
+    }
+
+    template <typename BufferPixelType, typename ImagePixelType>
+    test_utils::InvocationTest getTestVariant()
+    {
+        test_utils::InvocationTest result;
+
+        std::ostringstream os;
+        os << "<src:" << pixels::traits<BufferPixelType>::type_name << " dst:" << pixels::traits<ImagePixelType>::type_name << ">";
+        result.mVariation = os.str();
+
+        result.mTestFn = test<BufferPixelType, ImagePixelType>;
+
+        return result;
     }
 }
 

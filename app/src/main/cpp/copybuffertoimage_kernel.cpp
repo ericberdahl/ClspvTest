@@ -6,19 +6,19 @@
 
 namespace  {
     template <typename ImagePixelType>
-    test_utils::test_kernel_series compose_test_series()
+    test_utils::KernelTest::invocation_tests compose_test_series()
     {
         const auto tests = {
-                test_utils::test_kernel_fn(copybuffertoimage_kernel::test<gpu_types::uchar, ImagePixelType>),
-                test_utils::test_kernel_fn(copybuffertoimage_kernel::test<gpu_types::uchar4, ImagePixelType>),
-                test_utils::test_kernel_fn(copybuffertoimage_kernel::test<gpu_types::half, ImagePixelType>),
-                test_utils::test_kernel_fn(copybuffertoimage_kernel::test<gpu_types::half4, ImagePixelType>),
-                test_utils::test_kernel_fn(copybuffertoimage_kernel::test<float, ImagePixelType>),
-                test_utils::test_kernel_fn(copybuffertoimage_kernel::test<gpu_types::float2, ImagePixelType>),
-                test_utils::test_kernel_fn(copybuffertoimage_kernel::test<gpu_types::float4, ImagePixelType>),
+                copybuffertoimage_kernel::getTestVariant<gpu_types::uchar, ImagePixelType>(),
+                copybuffertoimage_kernel::getTestVariant<gpu_types::uchar4, ImagePixelType>(),
+                copybuffertoimage_kernel::getTestVariant<gpu_types::half, ImagePixelType>(),
+                copybuffertoimage_kernel::getTestVariant<gpu_types::half4, ImagePixelType>(),
+                copybuffertoimage_kernel::getTestVariant<float, ImagePixelType>(),
+                copybuffertoimage_kernel::getTestVariant<gpu_types::float2, ImagePixelType>(),
+                copybuffertoimage_kernel::getTestVariant<gpu_types::float4, ImagePixelType>(),
         };
 
-        return test_utils::test_kernel_series(std::begin(tests), std::end(tests));
+        return test_utils::KernelTest::invocation_tests(std::begin(tests), std::end(tests));
     }
 }
 
@@ -88,7 +88,7 @@ namespace copybuffertoimage_kernel {
         return invocation.run(num_workgroups);
     }
 
-    test_utils::test_kernel_series getAllTestVariants()
+    test_utils::KernelTest::invocation_tests getAllTestVariants()
     {
         const auto series = {
                 compose_test_series<gpu_types::float4>,
@@ -102,9 +102,9 @@ namespace copybuffertoimage_kernel {
                 compose_test_series<gpu_types::uchar>,
         };
 
-        test_utils::test_kernel_series result;
+        test_utils::KernelTest::invocation_tests result;
         for (auto& s : series) {
-            test_utils::test_kernel_series nextSeries = s();
+            test_utils::KernelTest::invocation_tests nextSeries = s();
             result.insert(result.end(), nextSeries.begin(), nextSeries.end());
         }
 

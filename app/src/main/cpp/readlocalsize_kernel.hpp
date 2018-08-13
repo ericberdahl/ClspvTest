@@ -49,7 +49,7 @@ namespace readlocalsize_kernel {
                                       bool                              verbose);
 
 
-    test_utils::test_kernel_series getAllTestVariants();
+    test_utils::KernelTest::invocation_tests getAllTestVariants();
 }
 
 

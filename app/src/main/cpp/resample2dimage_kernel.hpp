@@ -24,7 +24,7 @@ namespace resample2dimage_kernel {
                                       const std::vector<std::string> &args,
                                       bool verbose);
 
-    test_utils::test_kernel_series getAllTestVariants();
+    test_utils::KernelTest::invocation_tests getAllTestVariants();
 
 }
 

@@ -98,7 +98,7 @@ namespace test_utils {
     }
 
     struct InvocationResult {
-        std::string                     mVariation;
+        std::string                     mParameters;
         bool                            mSkipped    = false;
         unsigned int                    mNumCorrect = 0;
         unsigned int                    mNumErrors  = 0;
@@ -106,48 +106,55 @@ namespace test_utils {
         clspv_utils::execution_time_t   mExecutionTime;
     };
 
-    typedef std::vector<InvocationResult> InvocationResultSet;
+    struct InvocationTest {
+        typedef std::pair<const InvocationTest*,InvocationResult>   result;
+
+        typedef InvocationResult (test_fn_signature)(clspv_utils::kernel&             kernel,
+                                                     const std::vector<std::string>&  args,
+                                                     bool                             verbose);
+
+        typedef std::function<test_fn_signature> test_fn;
+
+        std::string mVariation;
+        test_fn     mTestFn;
+    };
 
     struct KernelResult {
-        std::string         mEntryName;
-        bool				mSkipped			= true;
-        bool				mCompiledCorrectly	= false;
-        unsigned int        mIterations         = 0;
-        std::string     	mExceptionString;
-        InvocationResultSet mInvocations;
+        typedef std::vector<InvocationTest::result> results;
+
+        bool			mSkipped			= true;
+        bool			mCompiledCorrectly	= false;
+        std::string     mExceptionString;
+        results         mInvocationResults;
     };
 
-    typedef std::vector<KernelResult> KernelResultSet;
+    struct KernelTest {
+        typedef std::pair<const KernelTest*,KernelResult>   result;
+        typedef std::vector<InvocationTest>                 invocation_tests;
+
+        std::string                 mEntryName;
+        vk::Extent3D                mWorkgroupSize;
+        std::vector<std::string>    mArguments;
+        unsigned int                mIterations     = 1;
+        bool                        mIsVerbose      = false;
+        invocation_tests            mInvocationTests;
+    };
 
     struct ModuleResult {
-        std::string     mModuleName;
-        std::string     mExceptionString;
-        bool            mLoadedCorrectly    = false;
-        KernelResultSet mKernels;
+        typedef std::vector<KernelTest::result> results;
+
+        std::string                 mExceptionString;
+        bool                        mLoadedCorrectly    = false;
+        std::vector<std::string>    mUntestedEntryPoints;
+        results                     mKernelResults;
     };
 
-    typedef std::vector<ModuleResult> ModuleResultSet;
+    struct ModuleTest {
+        typedef std::pair<const ModuleTest*,ModuleResult>   result;
+        typedef std::vector<KernelTest>                     kernel_tests;
 
-    typedef InvocationResult (test_fn_signature)(clspv_utils::kernel&             kernel,
-                                                 const std::vector<std::string>&  args,
-                                                 bool                             verbose);
-
-    typedef std::function<test_fn_signature> test_kernel_fn;
-
-    typedef std::vector<test_kernel_fn> test_kernel_series;
-
-    struct kernel_test_map {
-        std::string                 entry;
-        test_kernel_series          tests;
-        vk::Extent3D                workgroupSize;
-        std::vector<std::string>    args;
-        unsigned int                iterations      = 1;
-        bool                        verbose         = false;
-    };
-
-    struct module_test_bundle {
-        std::string                     name;
-        std::vector<kernel_test_map>    kernelTests;
+        std::string     mName;
+        kernel_tests    mKernelTests;
     };
 
     template<typename T>
@@ -264,12 +271,11 @@ namespace test_utils {
         }
     }
 
-    KernelResult test_kernel(clspv_utils::kernel_module&        module,
-                             const kernel_test_map&             kernelTest);
+    KernelTest::result test_kernel(clspv_utils::kernel_module&    module,
+                                   const KernelTest&              kernelTest);
 
-    ModuleResult test_module(clspv_utils::device_t&                 device,
-                             const std::string&                     moduleName,
-                             const std::vector<kernel_test_map>&    kernelTests);
+    ModuleTest::result test_module(clspv_utils::device_t& device,
+                                   const ModuleTest&      moduleTest);
     
 }
 

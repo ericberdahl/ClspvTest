@@ -15,17 +15,18 @@
 namespace test_manifest {
 
     struct manifest_t {
-        bool                                        use_validation_layer = true;
-        std::vector<test_utils::module_test_bundle> tests;
+        bool                                use_validation_layer = true;
+        std::vector<test_utils::ModuleTest> tests;
     };
+
+    typedef std::vector<test_utils::ModuleTest::result> results;
 
     manifest_t read(const std::string& inManifest);
 
     manifest_t read(std::istream& in);
 
-    void run(const manifest_t&              manifest,
-             clspv_utils::device_t&         info,
-             test_utils::ModuleResultSet&   resultSet);
+    results run(const manifest_t&        manifest,
+                clspv_utils::device_t&   info);
 }
 
 #endif //CLSPVTEST_TEST_MANIFEST_HPP

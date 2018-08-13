@@ -78,8 +78,9 @@ namespace strangeshuffle_kernel {
         return invocationResult;
     }
 
-    test_utils::test_kernel_series getAllTestVariants()
+    test_utils::KernelTest::invocation_tests getAllTestVariants()
     {
-        return test_utils::test_kernel_series({ test_utils::test_kernel_fn(test) });
+        test_utils::InvocationTest t({ "", test });
+        return test_utils::KernelTest::invocation_tests({ t });
     }
 }

@@ -57,33 +57,33 @@ namespace {
 
     ResultCounts countResults(const test_utils::KernelResult &kr) {
         if (kr.mSkipped) {
-            assert(kr.mInvocations.empty());
+            assert(kr.mInvocationResults.empty());
             return ResultCounts::skip();
         }
 
         // a kernel's results are the aggregate sum of its invocations
-        return std::accumulate(kr.mInvocations.begin(), kr.mInvocations.end(),
+        return std::accumulate(kr.mInvocationResults.begin(), kr.mInvocationResults.end(),
                                kr.mCompiledCorrectly ? ResultCounts::pass() : ResultCounts::fail(),
-                               [](ResultCounts r, const test_utils::InvocationResult &ir) {
-                                   return r + countResults(ir);
+                               [](ResultCounts r, const test_utils::InvocationTest::result &ir) {
+                                   return r + countResults(ir.second);
                                });
     };
 
     ResultCounts countResults(const test_utils::ModuleResult &mr) {
         // a module's results are the aggregate sum of its kernels, combined with the result of its own
         // loading (i.e. whether it loaded correctly or not)
-        return std::accumulate(mr.mKernels.begin(), mr.mKernels.end(),
+        return std::accumulate(mr.mKernelResults.begin(), mr.mKernelResults.end(),
                                mr.mLoadedCorrectly ? ResultCounts::pass() : ResultCounts::fail(),
-                               [](ResultCounts r, const test_utils::KernelResult &kr) {
-                                   return r + countResults(kr);
+                               [](ResultCounts r, const test_utils::KernelTest::result &kr) {
+                                   return r + countResults(kr.second);
                                });
     };
 
-    ResultCounts countResults(const test_utils::ModuleResultSet &moduleResultSet) {
+    ResultCounts countResults(const test_manifest::results& moduleResultSet) {
         return std::accumulate(moduleResultSet.begin(), moduleResultSet.end(),
                                ResultCounts::null(),
-                               [](ResultCounts r, const test_utils::ModuleResult &mr) {
-                                   return r + countResults(mr);
+                               [](ResultCounts r, const test_manifest::results::value_type &mr) {
+                                   return r + countResults(mr.second);
                                });
     };
 
@@ -122,12 +122,12 @@ namespace {
     }
 
     void
-    logSummaryStats(const sample_info &info, const test_utils::InvocationResultSet &resultSet) {
+    logSummaryStats(const sample_info &info, const test_utils::KernelResult::results &resultSet) {
         std::vector<execution_times> times;
         times.reserve(resultSet.size());
         transform(resultSet.begin(), resultSet.end(), std::back_inserter(times),
-                  [&info](const test_utils::InvocationResult &ir) {
-                      return measureInvocationTime(info, ir);
+                  [&info](const test_utils::InvocationTest::result &ir) {
+                      return measureInvocationTime(info, ir.second);
                   });
         auto num_times = times.size();
 
@@ -205,19 +205,23 @@ namespace test_result_logging {
         LOGI("%s", os.str().c_str());
     }
 
-    void logResults(const sample_info &info, const test_utils::InvocationResult &ir) {
-        const execution_times times = measureInvocationTime(info, ir);
+    void logResults(const sample_info &info, const test_utils::InvocationTest::result &ir) {
+        const execution_times times = measureInvocationTime(info, ir.second);
 
         std::ostringstream os;
-        os << resultString(ir.mNumCorrect > 0 && ir.mNumErrors == 0, ir.mSkipped);
+        os << resultString(ir.second.mNumCorrect > 0 && ir.second.mNumErrors == 0, ir.second.mSkipped);
 
-        if (!ir.mVariation.empty()) {
-            os << " variation:" << ir.mVariation << "";
+        if (!ir.first->mVariation.empty()) {
+            os << " variation:" << ir.first->mVariation << "";
         }
 
-        if (!ir.mSkipped) {
-            os << " correctValues:" << ir.mNumCorrect
-               << " incorrectValues:" << ir.mNumErrors
+        if (!ir.second.mParameters.empty()) {
+            os << " parameters:" << ir.second.mParameters << "";
+        }
+
+        if (!ir.second.mSkipped) {
+            os << " correctValues:" << ir.second.mNumCorrect
+               << " incorrectValues:" << ir.second.mNumErrors
                << " wallClockTime:" << times.wallClockTime_s * 1000.0f << "ms"
                << " executionTime:" << times.executionTime_ns / 1000.0f << "µs"
                << " hostBarrierTime:" << times.hostBarrierTime_ns / 1000.0f << "µs"
@@ -226,67 +230,73 @@ namespace test_result_logging {
 
         LOGI("      %s", os.str().c_str());
 
-        for (auto err : ir.mMessages) {
+        for (auto& err : ir.second.mMessages) {
             LOGD("         %s", err.c_str());
         }
     }
 
-    void logResults(const sample_info &info, const test_utils::KernelResult &kr) {
-        auto results = countResults(kr);
+    void logResults(const sample_info &info, const test_utils::KernelTest::result &kr) {
+        auto results = countResults(kr.second);
 
         {
             std::ostringstream os;
-            os << "Kernel:" << kr.mEntryName << " " << results;
+            os << "Kernel:" << kr.first->mEntryName << " " << results;
             LOGI("   %s", os.str().c_str());
         }
         {
             std::ostringstream os;
 
-            if (kr.mSkipped) {
+            if (kr.second.mSkipped) {
                 os << "SKIP";
             }
             else {
-                os << resultString(kr.mCompiledCorrectly) << " compilation";
+                os << resultString(kr.second.mCompiledCorrectly) << " compilation";
             }
-            if (!kr.mExceptionString.empty()) {
-                os << " exception:" << kr.mExceptionString;
+            if (!kr.second.mExceptionString.empty()) {
+                os << " exception:" << kr.second.mExceptionString;
             }
             LOGI("      %s", os.str().c_str());
         }
 
-        for (auto ir : kr.mInvocations) {
+        for (auto& ir : kr.second.mInvocationResults) {
             logResults(info, ir);
         }
 
-        if (kr.mIterations > 1) {
-            logSummaryStats(info, kr.mInvocations);
+        if (kr.first->mIterations > 1) {
+            logSummaryStats(info, kr.second.mInvocationResults);
         }
     }
 
-    void logResults(const sample_info &info, const test_utils::ModuleResult &mr) {
-        auto results = countResults(mr);
+    void logResults(const sample_info &info, const test_utils::ModuleTest::result &mr) {
+        auto results = countResults(mr.second);
 
         {
             std::ostringstream os;
-            os << "Module:" << mr.mModuleName << " " << results;
+            os << "Module:" << mr.first->mName << " " << results;
             LOGI("%s", os.str().c_str());
         }
 
         {
             std::ostringstream os;
-            os << (mr.mLoadedCorrectly ? "PASS" : "FAIL") << " moduleLoading";
-            if (!mr.mExceptionString.empty()) {
-                os << " exception:" << mr.mExceptionString;
+            os << (mr.second.mLoadedCorrectly ? "PASS" : "FAIL") << " moduleLoading";
+            if (!mr.second.mExceptionString.empty()) {
+                os << " exception:" << mr.second.mExceptionString;
             }
             LOGI("   %s", os.str().c_str());
         }
 
-        for (auto kr : mr.mKernels) {
+        for (auto& untested : mr.second.mUntestedEntryPoints) {
+            std::ostringstream os;
+            os << "MISSED " << untested;
+            LOGI("   %s", os.str().c_str());
+        }
+
+        for (auto& kr : mr.second.mKernelResults) {
             logResults(info, kr);
         }
     }
 
-    void logResults(const sample_info &info, const test_utils::ModuleResultSet &moduleResultSet) {
+    void logResults(const sample_info &info, const test_manifest::results &moduleResultSet) {
         logPhysicalDeviceInfo(info);
 
         auto results = countResults(moduleResultSet);
@@ -295,7 +305,7 @@ namespace test_result_logging {
         os << "Overall Summary " << results;
         LOGI("%s", os.str().c_str());
 
-        for (auto mr : moduleResultSet) {
+        for (auto& mr : moduleResultSet) {
             logResults(info, mr);
         }
 

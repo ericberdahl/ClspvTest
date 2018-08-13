@@ -60,14 +60,14 @@ namespace fill_kernel {
         return invocation.run(num_workgroups);
     }
 
-    test_utils::test_kernel_series getAllTestVariants()
+    test_utils::KernelTest::invocation_tests getAllTestVariants()
     {
         const auto test_variants = {
-                test_utils::test_kernel_fn(fill_kernel::test<gpu_types::float4>),
-                test_utils::test_kernel_fn(fill_kernel::test<gpu_types::half4>),
+                getTestVariant<gpu_types::float4>(),
+                getTestVariant<gpu_types::half4>()
         };
 
-        return test_utils::test_kernel_series(test_variants);
+        return test_utils::KernelTest::invocation_tests(test_variants);
     }
 
 }

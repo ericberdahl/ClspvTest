@@ -186,10 +186,8 @@ int sample_main(int argc, char *argv[]) {
             info.graphics_queue
     };
 
-    test_utils::ModuleResultSet moduleResultSet;
-    test_manifest::run(manifest, device, moduleResultSet);
-
-    test_result_logging::logResults(info, moduleResultSet);
+    const auto results = test_manifest::run(manifest, device);
+    test_result_logging::logResults(info, results);
 
     //
     // Clean up

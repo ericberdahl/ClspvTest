@@ -24,7 +24,7 @@ namespace readconstantdata_kernel {
                                       bool                              verbose);
 
 
-    test_utils::test_kernel_series getAllTestVariants();
+    test_utils::KernelTest::invocation_tests getAllTestVariants();
 }
 
 #endif // CLSPVTEST_READCONSTANTDATA_KERNEL_HPP

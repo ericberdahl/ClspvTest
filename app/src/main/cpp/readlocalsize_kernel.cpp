@@ -355,9 +355,9 @@ namespace readlocalsize_kernel {
         test_utils::InvocationResult    invocationResult;
         auto& device = kernel.getDevice();
 
-        invocationResult.mVariation = (args.empty() ? std::string("global_id_x") : args[0]);
+        invocationResult.mParameters = (args.empty() ? std::string("global_id_x") : args[0]);
 
-        const idtype_t idtype = idtype_from_string(invocationResult.mVariation);
+        const idtype_t idtype = idtype_from_string(invocationResult.mParameters);
         const vk::Extent3D bufferExtent(64, 64, 1);
 
         // allocate data buffer
@@ -392,9 +392,10 @@ namespace readlocalsize_kernel {
         return invocationResult;
     }
 
-    test_utils::test_kernel_series getAllTestVariants()
+    test_utils::KernelTest::invocation_tests getAllTestVariants()
     {
-        return test_utils::test_kernel_series({ test_utils::test_kernel_fn(test) });
+        test_utils::InvocationTest t({ "", test });
+        return test_utils::KernelTest::invocation_tests({ t });
     }
 
 }
