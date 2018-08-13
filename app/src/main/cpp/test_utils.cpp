@@ -5,8 +5,9 @@
 #include "test_utils.hpp"
 
 namespace {
-    std::string current_exception_to_string()
-    {
+    using namespace test_utils;
+
+    std::string current_exception_to_string() {
         std::string result;
 
         try {
@@ -31,6 +32,16 @@ namespace {
             result = "unknown exception";
         }
 
+        return result;
+    }
+
+    InvocationResult null_invocation_test(clspv_utils::kernel &kernel,
+                                          const std::vector<std::string> &args,
+                                          bool verbose)
+    {
+        InvocationResult result;
+        result.mNumCorrect = 1;
+        result.mMessages.push_back("kernel compiled but intentionally not invoked");
         return result;
     }
 }
@@ -108,6 +119,13 @@ namespace test_utils {
             result.second.mExceptionString = current_exception_to_string();
         }
 
+        return result;
+    }
+
+    InvocationTest createNullInvocationTest() {
+        InvocationTest result;
+        result.mVariation = "compile-only";
+        result.mTestFn = null_invocation_test;
         return result;
     }
 

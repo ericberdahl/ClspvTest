@@ -226,6 +226,7 @@ namespace
                 test_utils::KernelTest loadOnlyTest;
                 loadOnlyTest.mEntryName = entryPoint;
                 loadOnlyTest.mWorkgroupSize = vk::Extent3D(1, 1, 1);
+                loadOnlyTest.mInvocationTests.push_back(test_utils::createNullInvocationTest());
 
                 moduleTest.mKernelTests.push_back(loadOnlyTest);
             }

@@ -276,6 +276,8 @@ namespace test_utils {
 
     ModuleTest::result test_module(clspv_utils::device_t& device,
                                    const ModuleTest&      moduleTest);
+
+    InvocationTest createNullInvocationTest();
     
 }
 
