@@ -530,9 +530,8 @@ namespace clspv_utils {
     {
     }
 
-    kernel_module::kernel_module(device_t&          device,
-                                 const std::string& moduleName) :
-            mDevice(device),
+    kernel_module::kernel_module(const std::string& moduleName) :
+            mDevice(nullptr),
             mName(moduleName),
             mShaderModule(),
             mSpvMap(),
@@ -540,25 +539,28 @@ namespace clspv_utils {
     {
         const std::string mapFilename = mName + ".spvmap";
         mSpvMap = create_spv_map(mapFilename.c_str());
-
-        std::transform(std::begin(mSpvMap.samplers),
-                       std::end(mSpvMap.samplers),
-                       std::back_inserter(mSamplers),
-                       std::bind(getCachedSampler, std::ref(device), std::placeholders::_1));
-
-        // TODO create the shared "literal sampler descriptor set"
     }
 
     kernel_module::~kernel_module() {
     }
 
-    void kernel_module::load() {
+    void kernel_module::load(device_t* device) {
         if (getShaderModule()) {
             throw std::runtime_error("kernel_module already loaded");
         }
+        assert(mDevice == nullptr);
+
+        mDevice = device;
 
         const std::string spvFilename = mName + ".spv";
-        mShaderModule = create_shader(mDevice.get().mDevice, spvFilename.c_str());
+        mShaderModule = create_shader(mDevice->mDevice, spvFilename.c_str());
+
+        std::transform(std::begin(mSpvMap.samplers),
+                       std::end(mSpvMap.samplers),
+                       std::back_inserter(mSamplers),
+                       std::bind(getCachedSampler, std::ref(*mDevice), std::placeholders::_1));
+
+        // TODO create the shared "literal sampler descriptor set"
     }
 
     std::vector<std::string> kernel_module::getEntryPoints() const {
@@ -572,8 +574,10 @@ namespace clspv_utils {
     }
 
     layout_t kernel_module::createLayout(const std::string& entryPoint) const {
-        auto& device = mDevice.get();
-        return create_layout_for_entry(device.mDevice, device.mDescriptorPool, mSpvMap, entryPoint);
+        if (!isLoaded()) {
+            throw std::runtime_error("cannot create layout for unloaded module");
+        }
+        return create_layout_for_entry(mDevice->mDevice, mDevice->mDescriptorPool, mSpvMap, entryPoint);
     }
 
     kernel::kernel(kernel_module&       module,

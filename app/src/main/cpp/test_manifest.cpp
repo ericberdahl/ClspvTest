@@ -209,6 +209,28 @@ namespace
 
         manifest.tests.back().mKernelTests.push_back(testEntry);
     }
+
+    void ensure_all_entries_tested(test_utils::ModuleTest& moduleTest)
+    {
+        clspv_utils::kernel_module module(moduleTest.mName);
+
+        for (auto& entryPoint : module.getEntryPoints())
+        {
+            auto found = std::find_if(moduleTest.mKernelTests.begin(), moduleTest.mKernelTests.end(),
+                         [&entryPoint](const test_utils::KernelTest& kt) {
+                return kt.mEntryName == entryPoint;
+            });
+
+            if (found == moduleTest.mKernelTests.end())
+            {
+                test_utils::KernelTest loadOnlyTest;
+                loadOnlyTest.mEntryName = entryPoint;
+                loadOnlyTest.mWorkgroupSize = vk::Extent3D(1, 1, 1);
+
+                moduleTest.mKernelTests.push_back(loadOnlyTest);
+            }
+        }
+    }
 }
 
 namespace test_manifest
@@ -296,6 +318,11 @@ namespace test_manifest
                      line.c_str());
             }
 
+        }
+
+        for (auto& mt : result.tests)
+        {
+            ensure_all_entries_tested(mt);
         }
 
         return result;

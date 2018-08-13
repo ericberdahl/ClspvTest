@@ -101,31 +101,29 @@ namespace clspv_utils {
 
     class kernel_module {
     public:
-        kernel_module(device_t&             device,
-                      const std::string&    moduleName);
+        explicit kernel_module(const std::string& moduleName);
 
         ~kernel_module();
 
-        void                        load();
+        void                        load(device_t* device);
         bool                        isLoaded() const { return (bool)getShaderModule(); }
 
         std::string                 getName() const { return mName; }
         std::vector<std::string>    getEntryPoints() const;
         vk::ShaderModule            getShaderModule() const { return *mShaderModule; }
 
-        device_t&                   getDevice() { return mDevice.get(); }
-        const device_t&             getDevice() const { return mDevice.get(); }
+        device_t*                   getDevice() const { return mDevice; }
 
         layout_t                    createLayout(const std::string& entryPoint) const;
 
         vk::ArrayProxy<const vk::Sampler>   getLiteralSamplersHack() const { return mSamplers; }
 
     private:
-        std::reference_wrapper<device_t>    mDevice;
-        std::string                         mName;
-        vk::UniqueShaderModule              mShaderModule;
-        details::spv_map                    mSpvMap;
-        std::vector<vk::Sampler>            mSamplers;
+        std::string                 mName;
+        details::spv_map            mSpvMap;
+        std::vector<vk::Sampler>    mSamplers;
+        device_t*                   mDevice;
+        vk::UniqueShaderModule      mShaderModule;
     };
 
     class kernel_invocation;
@@ -147,8 +145,7 @@ namespace clspv_utils {
         kernel_module&          getModule() { return mModule; }
         const kernel_module&    getModule() const { return mModule; }
 
-        device_t&           getDevice() { return getModule().getDevice(); }
-        const device_t&     getDevice() const { return getModule().getDevice(); }
+        device_t&           getDevice() const { return *getModule().getDevice(); }
 
         void                updatePipeline(vk::ArrayProxy<int32_t> otherSpecConstants);
 

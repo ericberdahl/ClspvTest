@@ -71,8 +71,8 @@ namespace test_utils {
         result.first = &moduleTest;
 
         try {
-            clspv_utils::kernel_module module(device, moduleTest.mName);
-            module.load();
+            clspv_utils::kernel_module module(moduleTest.mName);
+            module.load(&device);
             result.second.mLoadedCorrectly = true;
 
             std::vector<std::string> entryPoints(module.getEntryPoints());
@@ -85,16 +85,6 @@ namespace test_utils {
                 }
 
                 if (entryTests.empty()) {
-#if 0 // TODO
-                    // This entry point was not called out specifically in the test map. Just
-                    // compile the kernel with a default workgroup, but don't execute any specific
-                    // test.
-                    KernelTest dummyTest;
-                    dummyTest.mEntryName = ep;
-
-                    entryTests.push_back(dummyTest);
-#endif
-
                     result.second.mUntestedEntryPoints.push_back(ep);
                 }
 
