@@ -580,34 +580,73 @@ namespace clspv_utils {
         return create_layout_for_entry(mDevice->mDevice, mDevice->mDescriptorPool, mSpvMap, entryPoint);
     }
 
+    kernel kernel_module::createKernel(const std::string&   entryPoint,
+                                       const vk::Extent3D&  workgroup_sizes)
+    {
+        return kernel(*this,
+                      *mDevice,
+                      entryPoint,
+                      workgroup_sizes);
+    }
+
+    kernel::kernel()
+    {
+    }
+
     kernel::kernel(kernel_module&       module,
+                   device_t&            device,
                    std::string          entryPoint,
                    const vk::Extent3D&  workgroup_sizes) :
-            mModule(module),
+            mModule(&module),
+            mDevice(&device),
             mEntryPoint(entryPoint),
             mWorkgroupSizes(workgroup_sizes),
             mLayout(module.createLayout(entryPoint)),
-            mPipeline() {
+            mPipeline()
+    {
         updatePipeline(nullptr);
     }
 
     kernel::~kernel() {
     }
 
+    kernel::kernel(kernel &&other)
+            : kernel()
+    {
+        swap(other);
+    }
+
+    kernel& kernel::operator=(kernel&& other)
+    {
+        swap(other);
+        return *this;
+    }
+
+    void kernel::swap(kernel& other)
+    {
+        using std::swap;
+
+        swap(mModule, other.mModule);
+        swap(mDevice, other.mDevice);
+        swap(mEntryPoint, other.mEntryPoint);
+        swap(mWorkgroupSizes, other.mWorkgroupSizes);
+        swap(mLayout, other.mLayout);
+        swap(mPipeline, other.mPipeline);
+    }
+
     kernel_invocation kernel::createInvocation()
     {
-        device_t& dev = getDevice();
         return kernel_invocation(*this,
-                                 dev.mDevice,
-                                 dev.mMemoryProperties,
-                                 dev.mCommandPool,
-                                 dev.mComputeQueue,
+                                 mDevice->mDevice,
+                                 mDevice->mMemoryProperties,
+                                 mDevice->mCommandPool,
+                                 mDevice->mComputeQueue,
                                  mLayout.mLiteralSamplerDescriptor,
                                  mLayout.mArgumentsDescriptor);
     }
 
     void kernel::updatePipeline(vk::ArrayProxy<int32_t> otherSpecConstants) {
-        if (!mModule.get().isLoaded()) {
+        if (!mModule || !mModule->isLoaded()) {
             throw std::runtime_error("kernel's kernel_module is not yet loaded");
         }
 
@@ -636,7 +675,7 @@ namespace clspv_utils {
         vk::ComputePipelineCreateInfo createInfo;
         createInfo.setLayout(*mLayout.mPipelineLayout);
         createInfo.stage.setStage(vk::ShaderStageFlagBits::eCompute)
-                .setModule(mModule.get().getShaderModule())
+                .setModule(mModule->getShaderModule())
                 .setPName(mEntryPoint.c_str())
                 .setPSpecializationInfo(&specializationInfo);
 
@@ -691,7 +730,7 @@ namespace clspv_utils {
     kernel_invocation::kernel_invocation(kernel_invocation&& other)
             : kernel_invocation()
     {
-        swap(*this);
+        swap(other);
     }
 
     kernel_invocation::~kernel_invocation() {
@@ -719,7 +758,6 @@ namespace clspv_utils {
         swap(mBufferArgumentInfo, other.mBufferArgumentInfo);
         swap(mArgumentDescriptorWrites, other.mArgumentDescriptorWrites);
     }
-
 
     void kernel_invocation::addLiteralSamplers(vk::ArrayProxy<const vk::Sampler> samplers) {
         for (auto s : samplers) {

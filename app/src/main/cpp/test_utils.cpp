@@ -54,8 +54,10 @@ namespace test_utils {
         result.first = &kernelTest;
         result.second.mSkipped = false;
 
+        clspv_utils::kernel kernel;
+
 		try {
-	        clspv_utils::kernel kernel(module, kernelTest.mEntryName, kernelTest.mWorkgroupSize);
+	        kernel = module.createKernel(kernelTest.mEntryName, kernelTest.mWorkgroupSize);
             result.second.mCompiledCorrectly = true;
 
 			if (!kernelTest.mInvocationTests.empty()) {

@@ -99,11 +99,16 @@ namespace clspv_utils {
 
     vk::UniqueSampler createCompatibleSampler(vk::Device device, int opencl_flags);
 
+    class kernel;
+
     class kernel_module {
     public:
         explicit kernel_module(const std::string& moduleName);
 
         ~kernel_module();
+
+        kernel                      createKernel(const std::string&     entryPoint,
+                                                 const vk::Extent3D&    workgroup_sizes);
 
         void                        load(device_t* device);
         bool                        isLoaded() const { return (bool)getShaderModule(); }
@@ -130,11 +135,18 @@ namespace clspv_utils {
 
     class kernel {
     public:
+        kernel();
+
         kernel(kernel_module&       module,
+               device_t&            device,
                std::string          entryPoint,
                const vk::Extent3D&  workgroup_sizes);
 
+        kernel(kernel&& other);
+
         ~kernel();
+
+        kernel& operator=(kernel&& other);
 
         kernel_invocation   createInvocation();
         void                bindCommand(vk::CommandBuffer command) const;
@@ -142,20 +154,27 @@ namespace clspv_utils {
         std::string         getEntryPoint() const { return mEntryPoint; }
         vk::Extent3D        getWorkgroupSize() const { return mWorkgroupSizes; }
 
-        kernel_module&          getModule() { return mModule; }
-        const kernel_module&    getModule() const { return mModule; }
+        kernel_module&      getModule() const { return *mModule; }
 
-        device_t&           getDevice() const { return *getModule().getDevice(); }
+        device_t&           getDevice() const { return *mDevice; }
 
         void                updatePipeline(vk::ArrayProxy<int32_t> otherSpecConstants);
 
+        void                swap(kernel& other);
+
     private:
-        std::reference_wrapper<kernel_module>   mModule;
-        std::string                             mEntryPoint;
-        vk::Extent3D                            mWorkgroupSizes;
-        layout_t                                mLayout;
-        vk::UniquePipeline                      mPipeline;
+        kernel_module*      mModule = nullptr;
+        device_t*           mDevice = nullptr;
+        std::string         mEntryPoint;
+        vk::Extent3D        mWorkgroupSizes;
+        layout_t            mLayout;
+        vk::UniquePipeline  mPipeline;
     };
+
+    inline void swap(kernel& lhs, kernel& rhs)
+    {
+        lhs.swap(rhs);
+    }
 
     class kernel_invocation {
     public:
