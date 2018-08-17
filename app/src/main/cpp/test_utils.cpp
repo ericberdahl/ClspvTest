@@ -44,6 +44,16 @@ namespace {
         result.mMessages.push_back("kernel compiled but intentionally not invoked");
         return result;
     }
+
+    InvocationResult failTestFn(clspv_utils::kernel&             kernel,
+                                const std::vector<std::string>&  args,
+                                bool                             verbose)
+    {
+        InvocationResult result;
+        result.mMessages.push_back("kernel failed to compile");
+        return result;
+    }
+
 }
 
 namespace test_utils {
@@ -59,20 +69,27 @@ namespace test_utils {
 		try {
 	        kernel = module.createKernel(kernelTest.mEntryName, kernelTest.mWorkgroupSize);
             result.second.mCompiledCorrectly = true;
-
-			if (!kernelTest.mInvocationTests.empty()) {
-                for (unsigned int i = kernelTest.mIterations; i > 0; --i) {
-                    for (auto& oneTest : kernelTest.mInvocationTests) {
-                        result.second.mInvocationResults.push_back(InvocationTest::result(&oneTest,
-                                                                                          oneTest.mTestFn(kernel,
-                                                                                                          kernelTest.mArguments,
-                                                                                                          kernelTest.mIsVerbose)));
-                    }
-                }
-			}
 		}
         catch (...) {
             result.second.mExceptionString = current_exception_to_string();
+        }
+
+        if (!kernelTest.mInvocationTests.empty()) {
+            try {
+                for (unsigned int i = kernelTest.mIterations; i > 0; --i) {
+                    for (auto &oneTest : kernelTest.mInvocationTests) {
+                        InvocationTest::test_fn testFn = (result.second.mCompiledCorrectly ? oneTest.mTestFn : failTestFn);
+                        result.second.mInvocationResults.push_back(
+                                InvocationTest::result(&oneTest,
+                                                       testFn(kernel,
+                                                              kernelTest.mArguments,
+                                                              kernelTest.mIsVerbose)));
+                    }
+                }
+            }
+            catch (...) {
+                result.second.mExceptionString = current_exception_to_string();
+            }
         }
 
         return result;
