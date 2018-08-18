@@ -44,6 +44,11 @@ vkValidation all
 #
 #
 #
+module shaders_cl/StructArrays
+test2d FillStructArray fillarraystruct 32 1
+#
+#
+#
 module shaders_cl/LocalMemory
 test2d StrangeShuffle strangeShuffle 1024 1
 #

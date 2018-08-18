@@ -6,6 +6,7 @@
 
 #include "copybuffertoimage_kernel.hpp"
 #include "copyimagetobuffer_kernel.hpp"
+#include "fillarraystruct_kernel.hpp"
 #include "fill_kernel.hpp"
 #include "readconstantdata_kernel.hpp"
 #include "readlocalsize_kernel.hpp"
@@ -41,6 +42,7 @@ namespace
         static const auto test_map = {
                 std::make_pair("copyBufferToImage",  createGenerator(copybuffertoimage_kernel::getAllTestVariants)),
                 std::make_pair("copyImageToBuffer",  createGenerator(copyimagetobuffer_kernel::getAllTestVariants)),
+                std::make_pair("fillarraystruct",    createGenerator(fillarraystruct_kernel::getAllTestVariants)),
                 std::make_pair("fill",               createGenerator(fill_kernel::getAllTestVariants)),
                 std::make_pair("fill<float4>",       createGenerator(fill_kernel::getTestVariant<gpu_types::float4>)),
                 std::make_pair("fill<half4>",        createGenerator(fill_kernel::getTestVariant<gpu_types::half4>)),

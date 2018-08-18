@@ -41,6 +41,7 @@ set(CMAKE_SHARED_LINKER_FLAGS
 add_library(native-activity SHARED
         copyimagetobuffer_kernel.cpp
         copybuffertoimage_kernel.cpp
+        fillarraystruct_kernel.cpp
         fill_kernel.cpp
         readconstantdata_kernel.cpp
         readlocalsize_kernel.cpp
@@ -88,13 +89,14 @@ set(CLSPV_FLAGS ${CLSPV_FLAGS} -hack-undef)
 set(CLSPV_FLAGS ${CLSPV_FLAGS} -pod-ubo)
 
 set(OPENCL_KERNELS
-    Fills
-    LocalMemory
-    localsize
-    Memory
-    ReadConstantData
-    TestComparisons
-    )
+        Fills
+        LocalMemory
+        localsize
+        Memory
+        ReadConstantData
+        StructArrays
+        TestComparisons
+        )
 
 set(kernel_binaries)
 foreach (kernel ${OPENCL_KERNELS})
