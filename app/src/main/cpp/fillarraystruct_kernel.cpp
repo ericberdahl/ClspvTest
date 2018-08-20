@@ -4,8 +4,6 @@
 
 #include "fillarraystruct_kernel.hpp"
 
-#define ROUND_UP(value, multiple) ((((value) + (multiple) - 1)/(multiple)) * (multiple))
-
 namespace {
 
     const unsigned int kWrapperArraySize = 18;
