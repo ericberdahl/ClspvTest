@@ -47,6 +47,9 @@ vkValidation all
 module shaders_cl/StructArrays
 test2d FillStructArray fillarraystruct 32 1
 #
+module shaders_small_cl/StructArrays
+test2d FillStructArray fillarraystruct 32 1
+#
 #
 #
 module shaders_cl/LocalMemory
