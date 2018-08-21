@@ -227,6 +227,7 @@ namespace vulkan_utils {
         vk::Extent3D                        mExtent;
         vk::UniqueImage                     mImage;
         vk::UniqueImageView                 mImageView;
+        vk::Format                          mFormat;
     };
 
     inline void swap(image& lhs, image& rhs)
