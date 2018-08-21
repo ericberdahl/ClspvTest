@@ -305,7 +305,7 @@ namespace {
         }
         if (summary.mExceptionMessage) {
             std::ostringstream os;
-            os << "exception:" << *summary.mExceptionMessage;
+            os << "exception: " << *summary.mExceptionMessage;
             logInfo(os.str(), indent + 1);
         }
 
