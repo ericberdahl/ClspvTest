@@ -774,6 +774,20 @@ namespace clspv_utils {
 
             mLiteralSamplerInfo.push_back(samplerInfo);
         }
+
+        vk::WriteDescriptorSet literalSamplerSet;
+        literalSamplerSet.setDstSet(mLiteralSamplerDescriptorSet)
+                .setDstBinding(0)
+                .setDescriptorCount(1)
+                .setDescriptorType(vk::DescriptorType::eSampler);
+
+        assert(mLiteralSamplerInfo.empty() || literalSamplerSet.dstSet);
+
+        for (auto& lsd : mLiteralSamplerInfo) {
+            literalSamplerSet.setPImageInfo(&lsd);
+            mLiteralSamplerDescriptorWrites.push_back(literalSamplerSet);
+            ++literalSamplerSet.dstBinding;
+        }
     }
 
     void kernel_invocation::addStorageBufferArgument(vulkan_utils::storage_buffer& buffer) {
@@ -851,26 +865,14 @@ namespace clspv_utils {
         // We will iterate the param lists in the same order,
         // picking up image and buffer infos in order.
         //
+        // Initialize the write sets with the sets for literal samplers.
+        //
 
-        std::vector<vk::WriteDescriptorSet> writeSets;
+        std::vector<vk::WriteDescriptorSet> writeSets = mLiteralSamplerDescriptorWrites;
 
         //
         // Update the literal samplers' descriptor set
         //
-
-        vk::WriteDescriptorSet literalSamplerSet;
-        literalSamplerSet.setDstSet(mLiteralSamplerDescriptorSet)
-                .setDstBinding(0)
-                .setDescriptorCount(1)
-                .setDescriptorType(vk::DescriptorType::eSampler);
-
-        assert(mLiteralSamplerInfo.empty() || literalSamplerSet.dstSet);
-
-        for (auto& lsd : mLiteralSamplerInfo) {
-            literalSamplerSet.setPImageInfo(&lsd);
-            writeSets.push_back(literalSamplerSet);
-            ++literalSamplerSet.dstBinding;
-        }
 
         //
         // Update the kernel's argument descriptor set

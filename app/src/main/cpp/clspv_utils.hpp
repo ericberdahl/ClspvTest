@@ -209,8 +209,6 @@ namespace clspv_utils {
         void    swap(kernel_invocation& other);
 
     private:
-        void    addLiteralSamplers(vk::ArrayProxy<const vk::Sampler> samplers);
-
         void    bindCommand();
         void    updatePipeline();
         void    fillCommandBuffer(const vk::Extent3D&    num_workgroups);
@@ -233,16 +231,19 @@ namespace clspv_utils {
         vk::UniqueCommandBuffer                 mCommand;
         vk::UniqueQueryPool                     mQueryPool;
 
-        vk::DescriptorSet                       mLiteralSamplerDescriptorSet;
         vk::DescriptorSet                       mArgumentDescriptorSet;
 
         std::vector<int32_t>                    mSpecConstantArguments;
         std::vector<vk::ImageMemoryBarrier>     mImageMemoryBarriers;
 
-        std::vector<vk::DescriptorImageInfo>    mLiteralSamplerInfo;
         std::vector<vk::DescriptorImageInfo>    mImageArgumentInfo;
         std::vector<vk::DescriptorBufferInfo>   mBufferArgumentInfo;
         std::vector<vk::WriteDescriptorSet>     mArgumentDescriptorWrites;
+
+        void    addLiteralSamplers(vk::ArrayProxy<const vk::Sampler> samplers);
+        std::vector<vk::DescriptorImageInfo>    mLiteralSamplerInfo;
+        vk::DescriptorSet                       mLiteralSamplerDescriptorSet;
+        std::vector<vk::WriteDescriptorSet>     mLiteralSamplerDescriptorWrites;
     };
 
     inline void swap(kernel_invocation & lhs, kernel_invocation & rhs)
