@@ -177,14 +177,12 @@ int sample_main(int argc, char *argv[]) {
     init_command_pool(info);
     my_init_descriptor_pool(info);
 
-    clspv_utils::device_t device = {
-            info.gpu,
-            *info.device,
-            info.memory_properties,
-            *info.desc_pool,
-            *info.cmd_pool,
-            info.graphics_queue
-    };
+    clspv_utils::device_t device(info.gpu,
+                                 *info.device,
+                                 info.memory_properties,
+                                 *info.desc_pool,
+                                 *info.cmd_pool,
+                                 info.graphics_queue);
 
     const auto results = test_manifest::run(manifest, device);
     test_result_logging::logResults(info, results);
@@ -193,7 +191,7 @@ int sample_main(int argc, char *argv[]) {
     // Clean up
     //
 
-    device.mSamplerCache.clear();
+    device.mSamplerCache.reset();
     info.desc_pool.reset();
     info.cmd_pool.reset();
     info.device->waitIdle();

@@ -7,6 +7,7 @@
 
 #include <chrono>
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -84,8 +85,16 @@ namespace clspv_utils {
     };
 
     struct device_t {
-        device_t(const device_t&) = delete;
-        device_t& operator=(const device_t&) = delete;
+        typedef std::map<int,vk::UniqueSampler> sampler_cache_t;
+
+        device_t() {}
+
+        device_t(vk::PhysicalDevice                  physicalDevice,
+                 vk::Device                          device,
+                 vk::PhysicalDeviceMemoryProperties  memoryProperties,
+                 vk::DescriptorPool                  descriptorPool,
+                 vk::CommandPool                     commandPool,
+                 vk::Queue                           computeQueue);
 
         vk::PhysicalDevice                  mPhysicalDevice;
         vk::Device                          mDevice;
@@ -94,30 +103,29 @@ namespace clspv_utils {
         vk::CommandPool                     mCommandPool;
         vk::Queue                           mComputeQueue;
 
-        std::map<int,vk::UniqueSampler>     mSamplerCache;
+        std::shared_ptr<sampler_cache_t>    mSamplerCache;
     };
 
     vk::UniqueSampler createCompatibleSampler(vk::Device device, int opencl_flags);
 
     class kernel;
 
+    // TODO: Refactor kernel_module into two classes, module_interface and kernel_module. module_interface is more about which entries exist and kernel_module is more about a loaded module.
     class kernel_module {
     public:
-        explicit kernel_module(const std::string& moduleName);
+        explicit                    kernel_module(const std::string& moduleName);
 
-        ~kernel_module();
+                                    ~kernel_module();
 
         kernel                      createKernel(const std::string&     entryPoint,
                                                  const vk::Extent3D&    workgroup_sizes);
 
-        void                        load(device_t* device);
+        void                        load(device_t device);
         bool                        isLoaded() const { return (bool)getShaderModule(); }
 
         std::string                 getName() const { return mName; }
         std::vector<std::string>    getEntryPoints() const;
         vk::ShaderModule            getShaderModule() const { return *mShaderModule; }
-
-        device_t*                   getDevice() const { return mDevice; }
 
         layout_t                    createLayout(const std::string& entryPoint) const;
 
@@ -127,7 +135,7 @@ namespace clspv_utils {
         std::string                 mName;
         details::spv_map            mSpvMap;
         std::vector<vk::Sampler>    mSamplers;
-        device_t*                   mDevice;
+        device_t                    mDevice;
         vk::UniqueShaderModule      mShaderModule;
     };
 
@@ -138,7 +146,7 @@ namespace clspv_utils {
         kernel();
 
         kernel(kernel_module&       module,
-               device_t&            device,
+               device_t             device,
                std::string          entryPoint,
                const vk::Extent3D&  workgroup_sizes);
 
@@ -156,7 +164,7 @@ namespace clspv_utils {
 
         kernel_module&      getModule() const { return *mModule; }
 
-        device_t&           getDevice() const { return *mDevice; }
+        const device_t&     getDevice() { return mDevice; }
 
         void                updatePipeline(vk::ArrayProxy<int32_t> otherSpecConstants);
 
@@ -164,7 +172,7 @@ namespace clspv_utils {
 
     private:
         kernel_module*      mModule = nullptr;
-        device_t*           mDevice = nullptr;
+        device_t            mDevice;
         std::string         mEntryPoint;
         vk::Extent3D        mWorkgroupSizes;
         layout_t            mLayout;
@@ -180,13 +188,10 @@ namespace clspv_utils {
     public:
                     kernel_invocation();
 
-        explicit    kernel_invocation(kernel&                                   kernel,
-                                      vk::Device                                device,
-                                      const vk::PhysicalDeviceMemoryProperties& memoryProperties,
-                                      vk::CommandPool                           commandPool,
-                                      vk::Queue                                 queue,
-                                      vk::DescriptorSet                         literalSamplerDescSet,
-                                      vk::DescriptorSet                         argumentDescSet);
+        explicit    kernel_invocation(kernel&           kernel,
+                                      device_t          device,
+                                      vk::DescriptorSet literalSamplerDescSet,
+                                      vk::DescriptorSet argumentDescSet);
 
                     kernel_invocation(kernel_invocation&& other);
 
@@ -224,9 +229,7 @@ namespace clspv_utils {
 
     private:
         kernel*                                 mKernel;
-        vk::Device                              mDevice;
-        vk::PhysicalDeviceMemoryProperties      mMemoryProperties;
-        vk::Queue                               mQueue;
+        device_t                                mDevice;
         vk::UniqueCommandBuffer                 mCommand;
         vk::UniqueQueryPool                     mQueryPool;
 

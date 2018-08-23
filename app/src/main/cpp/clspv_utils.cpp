@@ -417,10 +417,14 @@ namespace clspv_utils {
         }
 
         vk::Sampler getCachedSampler(device_t& device, const details::spv_map::sampler& s) {
-            if (!device.mSamplerCache.count(s.opencl_flags)) {
-                device.mSamplerCache[s.opencl_flags] = createCompatibleSampler(device.mDevice, s.opencl_flags);
+            if (!device.mSamplerCache) {
+                device.mSamplerCache.reset(new device_t::sampler_cache_t);
             }
-            return *device.mSamplerCache[s.opencl_flags];
+
+            if (!device.mSamplerCache->count(s.opencl_flags)) {
+                (*device.mSamplerCache)[s.opencl_flags] = createCompatibleSampler(device.mDevice, s.opencl_flags);
+            }
+            return *(*device.mSamplerCache)[s.opencl_flags];
         }
     } // anonymous namespace
 
@@ -530,8 +534,24 @@ namespace clspv_utils {
     {
     }
 
+    device_t::device_t(vk::PhysicalDevice                  physicalDevice,
+                       vk::Device                          device,
+                       vk::PhysicalDeviceMemoryProperties  memoryProperties,
+                       vk::DescriptorPool                  descriptorPool,
+                       vk::CommandPool                     commandPool,
+                       vk::Queue                           computeQueue)
+            : mPhysicalDevice(physicalDevice),
+              mDevice(device),
+              mMemoryProperties(memoryProperties),
+              mDescriptorPool(descriptorPool),
+              mCommandPool(commandPool),
+              mComputeQueue(computeQueue),
+              mSamplerCache(new sampler_cache_t)
+    {
+    }
+
     kernel_module::kernel_module(const std::string& moduleName) :
-            mDevice(nullptr),
+            mDevice(),
             mName(moduleName),
             mShaderModule(),
             mSpvMap(),
@@ -544,21 +564,19 @@ namespace clspv_utils {
     kernel_module::~kernel_module() {
     }
 
-    void kernel_module::load(device_t* device) {
+    void kernel_module::load(device_t device) {
         if (getShaderModule()) {
             throw std::runtime_error("kernel_module already loaded");
         }
-        assert(mDevice == nullptr);
-
         mDevice = device;
 
         const std::string spvFilename = mName + ".spv";
-        mShaderModule = create_shader(mDevice->mDevice, spvFilename.c_str());
+        mShaderModule = create_shader(mDevice.mDevice, spvFilename.c_str());
 
         std::transform(std::begin(mSpvMap.samplers),
                        std::end(mSpvMap.samplers),
                        std::back_inserter(mSamplers),
-                       std::bind(getCachedSampler, std::ref(*mDevice), std::placeholders::_1));
+                       std::bind(getCachedSampler, std::ref(mDevice), std::placeholders::_1));
 
         // TODO create the shared "literal sampler descriptor set"
     }
@@ -577,14 +595,14 @@ namespace clspv_utils {
         if (!isLoaded()) {
             throw std::runtime_error("cannot create layout for unloaded module");
         }
-        return create_layout_for_entry(mDevice->mDevice, mDevice->mDescriptorPool, mSpvMap, entryPoint);
+        return create_layout_for_entry(mDevice.mDevice, mDevice.mDescriptorPool, mSpvMap, entryPoint);
     }
 
     kernel kernel_module::createKernel(const std::string&   entryPoint,
                                        const vk::Extent3D&  workgroup_sizes)
     {
         return kernel(*this,
-                      *mDevice,
+                      mDevice,
                       entryPoint,
                       workgroup_sizes);
     }
@@ -594,11 +612,11 @@ namespace clspv_utils {
     }
 
     kernel::kernel(kernel_module&       module,
-                   device_t&            device,
+                   device_t             device,
                    std::string          entryPoint,
                    const vk::Extent3D&  workgroup_sizes) :
             mModule(&module),
-            mDevice(&device),
+            mDevice(device),
             mEntryPoint(entryPoint),
             mWorkgroupSizes(workgroup_sizes),
             mLayout(module.createLayout(entryPoint)),
@@ -637,10 +655,7 @@ namespace clspv_utils {
     kernel_invocation kernel::createInvocation()
     {
         return kernel_invocation(*this,
-                                 mDevice->mDevice,
-                                 mDevice->mMemoryProperties,
-                                 mDevice->mCommandPool,
-                                 mDevice->mComputeQueue,
+                                 mDevice,
                                  mLayout.mLiteralSamplerDescriptor,
                                  mLayout.mArgumentsDescriptor);
     }
@@ -679,7 +694,7 @@ namespace clspv_utils {
                 .setPName(mEntryPoint.c_str())
                 .setPSpecializationInfo(&specializationInfo);
 
-        mPipeline = getDevice().mDevice.createComputePipelineUnique(vk::PipelineCache(), createInfo);
+        mPipeline = mDevice.mDevice.createComputePipelineUnique(vk::PipelineCache(), createInfo);
     }
 
     void kernel::bindCommand(vk::CommandBuffer command) const {
@@ -700,29 +715,24 @@ namespace clspv_utils {
         // this space intentionally left blank
     }
 
-    kernel_invocation::kernel_invocation(kernel&                                    kernel,
-                                         vk::Device                                 device,
-                                         const vk::PhysicalDeviceMemoryProperties&  memoryProperties,
-                                         vk::CommandPool                            commandPool,
-                                         vk::Queue                                  queue,
-                                         vk::DescriptorSet                          literalSamplerDescSet,
-                                         vk::DescriptorSet                          argumentDescSet)
+    kernel_invocation::kernel_invocation(kernel&            kernel,
+                                         device_t           device,
+                                         vk::DescriptorSet  literalSamplerDescSet,
+                                         vk::DescriptorSet  argumentDescSet)
             : kernel_invocation()
     {
         mKernel = &kernel;
         mDevice = device;
-        mMemoryProperties = memoryProperties;
-        mQueue = queue;
         mLiteralSamplerDescriptorSet = literalSamplerDescSet;
         mArgumentDescriptorSet = argumentDescSet;
 
-        mCommand = vulkan_utils::allocate_command_buffer(mDevice, commandPool);
+        mCommand = vulkan_utils::allocate_command_buffer(mDevice.mDevice, mDevice.mCommandPool);
 
         vk::QueryPoolCreateInfo poolCreateInfo;
         poolCreateInfo.setQueryType(vk::QueryType::eTimestamp)
                 .setQueryCount(kQueryIndex_Count);
 
-        mQueryPool = mDevice.createQueryPoolUnique(poolCreateInfo);
+        mQueryPool = mDevice.mDevice.createQueryPoolUnique(poolCreateInfo);
 
         addLiteralSamplers(kernel.getModule().getLiteralSamplersHack());
     }
@@ -742,8 +752,6 @@ namespace clspv_utils {
 
         swap(mKernel, other.mKernel);
         swap(mDevice, other.mDevice);
-        swap(mMemoryProperties, other.mMemoryProperties);
-        swap(mQueue, other.mQueue);
         swap(mCommand, other.mCommand);
         swap(mQueryPool, other.mQueryPool);
 
@@ -896,7 +904,7 @@ namespace clspv_utils {
         //
         // Do the actual descriptor set updates
         //
-        mDevice.updateDescriptorSets(writeSets, nullptr);
+        mDevice.mDevice.updateDescriptorSets(writeSets, nullptr);
     }
 
     void kernel_invocation::bindCommand()
@@ -939,7 +947,7 @@ namespace clspv_utils {
         submitInfo.setCommandBufferCount(1)
                 .setPCommandBuffers(&rawCommand);
 
-        mQueue.submit(submitInfo, nullptr);
+        mDevice.mComputeQueue.submit(submitInfo, nullptr);
 
     }
 
@@ -961,17 +969,17 @@ namespace clspv_utils {
 
         auto start = std::chrono::high_resolution_clock::now();
         submitCommand();
-        mQueue.waitIdle();
+        mDevice.mComputeQueue.waitIdle();
         auto end = std::chrono::high_resolution_clock::now();
 
         uint64_t timestamps[kQueryIndex_Count];
-        mDevice.getQueryPoolResults(*mQueryPool,
-                                    kQueryIndex_FirstIndex,
-                                    kQueryIndex_Count,
-                                    sizeof(uint64_t),
-                                    timestamps,
-                                    sizeof(uint64_t),
-                                    vk::QueryResultFlagBits::e64 | vk::QueryResultFlagBits::eWait);
+        mDevice.mDevice.getQueryPoolResults(*mQueryPool,
+                                            kQueryIndex_FirstIndex,
+                                            kQueryIndex_Count,
+                                            sizeof(uint64_t),
+                                            timestamps,
+                                            sizeof(uint64_t),
+                                            vk::QueryResultFlagBits::e64 | vk::QueryResultFlagBits::eWait);
 
         execution_time_t result;
         result.cpu_duration = end - start;
