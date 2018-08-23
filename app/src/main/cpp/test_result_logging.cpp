@@ -364,21 +364,33 @@ namespace {
                                             });
         const std::size_t width = longestName->mName.size();
 
-        logInfo("Module Summaries", indent);
+        std::vector<std::string> moduleCountStrings;
+        std::string overallCountString;
+
         for (auto& s : summary.mModuleSummaries) {
             std::ostringstream os;
             os << std::setw(width) << s.mName << ": " << s.mCounts;
-            logInfo(os.str(), indent + 1);
+            moduleCountStrings.push_back(os.str());
         }
 
-        std::ostringstream os;
-        os << "Overall Summary " << summary.mCounts;
-        logInfo(os.str(), indent);
+        {
+            std::ostringstream os;
+            os << "Overall Summary " << summary.mCounts;
+            overallCountString = os.str();
+        }
+
+        logInfo("Module Summaries", indent);
+        std::for_each(moduleCountStrings.begin(), moduleCountStrings.end(),
+                      std::bind(logInfo, std::placeholders::_1, indent + 1));
+        logInfo(overallCountString, indent);
 
         std::for_each(summary.mModuleSummaries.begin(), summary.mModuleSummaries.end(),
                       std::bind(logModuleSummary, std::placeholders::_1, indent));
 
-        logInfo(os.str(), indent);
+        logInfo("Module Summaries", indent);
+        std::for_each(moduleCountStrings.begin(), moduleCountStrings.end(),
+                      std::bind(logInfo, std::placeholders::_1, indent + 1));
+        logInfo(overallCountString, indent);
     }
 }
 
