@@ -80,8 +80,8 @@ namespace clspv_utils {
         std::vector<vk::UniqueDescriptorSetLayout>  mDescriptorLayouts;
         vk::UniquePipelineLayout                    mPipelineLayout;
         std::vector<vk::UniqueDescriptorSet>        mDescriptors;
-        vk::DescriptorSet                           mLiteralSamplerDescriptor;
         vk::DescriptorSet                           mArgumentsDescriptor;
+        std::vector<vk::WriteDescriptorSet>         mLiteralSamplerDescriptorWrites;
     };
 
     struct device_t {
@@ -127,16 +127,15 @@ namespace clspv_utils {
         std::vector<std::string>    getEntryPoints() const;
         vk::ShaderModule            getShaderModule() const { return *mShaderModule; }
 
+    private:
         layout_t                    createLayout(const std::string& entryPoint) const;
 
-        vk::ArrayProxy<const vk::Sampler>   getLiteralSamplersHack() const { return mSamplers; }
-
     private:
-        std::string                 mName;
-        details::spv_map            mSpvMap;
-        std::vector<vk::Sampler>    mSamplers;
-        device_t                    mDevice;
-        vk::UniqueShaderModule      mShaderModule;
+        std::string                             mName;
+        details::spv_map                        mSpvMap;
+        device_t                                mDevice;
+        vk::UniqueShaderModule                  mShaderModule;
+        std::vector<vk::DescriptorImageInfo>    mLiteralSamplerInfo;
     };
 
     class kernel_invocation;
@@ -145,8 +144,9 @@ namespace clspv_utils {
     public:
         kernel();
 
-        kernel(kernel_module&       module,
-               device_t             device,
+        kernel(device_t             device,
+               layout_t             layout,
+               vk::ShaderModule     shaderModule,
                std::string          entryPoint,
                const vk::Extent3D&  workgroup_sizes);
 
@@ -162,8 +162,6 @@ namespace clspv_utils {
         std::string         getEntryPoint() const { return mEntryPoint; }
         vk::Extent3D        getWorkgroupSize() const { return mWorkgroupSizes; }
 
-        kernel_module&      getModule() const { return *mModule; }
-
         const device_t&     getDevice() { return mDevice; }
 
         void                updatePipeline(vk::ArrayProxy<int32_t> otherSpecConstants);
@@ -171,8 +169,8 @@ namespace clspv_utils {
         void                swap(kernel& other);
 
     private:
-        kernel_module*      mModule = nullptr;
         device_t            mDevice;
+        vk::ShaderModule    mShaderModule;
         std::string         mEntryPoint;
         vk::Extent3D        mWorkgroupSizes;
         layout_t            mLayout;
@@ -188,10 +186,10 @@ namespace clspv_utils {
     public:
                     kernel_invocation();
 
-        explicit    kernel_invocation(kernel&           kernel,
-                                      device_t          device,
-                                      vk::DescriptorSet literalSamplerDescSet,
-                                      vk::DescriptorSet argumentDescSet);
+        explicit    kernel_invocation(kernel&                                   kernel,
+                                      device_t                                  device,
+                                      vk::ArrayProxy<const vk::WriteDescriptorSet>    literalSamplerDescriptorWrites,
+                                      vk::DescriptorSet                         argumentDescSet);
 
                     kernel_invocation(kernel_invocation&& other);
 
@@ -231,6 +229,7 @@ namespace clspv_utils {
         vk::UniqueCommandBuffer                 mCommand;
         vk::UniqueQueryPool                     mQueryPool;
 
+        vk::ArrayProxy<const vk::WriteDescriptorSet>  mLiteralSamplerDescriptorWrites;
         vk::DescriptorSet                       mArgumentDescriptorSet;
 
         std::vector<int32_t>                    mSpecConstantArguments;
@@ -239,11 +238,6 @@ namespace clspv_utils {
         std::vector<vk::DescriptorImageInfo>    mImageArgumentInfo;
         std::vector<vk::DescriptorBufferInfo>   mBufferArgumentInfo;
         std::vector<vk::WriteDescriptorSet>     mArgumentDescriptorWrites;
-
-        void    addLiteralSamplers(vk::ArrayProxy<const vk::Sampler> samplers);
-        std::vector<vk::DescriptorImageInfo>    mLiteralSamplerInfo;
-        vk::DescriptorSet                       mLiteralSamplerDescriptorSet;
-        std::vector<vk::WriteDescriptorSet>     mLiteralSamplerDescriptorWrites;
     };
 
     inline void swap(kernel_invocation & lhs, kernel_invocation & rhs)

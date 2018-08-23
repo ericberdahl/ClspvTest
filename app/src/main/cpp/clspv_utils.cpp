@@ -254,31 +254,6 @@ namespace clspv_utils {
             return device.createPipelineLayoutUnique(createInfo);
         }
 
-        layout_t create_layout_for_entry(vk::Device                device,
-                                         vk::DescriptorPool        descriptorPool,
-                                         const details::spv_map&   spvMap,
-                                         const std::string&        entryPoint)  {
-            layout_t result;
-
-            result.mDescriptorLayouts = create_descriptor_layouts(device, spvMap, entryPoint);
-
-            result.mPipelineLayout = create_pipeline_layout(device, result.mDescriptorLayouts);
-            result.mDescriptors = allocate_descriptor_sets(device, descriptorPool,
-                                                           result.mDescriptorLayouts);
-
-
-            if (-1 != spvMap.samplers_desc_set) {
-                result.mLiteralSamplerDescriptor = *result.mDescriptors[spvMap.samplers_desc_set];
-            }
-
-            const auto kernel_arg_map = spvMap.findKernel(entryPoint);
-            if (kernel_arg_map && -1 != kernel_arg_map->descriptor_set) {
-                result.mArgumentsDescriptor = *result.mDescriptors[kernel_arg_map->descriptor_set];
-            }
-
-            return result;
-        }
-
         std::vector<std::string> validate_sampler(const details::spv_map::sampler& sampler) {
             std::vector<std::string> result;
 
@@ -554,8 +529,7 @@ namespace clspv_utils {
             mDevice(),
             mName(moduleName),
             mShaderModule(),
-            mSpvMap(),
-            mSamplers()
+            mSpvMap()
     {
         const std::string mapFilename = mName + ".spvmap";
         mSpvMap = create_spv_map(mapFilename.c_str());
@@ -573,12 +547,12 @@ namespace clspv_utils {
         const std::string spvFilename = mName + ".spv";
         mShaderModule = create_shader(mDevice.mDevice, spvFilename.c_str());
 
-        std::transform(std::begin(mSpvMap.samplers),
-                       std::end(mSpvMap.samplers),
-                       std::back_inserter(mSamplers),
-                       std::bind(getCachedSampler, std::ref(mDevice), std::placeholders::_1));
+        for (auto s : mSpvMap.samplers) {
+            vk::DescriptorImageInfo samplerInfo;
+            samplerInfo.setSampler(getCachedSampler(mDevice, s));
 
-        // TODO create the shared "literal sampler descriptor set"
+            mLiteralSamplerInfo.push_back(samplerInfo);
+        }
     }
 
     std::vector<std::string> kernel_module::getEntryPoints() const {
@@ -595,14 +569,45 @@ namespace clspv_utils {
         if (!isLoaded()) {
             throw std::runtime_error("cannot create layout for unloaded module");
         }
-        return create_layout_for_entry(mDevice.mDevice, mDevice.mDescriptorPool, mSpvMap, entryPoint);
+
+        layout_t result;
+
+        result.mDescriptorLayouts = create_descriptor_layouts(mDevice.mDevice, mSpvMap, entryPoint);
+
+        result.mPipelineLayout = create_pipeline_layout(mDevice.mDevice, result.mDescriptorLayouts);
+        result.mDescriptors = allocate_descriptor_sets(mDevice.mDevice, mDevice.mDescriptorPool,
+                                                       result.mDescriptorLayouts);
+
+        if (-1 != mSpvMap.samplers_desc_set && !mLiteralSamplerInfo.empty()) {
+            const vk::DescriptorSet literalSamplerDescriptor = *result.mDescriptors[mSpvMap.samplers_desc_set];
+
+            vk::WriteDescriptorSet literalSamplerSet;
+            literalSamplerSet.setDstSet(literalSamplerDescriptor)
+                    .setDstBinding(0)
+                    .setDescriptorCount(1)
+                    .setDescriptorType(vk::DescriptorType::eSampler);
+
+            for (auto& lsd : mLiteralSamplerInfo) {
+                literalSamplerSet.setPImageInfo(&lsd);
+                result.mLiteralSamplerDescriptorWrites.push_back(literalSamplerSet);
+                ++literalSamplerSet.dstBinding;
+            }
+        }
+
+        const auto kernel_arg_map = mSpvMap.findKernel(entryPoint);
+        if (kernel_arg_map && -1 != kernel_arg_map->descriptor_set) {
+            result.mArgumentsDescriptor = *result.mDescriptors[kernel_arg_map->descriptor_set];
+        }
+
+        return result;
     }
 
     kernel kernel_module::createKernel(const std::string&   entryPoint,
                                        const vk::Extent3D&  workgroup_sizes)
     {
-        return kernel(*this,
-                      mDevice,
+        return kernel(mDevice,
+                      createLayout(entryPoint),
+                      *mShaderModule,
                       entryPoint,
                       workgroup_sizes);
     }
@@ -611,15 +616,16 @@ namespace clspv_utils {
     {
     }
 
-    kernel::kernel(kernel_module&       module,
-                   device_t             device,
+    kernel::kernel(device_t             device,
+                   layout_t             layout,
+                   vk::ShaderModule     shaderModule,
                    std::string          entryPoint,
                    const vk::Extent3D&  workgroup_sizes) :
-            mModule(&module),
             mDevice(device),
+            mShaderModule(shaderModule),
             mEntryPoint(entryPoint),
             mWorkgroupSizes(workgroup_sizes),
-            mLayout(module.createLayout(entryPoint)),
+            mLayout(std::move(layout)),
             mPipeline()
     {
         updatePipeline(nullptr);
@@ -644,8 +650,8 @@ namespace clspv_utils {
     {
         using std::swap;
 
-        swap(mModule, other.mModule);
         swap(mDevice, other.mDevice);
+        swap(mShaderModule, other.mShaderModule);
         swap(mEntryPoint, other.mEntryPoint);
         swap(mWorkgroupSizes, other.mWorkgroupSizes);
         swap(mLayout, other.mLayout);
@@ -656,15 +662,11 @@ namespace clspv_utils {
     {
         return kernel_invocation(*this,
                                  mDevice,
-                                 mLayout.mLiteralSamplerDescriptor,
+                                 mLayout.mLiteralSamplerDescriptorWrites,
                                  mLayout.mArgumentsDescriptor);
     }
 
     void kernel::updatePipeline(vk::ArrayProxy<int32_t> otherSpecConstants) {
-        if (!mModule || !mModule->isLoaded()) {
-            throw std::runtime_error("kernel's kernel_module is not yet loaded");
-        }
-
         std::vector<std::uint32_t> specConstants = {
                 mWorkgroupSizes.width,
                 mWorkgroupSizes.height,
@@ -690,7 +692,7 @@ namespace clspv_utils {
         vk::ComputePipelineCreateInfo createInfo;
         createInfo.setLayout(*mLayout.mPipelineLayout);
         createInfo.stage.setStage(vk::ShaderStageFlagBits::eCompute)
-                .setModule(mModule->getShaderModule())
+                .setModule(mShaderModule)
                 .setPName(mEntryPoint.c_str())
                 .setPSpecializationInfo(&specializationInfo);
 
@@ -710,20 +712,21 @@ namespace clspv_utils {
     }
 
     kernel_invocation::kernel_invocation()
-            : mKernel(nullptr)
+            : mKernel(nullptr),
+              mLiteralSamplerDescriptorWrites(nullptr)
     {
         // this space intentionally left blank
     }
 
-    kernel_invocation::kernel_invocation(kernel&            kernel,
-                                         device_t           device,
-                                         vk::DescriptorSet  literalSamplerDescSet,
-                                         vk::DescriptorSet  argumentDescSet)
+    kernel_invocation::kernel_invocation(kernel&                                kernel,
+                                         device_t                               device,
+                                         vk::ArrayProxy<const vk::WriteDescriptorSet> literalSamplerDescriptorWrites,
+                                         vk::DescriptorSet                      argumentDescSet)
             : kernel_invocation()
     {
         mKernel = &kernel;
         mDevice = device;
-        mLiteralSamplerDescriptorSet = literalSamplerDescSet;
+        mLiteralSamplerDescriptorWrites = literalSamplerDescriptorWrites;
         mArgumentDescriptorSet = argumentDescSet;
 
         mCommand = vulkan_utils::allocate_command_buffer(mDevice.mDevice, mDevice.mCommandPool);
@@ -733,8 +736,6 @@ namespace clspv_utils {
                 .setQueryCount(kQueryIndex_Count);
 
         mQueryPool = mDevice.mDevice.createQueryPoolUnique(poolCreateInfo);
-
-        addLiteralSamplers(kernel.getModule().getLiteralSamplersHack());
     }
 
     kernel_invocation::kernel_invocation(kernel_invocation&& other)
@@ -755,39 +756,15 @@ namespace clspv_utils {
         swap(mCommand, other.mCommand);
         swap(mQueryPool, other.mQueryPool);
 
-        swap(mLiteralSamplerDescriptorSet, other.mLiteralSamplerDescriptorSet);
+        swap(mLiteralSamplerDescriptorWrites, other.mLiteralSamplerDescriptorWrites);
         swap(mArgumentDescriptorSet, other.mArgumentDescriptorSet);
 
         swap(mSpecConstantArguments, other.mSpecConstantArguments);
         swap(mImageMemoryBarriers, other.mImageMemoryBarriers);
 
-        swap(mLiteralSamplerInfo, other.mLiteralSamplerInfo);
         swap(mImageArgumentInfo, other.mImageArgumentInfo);
         swap(mBufferArgumentInfo, other.mBufferArgumentInfo);
         swap(mArgumentDescriptorWrites, other.mArgumentDescriptorWrites);
-    }
-
-    void kernel_invocation::addLiteralSamplers(vk::ArrayProxy<const vk::Sampler> samplers) {
-        for (auto s : samplers) {
-            vk::DescriptorImageInfo samplerInfo;
-            samplerInfo.setSampler(s);
-
-            mLiteralSamplerInfo.push_back(samplerInfo);
-        }
-
-        vk::WriteDescriptorSet literalSamplerSet;
-        literalSamplerSet.setDstSet(mLiteralSamplerDescriptorSet)
-                .setDstBinding(0)
-                .setDescriptorCount(1)
-                .setDescriptorType(vk::DescriptorType::eSampler);
-
-        assert(mLiteralSamplerInfo.empty() || literalSamplerSet.dstSet);
-
-        for (auto& lsd : mLiteralSamplerInfo) {
-            literalSamplerSet.setPImageInfo(&lsd);
-            mLiteralSamplerDescriptorWrites.push_back(literalSamplerSet);
-            ++literalSamplerSet.dstBinding;
-        }
     }
 
     void kernel_invocation::addStorageBufferArgument(vulkan_utils::storage_buffer& buffer) {
@@ -868,7 +845,8 @@ namespace clspv_utils {
         // Initialize the write sets with the sets for literal samplers.
         //
 
-        std::vector<vk::WriteDescriptorSet> writeSets = mLiteralSamplerDescriptorWrites;
+        std::vector<vk::WriteDescriptorSet> writeSets(mLiteralSamplerDescriptorWrites.begin(),
+                                                      mLiteralSamplerDescriptorWrites.end());
 
         //
         // Update the literal samplers' descriptor set
