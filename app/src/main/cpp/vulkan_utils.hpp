@@ -124,6 +124,9 @@ namespace vulkan_utils {
 
         void    swap(uniform_buffer& other);
 
+        vk::BufferMemoryBarrier  prepareForRead();
+        vk::DescriptorBufferInfo use();
+
     public:
         template <typename T = void>
         inline mapped_ptr<T> map()
@@ -133,7 +136,6 @@ namespace vulkan_utils {
 
     private:
         device_memory       mem;
-    public:
         vk::UniqueBuffer    buf;
     };
 
@@ -164,6 +166,10 @@ namespace vulkan_utils {
 
         void    swap(storage_buffer & other);
 
+        vk::BufferMemoryBarrier  prepareForRead();
+        vk::BufferMemoryBarrier  prepareForWrite();
+        vk::DescriptorBufferInfo use();
+
     public:
         template <typename T = void>
         inline mapped_ptr<T> map()
@@ -173,7 +179,6 @@ namespace vulkan_utils {
 
     private:
         device_memory       mem;
-    public:
         vk::UniqueBuffer    buf;
     };
 

@@ -234,6 +234,7 @@ namespace clspv_utils {
         vk::DescriptorSet                       mArgumentDescriptorSet;
 
         std::vector<int32_t>                    mSpecConstantArguments;
+        std::vector<vk::BufferMemoryBarrier>    mBufferMemoryBarriers;
         std::vector<vk::ImageMemoryBarrier>     mImageMemoryBarriers;
 
         std::vector<vk::DescriptorImageInfo>    mImageArgumentInfo;

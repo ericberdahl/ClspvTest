@@ -786,6 +786,7 @@ namespace clspv_utils {
         swap(mArgumentDescriptorSet, other.mArgumentDescriptorSet);
 
         swap(mSpecConstantArguments, other.mSpecConstantArguments);
+        swap(mBufferMemoryBarriers, other.mBufferMemoryBarriers);
         swap(mImageMemoryBarriers, other.mImageMemoryBarriers);
 
         swap(mImageArgumentInfo, other.mImageArgumentInfo);
@@ -794,12 +795,9 @@ namespace clspv_utils {
     }
 
     void kernel_invocation::addStorageBufferArgument(vulkan_utils::storage_buffer& buffer) {
-        // TODO: fix storage_buffer so it doesn't need to advertise buf as a public member
-        // TODO: add memory barrier support to storage_buffer
-        vk::DescriptorBufferInfo bufferInfo;
-        bufferInfo.setRange(VK_WHOLE_SIZE)
-                .setBuffer(*buffer.buf);
-        mBufferArgumentInfo.push_back(bufferInfo);
+        mBufferMemoryBarriers.push_back(buffer.prepareForRead());
+        mBufferMemoryBarriers.push_back(buffer.prepareForWrite());
+        mBufferArgumentInfo.push_back(buffer.use());
 
         vk::WriteDescriptorSet argSet;
         argSet.setDstSet(mArgumentDescriptorSet)
@@ -810,12 +808,8 @@ namespace clspv_utils {
     }
 
     void kernel_invocation::addUniformBufferArgument(vulkan_utils::uniform_buffer& buffer) {
-        // TODO: fix uniform_buffer so it doesn't need to advertise buf as a public member
-        // TODO: add memory barrier support to uniform_buffer
-        vk::DescriptorBufferInfo bufferInfo;
-        bufferInfo.setRange(VK_WHOLE_SIZE)
-                .setBuffer(*buffer.buf);
-        mBufferArgumentInfo.push_back(bufferInfo);
+        mBufferMemoryBarriers.push_back(buffer.prepareForRead());
+        mBufferArgumentInfo.push_back(buffer.use());
 
         vk::WriteDescriptorSet argSet;
         argSet.setDstSet(mArgumentDescriptorSet)
@@ -923,8 +917,8 @@ namespace clspv_utils {
         mCommand->pipelineBarrier(vk::PipelineStageFlagBits::eHost | vk::PipelineStageFlagBits::eComputeShader | vk::PipelineStageFlagBits::eTransfer,
                                   vk::PipelineStageFlagBits::eComputeShader,
                                   vk::DependencyFlags(),
-                                  { { vk::AccessFlagBits::eHostWrite, vk::AccessFlagBits::eShaderRead } },    // memory barriers
-                                  nullptr,    // buffer memory barriers
+                                  nullptr,    // memory barriers
+                                  mBufferMemoryBarriers,    // buffer memory barriers
                                   mImageMemoryBarriers);    // image memory barriers
         mCommand->writeTimestamp(vk::PipelineStageFlagBits::eComputeShader, *mQueryPool, kQueryIndex_PostHostBarrier);
         mCommand->dispatch(num_workgroups.width, num_workgroups.height, num_workgroups.depth);

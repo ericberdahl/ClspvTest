@@ -255,6 +255,31 @@ namespace {
 
         return last;
     }
+
+    vk::BufferMemoryBarrier prepare_buffer_for_read(vk::Buffer buf)
+    {
+        vk::BufferMemoryBarrier result;
+
+        result.setSrcAccessMask(vk::AccessFlagBits::eHostWrite | vk::AccessFlagBits::eTransferWrite | vk::AccessFlagBits::eShaderWrite)
+                .setDstAccessMask(vk::AccessFlagBits::eShaderRead)
+                .setSize(VK_WHOLE_SIZE)
+                .setBuffer(buf);
+
+        return result;
+    }
+
+    vk::BufferMemoryBarrier prepare_buffer_for_write(vk::Buffer buf)
+    {
+        vk::BufferMemoryBarrier result;
+
+        result.setSrcAccessMask(vk::AccessFlagBits::eHostRead | vk::AccessFlagBits::eTransferRead | vk::AccessFlagBits::eShaderRead)
+                .setDstAccessMask(vk::AccessFlagBits::eShaderWrite)
+                .setSize(VK_WHOLE_SIZE)
+                .setBuffer(buf);
+
+        return result;
+    }
+
 }
 
 namespace vulkan_utils {
@@ -401,6 +426,19 @@ namespace vulkan_utils {
         swap(buf, other.buf);
     }
 
+    vk::BufferMemoryBarrier uniform_buffer::prepareForRead()
+    {
+        return prepare_buffer_for_read(*buf);
+    }
+
+    vk::DescriptorBufferInfo uniform_buffer::use()
+    {
+        vk::DescriptorBufferInfo result;
+        result.setRange(VK_WHOLE_SIZE)
+                .setBuffer(*buf);
+        return result;
+    }
+
     storage_buffer::storage_buffer(vk::Device dev, const vk::PhysicalDeviceMemoryProperties memoryProperties, vk::DeviceSize num_bytes) :
             storage_buffer()
     {
@@ -439,6 +477,24 @@ namespace vulkan_utils {
 
         swap(mem, other.mem);
         swap(buf, other.buf);
+    }
+
+    vk::BufferMemoryBarrier storage_buffer::prepareForRead()
+    {
+        return prepare_buffer_for_read(*buf);
+    }
+
+    vk::BufferMemoryBarrier storage_buffer::prepareForWrite()
+    {
+        return prepare_buffer_for_write(*buf);
+    }
+
+    vk::DescriptorBufferInfo storage_buffer::use()
+    {
+        vk::DescriptorBufferInfo result;
+        result.setRange(VK_WHOLE_SIZE)
+                .setBuffer(*buf);
+        return result;
     }
 
     image::image()
@@ -589,6 +645,8 @@ namespace vulkan_utils {
         {
             throw std::runtime_error("images cannot be transitioned to undefined layout");
         }
+
+        // TODO: if the layout isn't changing, no barrier is needed
 
         const auto accessMap = {
                 std::make_pair(vk::ImageLayout::eShaderReadOnlyOptimal, vk::AccessFlagBits::eShaderRead),
