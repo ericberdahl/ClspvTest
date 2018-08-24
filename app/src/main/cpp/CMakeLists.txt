@@ -85,6 +85,7 @@ set(CLSPV_FLAGS ${CLSPV_FLAGS} -samplermap=${CLSHADER_SOURCE_DIR}/sampler_map)
 set(CLSPV_FLAGS ${CLSPV_FLAGS} -cluster-pod-kernel-args)
 set(CLSPV_FLAGS ${CLSPV_FLAGS} -hack-initializers)
 set(CLSPV_FLAGS ${CLSPV_FLAGS} -hack-inserts)
+set(CLSPV_FLAGS ${CLSPV_FLAGS} -hack-scf)
 set(CLSPV_FLAGS ${CLSPV_FLAGS} -hack-undef)
 set(CLSPV_FLAGS ${CLSPV_FLAGS} -pod-ubo)
 
