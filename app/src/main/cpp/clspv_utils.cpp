@@ -17,354 +17,353 @@
 #include <limits>
 #include <memory>
 
-namespace clspv_utils {
 
-    namespace {
-        int sampler_descriptor_set(const details::spv_map& spv_map) {
-            return (spv_map.samplers.empty() ? -1 : spv_map.samplers[0].descriptor_set);
+namespace {
+    using namespace clspv_utils;
+
+    int sampler_descriptor_set(const details::spv_map& spv_map) {
+        return (spv_map.samplers.empty() ? -1 : spv_map.samplers[0].descriptor_set);
+    }
+
+    int kernel_descriptor_set(const details::spv_map::kernel& kernel) {
+        return (kernel.args.empty() ? -1 : kernel.args[0].descriptor_set);
+    }
+
+    const auto kArgKind_DescriptorType_Map = {
+            std::make_pair(details::spv_map::arg::kind_pod_ubo, vk::DescriptorType::eUniformBuffer),
+            std::make_pair(details::spv_map::arg::kind_pod, vk::DescriptorType::eStorageBuffer),
+            std::make_pair(details::spv_map::arg::kind_buffer, vk::DescriptorType::eStorageBuffer),
+            std::make_pair(details::spv_map::arg::kind_ro_image, vk::DescriptorType::eSampledImage),
+            std::make_pair(details::spv_map::arg::kind_wo_image, vk::DescriptorType::eStorageImage),
+            std::make_pair(details::spv_map::arg::kind_sampler, vk::DescriptorType::eSampler)
+    };
+
+    vk::DescriptorType find_descriptor_type(details::spv_map::arg::kind_t argKind) {
+        auto found = std::find_if(std::begin(kArgKind_DescriptorType_Map),
+                                  std::end(kArgKind_DescriptorType_Map),
+                                  [argKind](decltype(kArgKind_DescriptorType_Map)::const_reference p) {
+                                      return argKind == p.first;
+                                  });
+        if (found == std::end(kArgKind_DescriptorType_Map)) {
+            throw std::runtime_error("unknown argKind encountered");
+        }
+        return found->second;
+    }
+
+    const auto kCLAddressMode_VkAddressMode_Map = {
+            std::make_pair(CLK_ADDRESS_NONE, vk::SamplerAddressMode::eClampToEdge),
+            std::make_pair(CLK_ADDRESS_CLAMP_TO_EDGE, vk::SamplerAddressMode::eClampToEdge),
+            std::make_pair(CLK_ADDRESS_CLAMP, vk::SamplerAddressMode::eClampToBorder),
+            std::make_pair(CLK_ADDRESS_REPEAT, vk::SamplerAddressMode::eRepeat),
+            std::make_pair(CLK_ADDRESS_MIRRORED_REPEAT, vk::SamplerAddressMode::eMirroredRepeat)
+    };
+
+    vk::SamplerAddressMode find_address_mode(int opencl_flags) {
+        opencl_flags &= CLK_ADDRESS_MASK;
+
+        auto found = std::find_if(std::begin(kCLAddressMode_VkAddressMode_Map),
+                                  std::end(kCLAddressMode_VkAddressMode_Map),
+                                  [&opencl_flags](decltype(kCLAddressMode_VkAddressMode_Map)::const_reference am) {
+                                      return (am.first == opencl_flags);
+                                  });
+
+        return (found == std::end(kCLAddressMode_VkAddressMode_Map) ? vk::SamplerAddressMode::eClampToEdge : found->second);
+    }
+
+
+    const auto kSpvMapArgType_ArgKind_Map = {
+            std::make_pair("pod", details::spv_map::arg::kind_pod),
+            std::make_pair("pod_ubo", details::spv_map::arg::kind_pod_ubo),
+            std::make_pair("buffer", details::spv_map::arg::kind_buffer),
+            std::make_pair("ro_image", details::spv_map::arg::kind_ro_image),
+            std::make_pair("wo_image", details::spv_map::arg::kind_wo_image),
+            std::make_pair("sampler", details::spv_map::arg::kind_sampler),
+            std::make_pair("local", details::spv_map::arg::kind_local)
+    };
+
+    details::spv_map::arg::kind_t find_arg_kind(const std::string &argType) {
+        auto found = std::find_if(std::begin(kSpvMapArgType_ArgKind_Map),
+                                  std::end(kSpvMapArgType_ArgKind_Map),
+                                  [&argType](decltype(kSpvMapArgType_ArgKind_Map)::const_reference p) {
+                                      return argType == p.first;
+                                  });
+        if (found == std::end(kSpvMapArgType_ArgKind_Map)) {
+            throw std::runtime_error("unknown argType encountered");
+        }
+        return found->second;
+    }
+
+    details::spv_map create_spv_map(const char *spvmapFilename) {
+        // Read the spvmap file into a string buffer
+        std::unique_ptr<std::FILE, decltype(&std::fclose)> spvmap_file(AndroidFopen(spvmapFilename, "rb"),
+                                                                       &std::fclose);
+        assert(spvmap_file);
+
+        std::fseek(spvmap_file.get(), 0, SEEK_END);
+        std::string buffer(std::ftell(spvmap_file.get()), ' ');
+        std::fseek(spvmap_file.get(), 0, SEEK_SET);
+        std::fread(&buffer.front(), 1, buffer.length(), spvmap_file.get());
+
+        spvmap_file.reset();
+
+        // parse the spvmap file contents
+        std::istringstream in(buffer);
+        return details::spv_map::parse(in);
+    }
+
+    std::string read_csv_field(std::istream& in) {
+        std::string result;
+
+        if (in.good()) {
+            const bool is_quoted = (in.peek() == '"');
+
+            if (is_quoted) {
+                in.ignore(std::numeric_limits<std::streamsize>::max(), '"');
+            }
+
+            std::getline(in, result, is_quoted ? '"' : ',');
+
+            if (is_quoted) {
+                in.ignore(std::numeric_limits<std::streamsize>::max(), ',');
+            }
         }
 
-        int kernel_descriptor_set(const details::spv_map::kernel& kernel) {
-            return (kernel.args.empty() ? -1 : kernel.args[0].descriptor_set);
+        return result;
+    }
+
+    typedef std::pair<std::string,std::string> key_value_t;
+
+    key_value_t read_key_value_pair(std::istream& in) {
+        return std::make_pair(read_csv_field(in), read_csv_field(in));
+    };
+
+    vk::UniqueShaderModule create_shader(vk::Device device, const std::string& spvFilename) {
+        std::unique_ptr<std::FILE, decltype(&std::fclose)> spv_file(AndroidFopen(spvFilename.c_str(), "rb"),
+                                                                    &std::fclose);
+        if (!spv_file) {
+            throw std::runtime_error("can't open file: " + spvFilename);
         }
 
-        const auto kArgKind_DescriptorType_Map = {
-                std::make_pair(details::spv_map::arg::kind_pod_ubo, vk::DescriptorType::eUniformBuffer),
-                std::make_pair(details::spv_map::arg::kind_pod, vk::DescriptorType::eStorageBuffer),
-                std::make_pair(details::spv_map::arg::kind_buffer, vk::DescriptorType::eStorageBuffer),
-                std::make_pair(details::spv_map::arg::kind_ro_image, vk::DescriptorType::eSampledImage),
-                std::make_pair(details::spv_map::arg::kind_wo_image, vk::DescriptorType::eStorageImage),
-                std::make_pair(details::spv_map::arg::kind_sampler, vk::DescriptorType::eSampler)
-        };
+        std::fseek(spv_file.get(), 0, SEEK_END);
+        // Use vector of uint32_t to ensure alignment is satisfied.
+        const auto num_bytes = std::ftell(spv_file.get());
+        if (0 != (num_bytes % sizeof(uint32_t))) {
+            throw std::runtime_error("file size of " + spvFilename + " inappropriate for spv file");
+        }
+        const auto num_words = (num_bytes + sizeof(uint32_t) - 1) / sizeof(uint32_t);
+        std::vector<uint32_t> spvModule(num_words);
+        assert(num_bytes == (spvModule.size() * sizeof(uint32_t)));
 
-        vk::DescriptorType find_descriptor_type(details::spv_map::arg::kind_t argKind) {
-            auto found = std::find_if(std::begin(kArgKind_DescriptorType_Map),
-                                      std::end(kArgKind_DescriptorType_Map),
-                                      [argKind](decltype(kArgKind_DescriptorType_Map)::const_reference p) {
-                                          return argKind == p.first;
-                                      });
-            if (found == std::end(kArgKind_DescriptorType_Map)) {
-                throw std::runtime_error("unknown argKind encountered");
-            }
-            return found->second;
+        std::fseek(spv_file.get(), 0, SEEK_SET);
+        std::fread(spvModule.data(), 1, num_bytes, spv_file.get());
+
+        spv_file.reset();
+
+        vk::ShaderModuleCreateInfo shaderModuleCreateInfo;
+        shaderModuleCreateInfo.setCodeSize(num_bytes)
+                .setPCode(spvModule.data());
+
+        return device.createShaderModuleUnique(shaderModuleCreateInfo);
+    }
+
+    vk::UniqueDescriptorSet allocate_descriptor_set(vk::Device              device,
+                                                    vk::DescriptorPool      pool,
+                                                    vk::DescriptorSetLayout layout)
+    {
+        vk::DescriptorSetAllocateInfo createInfo;
+        createInfo.setDescriptorPool(pool)
+                .setDescriptorSetCount(1)
+                .setPSetLayouts(&layout);
+
+        return std::move(device.allocateDescriptorSetsUnique(createInfo)[0]);
+    }
+
+    vk::UniqueDescriptorSetLayout create_descriptor_set_layout(
+            vk::Device                                  device,
+            vk::ArrayProxy<const vk::DescriptorType>    descriptorTypes)
+    {
+        std::vector<vk::DescriptorSetLayoutBinding> bindingSet;
+
+        vk::DescriptorSetLayoutBinding binding;
+        binding.setStageFlags(vk::ShaderStageFlagBits::eCompute)
+                .setDescriptorCount(1)
+                .setBinding(0);
+
+        for (auto type : descriptorTypes) {
+            binding.descriptorType = type;
+            bindingSet.push_back(binding);
+
+            ++binding.binding;
         }
 
-        const auto kCLAddressMode_VkAddressMode_Map = {
-                std::make_pair(CLK_ADDRESS_NONE, vk::SamplerAddressMode::eClampToEdge),
-                std::make_pair(CLK_ADDRESS_CLAMP_TO_EDGE, vk::SamplerAddressMode::eClampToEdge),
-                std::make_pair(CLK_ADDRESS_CLAMP, vk::SamplerAddressMode::eClampToBorder),
-                std::make_pair(CLK_ADDRESS_REPEAT, vk::SamplerAddressMode::eRepeat),
-                std::make_pair(CLK_ADDRESS_MIRRORED_REPEAT, vk::SamplerAddressMode::eMirroredRepeat)
-        };
+        vk::DescriptorSetLayoutCreateInfo createInfo;
+        createInfo.setBindingCount(bindingSet.size())
+                .setPBindings(bindingSet.size() ? bindingSet.data() : nullptr);
 
-        vk::SamplerAddressMode find_address_mode(int opencl_flags) {
-            opencl_flags &= CLK_ADDRESS_MASK;
+        return device.createDescriptorSetLayoutUnique(createInfo);
+    }
 
-            auto found = std::find_if(std::begin(kCLAddressMode_VkAddressMode_Map),
-                                      std::end(kCLAddressMode_VkAddressMode_Map),
-                                      [&opencl_flags](decltype(kCLAddressMode_VkAddressMode_Map)::const_reference am) {
-                                          return (am.first == opencl_flags);
-                                      });
+    vk::UniqueDescriptorSetLayout create_literalsampler_descriptor_layout(vk::Device device,
+                                                                         const details::spv_map& spvMap) {
+        vk::UniqueDescriptorSetLayout result;
 
-            return (found == std::end(kCLAddressMode_VkAddressMode_Map) ? vk::SamplerAddressMode::eClampToEdge : found->second);
+        if (!spvMap.samplers.empty()) {
+            assert(0 == spvMap.samplers_desc_set);
+
+            const std::vector<vk::DescriptorType> descriptorTypes(spvMap.samplers.size(),
+                                                                  vk::DescriptorType::eSampler);
+            result = create_descriptor_set_layout(device, descriptorTypes);
         }
 
+        return result;
+    }
 
-        const auto kSpvMapArgType_ArgKind_Map = {
-                std::make_pair("pod", details::spv_map::arg::kind_pod),
-                std::make_pair("pod_ubo", details::spv_map::arg::kind_pod_ubo),
-                std::make_pair("buffer", details::spv_map::arg::kind_buffer),
-                std::make_pair("ro_image", details::spv_map::arg::kind_ro_image),
-                std::make_pair("wo_image", details::spv_map::arg::kind_wo_image),
-                std::make_pair("sampler", details::spv_map::arg::kind_sampler),
-                std::make_pair("local", details::spv_map::arg::kind_local)
-        };
-
-        details::spv_map::arg::kind_t find_arg_kind(const std::string &argType) {
-            auto found = std::find_if(std::begin(kSpvMapArgType_ArgKind_Map),
-                                      std::end(kSpvMapArgType_ArgKind_Map),
-                                      [&argType](decltype(kSpvMapArgType_ArgKind_Map)::const_reference p) {
-                                          return argType == p.first;
-                                      });
-            if (found == std::end(kSpvMapArgType_ArgKind_Map)) {
-                throw std::runtime_error("unknown argType encountered");
-            }
-            return found->second;
+    vk::UniqueDescriptorSetLayout create_arg_descriptor_layout(vk::Device               device,
+                                                               const details::spv_map&  spvMap,
+                                                               const std::string&       entryPoint) {
+        const auto kernel = spvMap.findKernel(entryPoint);
+        if (!kernel) {
+            throw std::runtime_error("entryPoint not found; cannot create descriptor layout");
         }
 
-        details::spv_map create_spv_map(const char *spvmapFilename) {
-            // Read the spvmap file into a string buffer
-            std::unique_ptr<std::FILE, decltype(&std::fclose)> spvmap_file(AndroidFopen(spvmapFilename, "rb"),
-                                                                           &std::fclose);
-            assert(spvmap_file);
+        std::vector<vk::DescriptorType> descriptorTypes;
 
-            std::fseek(spvmap_file.get(), 0, SEEK_END);
-            std::string buffer(std::ftell(spvmap_file.get()), ' ');
-            std::fseek(spvmap_file.get(), 0, SEEK_SET);
-            std::fread(&buffer.front(), 1, buffer.length(), spvmap_file.get());
+        assert(kernel->descriptor_set == (spvMap.samplers.empty() ? 0 : 1));
 
-            spvmap_file.reset();
+        // If the caller has asked only for a pipeline layout for a single entry point,
+        // create empty descriptor layouts for all argument descriptors other than the
+        // one used by the requested entry point.
+        for (auto &ka : kernel->args) {
+            // ignore any argument not in offset 0
+            if (0 != ka.offset) continue;
 
-            // parse the spvmap file contents
-            std::istringstream in(buffer);
-            return details::spv_map::parse(in);
+            descriptorTypes.push_back(find_descriptor_type(ka.kind));
         }
 
-        std::string read_csv_field(std::istream& in) {
-            std::string result;
+        return create_descriptor_set_layout(device, descriptorTypes);
+    }
 
-            if (in.good()) {
-                const bool is_quoted = (in.peek() == '"');
+    vk::UniquePipelineLayout create_pipeline_layout(vk::Device                                      device,
+                                                    vk::ArrayProxy<const vk::DescriptorSetLayout>   layouts)
+    {
+        vk::PipelineLayoutCreateInfo createInfo;
+        createInfo.setSetLayoutCount(layouts.size())
+                .setPSetLayouts(layouts.data());
 
-                if (is_quoted) {
-                    in.ignore(std::numeric_limits<std::streamsize>::max(), '"');
-                }
+        return device.createPipelineLayoutUnique(createInfo);
+    }
 
-                std::getline(in, result, is_quoted ? '"' : ',');
+    std::vector<std::string> validate_sampler(const details::spv_map::sampler& sampler) {
+        std::vector<std::string> result;
 
-                if (is_quoted) {
-                    in.ignore(std::numeric_limits<std::streamsize>::max(), ',');
-                }
-            }
-
-            return result;
+        if (sampler.opencl_flags == 0) {
+            result.push_back("sampler missing OpenCL flags");
+        }
+        if (sampler.descriptor_set < 0) {
+            result.push_back("sampler missing descriptorSet");
+        }
+        if (sampler.binding < 0) {
+            result.push_back("sampler missing binding");
         }
 
-        typedef std::pair<std::string,std::string> key_value_t;
+        return result;
+    }
 
-        key_value_t read_key_value_pair(std::istream& in) {
-            return std::make_pair(read_csv_field(in), read_csv_field(in));
-        };
+    std::vector<std::string> validate_kernel_arg(const details::spv_map::arg& arg) {
+        std::vector<std::string> result;
 
-        vk::UniqueShaderModule create_shader(vk::Device device, const std::string& spvFilename) {
-            std::unique_ptr<std::FILE, decltype(&std::fclose)> spv_file(AndroidFopen(spvFilename.c_str(), "rb"),
-                                                                        &std::fclose);
-            if (!spv_file) {
-                throw std::runtime_error("can't open file: " + spvFilename);
-            }
-
-            std::fseek(spv_file.get(), 0, SEEK_END);
-            // Use vector of uint32_t to ensure alignment is satisfied.
-            const auto num_bytes = std::ftell(spv_file.get());
-            if (0 != (num_bytes % sizeof(uint32_t))) {
-                throw std::runtime_error("file size of " + spvFilename + " inappropriate for spv file");
-            }
-            const auto num_words = (num_bytes + sizeof(uint32_t) - 1) / sizeof(uint32_t);
-            std::vector<uint32_t> spvModule(num_words);
-            assert(num_bytes == (spvModule.size() * sizeof(uint32_t)));
-
-            std::fseek(spv_file.get(), 0, SEEK_SET);
-            std::fread(spvModule.data(), 1, num_bytes, spv_file.get());
-
-            spv_file.reset();
-
-            vk::ShaderModuleCreateInfo shaderModuleCreateInfo;
-            shaderModuleCreateInfo.setCodeSize(num_bytes)
-                    .setPCode(spvModule.data());
-
-            return device.createShaderModuleUnique(shaderModuleCreateInfo);
+        if (arg.kind == details::spv_map::arg::kind_unknown) {
+            result.push_back("kernel argument kind unknown");
+        }
+        if (arg.ordinal < 0) {
+            result.push_back("kernel argument missing ordinal");
         }
 
-        std::vector<vk::UniqueDescriptorSet> allocate_descriptor_sets(
-                vk::Device                                      device,
-                vk::DescriptorPool                              pool,
-                vk::ArrayProxy<vk::UniqueDescriptorSetLayout>   layouts)
-        {
-            std::vector<vk::DescriptorSetLayout> rawLayouts = vulkan_utils::extractUniques(layouts);
-
-            vk::DescriptorSetAllocateInfo createInfo;
-            createInfo.setDescriptorPool(pool)
-                    .setDescriptorSetCount(rawLayouts.size())
-                    .setPSetLayouts(rawLayouts.size() ? rawLayouts.data() : nullptr);
-
-            return device.allocateDescriptorSetsUnique(createInfo);
+        if (arg.kind == details::spv_map::arg::kind_local) {
+            if (arg.spec_constant < 0) {
+                result.push_back("kernel argument missing spec constant");
+            }
+        }
+        else {
+            if (arg.descriptor_set < 0) {
+                result.push_back("kernel argument missing descriptorSet");
+            }
+            if (arg.binding < 0) {
+                result.push_back("kernel argument missing binding");
+            }
+            if (arg.offset < 0) {
+                result.push_back("kernel argument missing offset");
+            }
         }
 
-        vk::UniqueDescriptorSetLayout create_descriptor_set_layout(
-                vk::Device                          device,
-                vk::ArrayProxy<vk::DescriptorType>  descriptorTypes)
-        {
-            std::vector<vk::DescriptorSetLayoutBinding> bindingSet;
+        return result;
+    }
 
-            vk::DescriptorSetLayoutBinding binding;
-            binding.setStageFlags(vk::ShaderStageFlagBits::eCompute)
-                    .setDescriptorCount(1)
-                    .setBinding(0);
+    std::vector<std::string> validate_kernel(const details::spv_map::kernel& kernel) {
+        std::vector<std::string> result;
+        std::vector<std::string> tempErrors;
 
-            for (auto type : descriptorTypes) {
-                binding.descriptorType = type;
-                bindingSet.push_back(binding);
-
-                ++binding.binding;
-            }
-
-            vk::DescriptorSetLayoutCreateInfo createInfo;
-            createInfo.setBindingCount(bindingSet.size())
-                    .setPBindings(bindingSet.size() ? bindingSet.data() : nullptr);
-
-            return device.createDescriptorSetLayoutUnique(createInfo);
+        if (kernel.name.empty()) {
+            result.push_back("kernel has no name");
         }
 
-        std::vector<vk::UniqueDescriptorSetLayout> create_descriptor_layouts(vk::Device device,
-                                                                const details::spv_map& spvMap,
-                                                                const std::string&      entryPoint) {
-            const auto kernel = spvMap.findKernel(entryPoint);
-            if (!kernel) {
-                throw std::runtime_error("entryPoint not found; cannot create descriptor layout");
+        const int arg_ds = kernel_descriptor_set(kernel);
+        for (auto& ka : kernel.args) {
+            tempErrors = validate_kernel_arg(ka);
+            result.insert(result.end(), tempErrors.begin(), tempErrors.end());
+            tempErrors.clear();
+
+            if (ka.kind != details::spv_map::arg::kind_local && ka.descriptor_set != arg_ds) {
+                result.push_back("kernel arg descriptor_sets don't match");
             }
-
-            std::vector<vk::UniqueDescriptorSetLayout> result;
-            std::vector<vk::DescriptorType> descriptorTypes;
-
-            if (!spvMap.samplers.empty()) {
-                assert(0 == spvMap.samplers_desc_set);
-
-                descriptorTypes.clear();
-                descriptorTypes.resize(spvMap.samplers.size(), vk::DescriptorType::eSampler);
-                result.push_back(create_descriptor_set_layout(device, descriptorTypes));
-            }
-
-            assert(kernel->descriptor_set == (spvMap.samplers.empty() ? 0 : 1));
-
-            descriptorTypes.clear();
-
-            // If the caller has asked only for a pipeline layout for a single entry point,
-            // create empty descriptor layouts for all argument descriptors other than the
-            // one used by the requested entry point.
-            for (auto &ka : kernel->args) {
-                // ignore any argument not in offset 0
-                if (0 != ka.offset) continue;
-
-                descriptorTypes.push_back(find_descriptor_type(ka.kind));
-            }
-
-            result.push_back(create_descriptor_set_layout(device, descriptorTypes));
-
-            return result;
         }
 
-        vk::UniquePipelineLayout create_pipeline_layout(vk::Device                                      device,
-                                                        vk::ArrayProxy<vk::UniqueDescriptorSetLayout>   descriptors) {
-            std::vector<vk::DescriptorSetLayout> rawLayouts = vulkan_utils::extractUniques(descriptors);
+        return result;
+    }
 
-            vk::PipelineLayoutCreateInfo createInfo;
-            createInfo.setSetLayoutCount(descriptors.size())
-                    .setPSetLayouts(rawLayouts.size() ? rawLayouts.data() : nullptr);
+    std::vector<std::string> validate_spvmap(const details::spv_map& spvmap) {
+        std::vector<std::string> result;
+        std::vector<std::string> tempErrors;
 
-            return device.createPipelineLayoutUnique(createInfo);
+        for (auto& k : spvmap.kernels) {
+            tempErrors = validate_kernel(k);
+            result.insert(result.end(), tempErrors.begin(), tempErrors.end());
+            tempErrors.clear();
         }
 
-        std::vector<std::string> validate_sampler(const details::spv_map::sampler& sampler) {
-            std::vector<std::string> result;
+        const int sampler_ds = sampler_descriptor_set(spvmap);
+        for (auto& s : spvmap.samplers) {
+            tempErrors = validate_sampler(s);
+            result.insert(result.end(), tempErrors.begin(), tempErrors.end());
+            tempErrors.clear();
 
-            if (sampler.opencl_flags == 0) {
-                result.push_back("sampler missing OpenCL flags");
+            if (s.descriptor_set != sampler_ds) {
+                result.push_back("sampler descriptor_sets don't match");
             }
-            if (sampler.descriptor_set < 0) {
-                result.push_back("sampler missing descriptorSet");
-            }
-            if (sampler.binding < 0) {
-                result.push_back("sampler missing binding");
-            }
-
-            return result;
         }
 
-        std::vector<std::string> validate_kernel_arg(const details::spv_map::arg& arg) {
-            std::vector<std::string> result;
+        return result;
+    }
 
-            if (arg.kind == details::spv_map::arg::kind_unknown) {
-                result.push_back("kernel argument kind unknown");
-            }
-            if (arg.ordinal < 0) {
-                result.push_back("kernel argument missing ordinal");
-            }
+    details::spv_map::sampler parse_spvmap_sampler(key_value_t tag, std::istream& in) {
+        details::spv_map::sampler result;
 
-            if (arg.kind == details::spv_map::arg::kind_local) {
-                if (arg.spec_constant < 0) {
-                    result.push_back("kernel argument missing spec constant");
-                }
-            }
-            else {
-                if (arg.descriptor_set < 0) {
-                    result.push_back("kernel argument missing descriptorSet");
-                }
-                if (arg.binding < 0) {
-                    result.push_back("kernel argument missing binding");
-                }
-                if (arg.offset < 0) {
-                    result.push_back("kernel argument missing offset");
-                }
-            }
+        result.opencl_flags = std::atoi(tag.second.c_str());
 
-            return result;
+        while (!in.eof()) {
+            tag = read_key_value_pair(in);
+
+            if ("descriptorSet" == tag.first) {
+                result.descriptor_set = std::atoi(tag.second.c_str());
+            } else if ("binding" == tag.first) {
+                result.binding = std::atoi(tag.second.c_str());
+            }
         }
 
-        std::vector<std::string> validate_kernel(const details::spv_map::kernel& kernel) {
-            std::vector<std::string> result;
-            std::vector<std::string> tempErrors;
+        return result;
+    }
 
-            if (kernel.name.empty()) {
-                result.push_back("kernel has no name");
-            }
-
-            const int arg_ds = kernel_descriptor_set(kernel);
-            for (auto& ka : kernel.args) {
-                tempErrors = validate_kernel_arg(ka);
-                result.insert(result.end(), tempErrors.begin(), tempErrors.end());
-                tempErrors.clear();
-
-                if (ka.kind != details::spv_map::arg::kind_local && ka.descriptor_set != arg_ds) {
-                    result.push_back("kernel arg descriptor_sets don't match");
-                }
-            }
-
-            return result;
-        }
-
-        std::vector<std::string> validate_spvmap(const details::spv_map& spvmap) {
-            std::vector<std::string> result;
-            std::vector<std::string> tempErrors;
-
-            for (auto& k : spvmap.kernels) {
-                tempErrors = validate_kernel(k);
-                result.insert(result.end(), tempErrors.begin(), tempErrors.end());
-                tempErrors.clear();
-            }
-
-            const int sampler_ds = sampler_descriptor_set(spvmap);
-            for (auto& s : spvmap.samplers) {
-                tempErrors = validate_sampler(s);
-                result.insert(result.end(), tempErrors.begin(), tempErrors.end());
-                tempErrors.clear();
-
-                if (s.descriptor_set != sampler_ds) {
-                    result.push_back("sampler descriptor_sets don't match");
-                }
-            }
-
-            return result;
-        }
-
-        details::spv_map::sampler parse_spvmap_sampler(key_value_t tag, std::istream& in) {
-            details::spv_map::sampler result;
-
-            result.opencl_flags = std::atoi(tag.second.c_str());
-
-            while (!in.eof()) {
-                tag = read_key_value_pair(in);
-
-                if ("descriptorSet" == tag.first) {
-                    result.descriptor_set = std::atoi(tag.second.c_str());
-                } else if ("binding" == tag.first) {
-                    result.binding = std::atoi(tag.second.c_str());
-                }
-            }
-
-            return result;
-        }
-
-        details::spv_map::arg parse_spvmap_kernel_arg(key_value_t tag, std::istream& in) {
+    details::spv_map::arg parse_spvmap_kernel_arg(key_value_t tag, std::istream& in) {
             details::spv_map::arg result;
 
             while (!in.eof()) {
@@ -391,17 +390,19 @@ namespace clspv_utils {
             return result;
         }
 
-        vk::Sampler getCachedSampler(device_t& device, const details::spv_map::sampler& s) {
-            if (!device.mSamplerCache) {
-                device.mSamplerCache.reset(new device_t::sampler_cache_t);
-            }
-
-            if (!device.mSamplerCache->count(s.opencl_flags)) {
-                (*device.mSamplerCache)[s.opencl_flags] = createCompatibleSampler(device.mDevice, s.opencl_flags);
-            }
-            return *(*device.mSamplerCache)[s.opencl_flags];
+    vk::Sampler getCachedSampler(device_t& device, const details::spv_map::sampler& s) {
+        if (!device.mSamplerCache) {
+            device.mSamplerCache.reset(new device_t::sampler_cache_t);
         }
-    } // anonymous namespace
+
+        if (!device.mSamplerCache->count(s.opencl_flags)) {
+            (*device.mSamplerCache)[s.opencl_flags] = createCompatibleSampler(device.mDevice, s.opencl_flags);
+        }
+        return *(*device.mSamplerCache)[s.opencl_flags];
+    }
+} // anonymous namespace
+
+namespace clspv_utils {
 
     namespace details {
 
@@ -547,11 +548,44 @@ namespace clspv_utils {
         const std::string spvFilename = mName + ".spv";
         mShaderModule = create_shader(mDevice.mDevice, spvFilename.c_str());
 
+        //
+        // Create literal sampler descriptor set
+        //
+
+        std::vector<vk::DescriptorImageInfo> literalSamplerInfo;
         for (auto s : mSpvMap.samplers) {
             vk::DescriptorImageInfo samplerInfo;
             samplerInfo.setSampler(getCachedSampler(mDevice, s));
 
-            mLiteralSamplerInfo.push_back(samplerInfo);
+            literalSamplerInfo.push_back(samplerInfo);
+        }
+
+        if (!literalSamplerInfo.empty()) {
+            assert(0 == mSpvMap.samplers_desc_set);
+            mLiteralSamplerDescriptorLayout = create_literalsampler_descriptor_layout(mDevice.mDevice, mSpvMap);
+
+            mLiteralSamplerDescriptor = allocate_descriptor_set(mDevice.mDevice,
+                                                                mDevice.mDescriptorPool,
+                                                                *mLiteralSamplerDescriptorLayout);
+
+            vk::WriteDescriptorSet literalSamplerSet;
+            literalSamplerSet.setDstSet(*mLiteralSamplerDescriptor)
+                    .setDstBinding(0)
+                    .setDescriptorCount(1)
+                    .setDescriptorType(vk::DescriptorType::eSampler);
+
+            std::vector<vk::WriteDescriptorSet> literalSamplerDescriptorWrites;
+
+            for (auto& lsd : literalSamplerInfo) {
+                literalSamplerSet.setPImageInfo(&lsd);
+                literalSamplerDescriptorWrites.push_back(literalSamplerSet);
+                ++literalSamplerSet.dstBinding;
+            }
+
+            mDevice.mDevice.updateDescriptorSets(literalSamplerDescriptorWrites, nullptr);
+        }
+        else {
+            assert(-1 == mSpvMap.samplers_desc_set);
         }
     }
 
@@ -565,39 +599,32 @@ namespace clspv_utils {
         return result;
     }
 
-    layout_t kernel_module::createLayout(const std::string& entryPoint) const {
+    kernel_layout_t kernel_module::createKernelLayout(const std::string& entryPoint) const {
         if (!isLoaded()) {
             throw std::runtime_error("cannot create layout for unloaded module");
         }
 
-        layout_t result;
-
-        result.mDescriptorLayouts = create_descriptor_layouts(mDevice.mDevice, mSpvMap, entryPoint);
-
-        result.mPipelineLayout = create_pipeline_layout(mDevice.mDevice, result.mDescriptorLayouts);
-        result.mDescriptors = allocate_descriptor_sets(mDevice.mDevice, mDevice.mDescriptorPool,
-                                                       result.mDescriptorLayouts);
-
-        if (-1 != mSpvMap.samplers_desc_set && !mLiteralSamplerInfo.empty()) {
-            const vk::DescriptorSet literalSamplerDescriptor = *result.mDescriptors[mSpvMap.samplers_desc_set];
-
-            vk::WriteDescriptorSet literalSamplerSet;
-            literalSamplerSet.setDstSet(literalSamplerDescriptor)
-                    .setDstBinding(0)
-                    .setDescriptorCount(1)
-                    .setDescriptorType(vk::DescriptorType::eSampler);
-
-            for (auto& lsd : mLiteralSamplerInfo) {
-                literalSamplerSet.setPImageInfo(&lsd);
-                result.mLiteralSamplerDescriptorWrites.push_back(literalSamplerSet);
-                ++literalSamplerSet.dstBinding;
-            }
-        }
+        kernel_layout_t result;
 
         const auto kernel_arg_map = mSpvMap.findKernel(entryPoint);
-        if (kernel_arg_map && -1 != kernel_arg_map->descriptor_set) {
-            result.mArgumentsDescriptor = *result.mDescriptors[kernel_arg_map->descriptor_set];
+        if (!kernel_arg_map) {
+            throw std::runtime_error("cannot create kernel layout for unknown entry point");
         }
+
+        if (-1 != kernel_arg_map->descriptor_set) {
+            result.mArgumentDescriptorLayout = create_arg_descriptor_layout(mDevice.mDevice, mSpvMap, entryPoint);
+
+            result.mArgumentsDescriptor = allocate_descriptor_set(mDevice.mDevice,
+                                                                  mDevice.mDescriptorPool,
+                                                                  *result.mArgumentDescriptorLayout);
+        }
+
+        result.mLiteralSamplerDescriptor = *mLiteralSamplerDescriptor;
+
+        std::vector<vk::DescriptorSetLayout> layouts;
+        if (mLiteralSamplerDescriptorLayout) layouts.push_back(*mLiteralSamplerDescriptorLayout);
+        if (result.mArgumentDescriptorLayout) layouts.push_back(*result.mArgumentDescriptorLayout);
+        result.mPipelineLayout = create_pipeline_layout(mDevice.mDevice, layouts);
 
         return result;
     }
@@ -606,7 +633,7 @@ namespace clspv_utils {
                                        const vk::Extent3D&  workgroup_sizes)
     {
         return kernel(mDevice,
-                      createLayout(entryPoint),
+                      createKernelLayout(entryPoint),
                       *mShaderModule,
                       entryPoint,
                       workgroup_sizes);
@@ -617,7 +644,7 @@ namespace clspv_utils {
     }
 
     kernel::kernel(device_t             device,
-                   layout_t             layout,
+                   kernel_layout_t      layout,
                    vk::ShaderModule     shaderModule,
                    std::string          entryPoint,
                    const vk::Extent3D&  workgroup_sizes) :
@@ -662,11 +689,11 @@ namespace clspv_utils {
     {
         return kernel_invocation(*this,
                                  mDevice,
-                                 mLayout.mLiteralSamplerDescriptorWrites,
-                                 mLayout.mArgumentsDescriptor);
+                                 *mLayout.mArgumentsDescriptor);
     }
 
     void kernel::updatePipeline(vk::ArrayProxy<int32_t> otherSpecConstants) {
+        // TODO: refactor pipelines so invocations that use spec constants don't create them twice, and are still efficient
         std::vector<std::uint32_t> specConstants = {
                 mWorkgroupSizes.width,
                 mWorkgroupSizes.height,
@@ -700,33 +727,33 @@ namespace clspv_utils {
     }
 
     void kernel::bindCommand(vk::CommandBuffer command) const {
+        // TODO: Refactor bindCommand to move into kernel_invocation
         command.bindPipeline(vk::PipelineBindPoint::eCompute, *mPipeline);
 
-        auto regular = vulkan_utils::extractUniques(mLayout.mDescriptors);
+        vk::DescriptorSet descriptors[] = { mLayout.mLiteralSamplerDescriptor, *mLayout.mArgumentsDescriptor };
+        std::uint32_t numDescriptors = (descriptors[0] ? 2 : 1);
+        if (1 == numDescriptors) descriptors[0] = descriptors[1];
 
         command.bindDescriptorSets(vk::PipelineBindPoint::eCompute,
-                                *mLayout.mPipelineLayout,
-                                0,
-                                regular,
-                                nullptr);
+                                   *mLayout.mPipelineLayout,
+                                   0,
+                                   { numDescriptors, descriptors },
+                                   nullptr);
     }
 
     kernel_invocation::kernel_invocation()
-            : mKernel(nullptr),
-              mLiteralSamplerDescriptorWrites(nullptr)
+            : mKernel(nullptr)
     {
         // this space intentionally left blank
     }
 
-    kernel_invocation::kernel_invocation(kernel&                                kernel,
-                                         device_t                               device,
-                                         vk::ArrayProxy<const vk::WriteDescriptorSet> literalSamplerDescriptorWrites,
-                                         vk::DescriptorSet                      argumentDescSet)
+    kernel_invocation::kernel_invocation(kernel&            kernel,
+                                         device_t           device,
+                                         vk::DescriptorSet  argumentDescSet)
             : kernel_invocation()
     {
         mKernel = &kernel;
         mDevice = device;
-        mLiteralSamplerDescriptorWrites = literalSamplerDescriptorWrites;
         mArgumentDescriptorSet = argumentDescSet;
 
         mCommand = vulkan_utils::allocate_command_buffer(mDevice.mDevice, mDevice.mCommandPool);
@@ -756,7 +783,6 @@ namespace clspv_utils {
         swap(mCommand, other.mCommand);
         swap(mQueryPool, other.mQueryPool);
 
-        swap(mLiteralSamplerDescriptorWrites, other.mLiteralSamplerDescriptorWrites);
         swap(mArgumentDescriptorSet, other.mArgumentDescriptorSet);
 
         swap(mSpecConstantArguments, other.mSpecConstantArguments);
@@ -768,6 +794,8 @@ namespace clspv_utils {
     }
 
     void kernel_invocation::addStorageBufferArgument(vulkan_utils::storage_buffer& buffer) {
+        // TODO: fix storage_buffer so it doesn't need to advertise buf as a public member
+        // TODO: add memory barrier support to storage_buffer
         vk::DescriptorBufferInfo bufferInfo;
         bufferInfo.setRange(VK_WHOLE_SIZE)
                 .setBuffer(*buffer.buf);
@@ -782,6 +810,8 @@ namespace clspv_utils {
     }
 
     void kernel_invocation::addUniformBufferArgument(vulkan_utils::uniform_buffer& buffer) {
+        // TODO: fix uniform_buffer so it doesn't need to advertise buf as a public member
+        // TODO: add memory barrier support to uniform_buffer
         vk::DescriptorBufferInfo bufferInfo;
         bufferInfo.setRange(VK_WHOLE_SIZE)
                 .setBuffer(*buffer.buf);
@@ -838,23 +868,12 @@ namespace clspv_utils {
 
     void kernel_invocation::updateDescriptorSets() {
         //
-        // Set up to create the descriptor set write structures
+        // Set up to create the descriptor set write structures for arguments.
         // We will iterate the param lists in the same order,
         // picking up image and buffer infos in order.
         //
-        // Initialize the write sets with the sets for literal samplers.
-        //
 
-        std::vector<vk::WriteDescriptorSet> writeSets(mLiteralSamplerDescriptorWrites.begin(),
-                                                      mLiteralSamplerDescriptorWrites.end());
-
-        //
-        // Update the literal samplers' descriptor set
-        //
-
-        //
-        // Update the kernel's argument descriptor set
-        //
+        std::vector<vk::WriteDescriptorSet> writeSets;
 
         auto nextImage = mImageArgumentInfo.begin();
         auto nextBuffer = mBufferArgumentInfo.begin();

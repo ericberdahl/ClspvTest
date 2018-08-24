@@ -76,12 +76,13 @@ namespace clspv_utils {
         vulkan_timestamps_t             timestamps;
     };
 
-    struct layout_t {
-        std::vector<vk::UniqueDescriptorSetLayout>  mDescriptorLayouts;
-        vk::UniquePipelineLayout                    mPipelineLayout;
-        std::vector<vk::UniqueDescriptorSet>        mDescriptors;
-        vk::DescriptorSet                           mArgumentsDescriptor;
-        std::vector<vk::WriteDescriptorSet>         mLiteralSamplerDescriptorWrites;
+    struct kernel_layout_t {
+        vk::DescriptorSet               mLiteralSamplerDescriptor;
+
+        vk::UniqueDescriptorSetLayout   mArgumentDescriptorLayout;
+        vk::UniqueDescriptorSet         mArgumentsDescriptor;
+
+        vk::UniquePipelineLayout        mPipelineLayout;
     };
 
     struct device_t {
@@ -128,14 +129,16 @@ namespace clspv_utils {
         vk::ShaderModule            getShaderModule() const { return *mShaderModule; }
 
     private:
-        layout_t                    createLayout(const std::string& entryPoint) const;
+        kernel_layout_t             createKernelLayout(const std::string& entryPoint) const;
 
     private:
-        std::string                             mName;
-        details::spv_map                        mSpvMap;
-        device_t                                mDevice;
-        vk::UniqueShaderModule                  mShaderModule;
-        std::vector<vk::DescriptorImageInfo>    mLiteralSamplerInfo;
+        std::string                     mName;
+        details::spv_map                mSpvMap;
+        device_t                        mDevice;
+        vk::UniqueShaderModule          mShaderModule;
+
+        vk::UniqueDescriptorSetLayout   mLiteralSamplerDescriptorLayout;
+        vk::UniqueDescriptorSet         mLiteralSamplerDescriptor;
     };
 
     class kernel_invocation;
@@ -145,7 +148,7 @@ namespace clspv_utils {
         kernel();
 
         kernel(device_t             device,
-               layout_t             layout,
+               kernel_layout_t      layout,
                vk::ShaderModule     shaderModule,
                std::string          entryPoint,
                const vk::Extent3D&  workgroup_sizes);
@@ -173,7 +176,7 @@ namespace clspv_utils {
         vk::ShaderModule    mShaderModule;
         std::string         mEntryPoint;
         vk::Extent3D        mWorkgroupSizes;
-        layout_t            mLayout;
+        kernel_layout_t     mLayout;
         vk::UniquePipeline  mPipeline;
     };
 
@@ -186,10 +189,9 @@ namespace clspv_utils {
     public:
                     kernel_invocation();
 
-        explicit    kernel_invocation(kernel&                                   kernel,
-                                      device_t                                  device,
-                                      vk::ArrayProxy<const vk::WriteDescriptorSet>    literalSamplerDescriptorWrites,
-                                      vk::DescriptorSet                         argumentDescSet);
+        explicit    kernel_invocation(kernel&           kernel,
+                                      device_t          device,
+                                      vk::DescriptorSet argumentDescSet);
 
                     kernel_invocation(kernel_invocation&& other);
 
@@ -229,7 +231,6 @@ namespace clspv_utils {
         vk::UniqueCommandBuffer                 mCommand;
         vk::UniqueQueryPool                     mQueryPool;
 
-        vk::ArrayProxy<const vk::WriteDescriptorSet>  mLiteralSamplerDescriptorWrites;
         vk::DescriptorSet                       mArgumentDescriptorSet;
 
         std::vector<int32_t>                    mSpecConstantArguments;
