@@ -32,7 +32,7 @@ samples "init" utility functions
 using namespace std;
 
 /*
- * TODO: function description here
+ * Gather list of all extensions for all properties of all layers in the implementation.
  */
 void init_global_layer_properties(struct sample_info &info) {
     auto vk_props = vk::enumerateInstanceLayerProperties();
