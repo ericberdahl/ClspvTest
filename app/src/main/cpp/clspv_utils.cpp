@@ -21,24 +21,24 @@
 namespace {
     using namespace clspv_utils;
 
-    int sampler_descriptor_set(const details::spv_map& spv_map) {
+    int sampler_descriptor_set(const spv_map& spv_map) {
         return (spv_map.samplers.empty() ? -1 : spv_map.samplers[0].descriptor_set);
     }
 
-    int kernel_descriptor_set(const details::kernel_spec_t& kernel) {
+    int kernel_descriptor_set(const kernel_spec_t& kernel) {
         return (kernel.args.empty() ? -1 : kernel.args[0].descriptor_set);
     }
 
     const auto kArgKind_DescriptorType_Map = {
-            std::make_pair(details::arg_spec_t::kind_pod_ubo, vk::DescriptorType::eUniformBuffer),
-            std::make_pair(details::arg_spec_t::kind_pod, vk::DescriptorType::eStorageBuffer),
-            std::make_pair(details::arg_spec_t::kind_buffer, vk::DescriptorType::eStorageBuffer),
-            std::make_pair(details::arg_spec_t::kind_ro_image, vk::DescriptorType::eSampledImage),
-            std::make_pair(details::arg_spec_t::kind_wo_image, vk::DescriptorType::eStorageImage),
-            std::make_pair(details::arg_spec_t::kind_sampler, vk::DescriptorType::eSampler)
+            std::make_pair(arg_spec_t::kind_pod_ubo, vk::DescriptorType::eUniformBuffer),
+            std::make_pair(arg_spec_t::kind_pod, vk::DescriptorType::eStorageBuffer),
+            std::make_pair(arg_spec_t::kind_buffer, vk::DescriptorType::eStorageBuffer),
+            std::make_pair(arg_spec_t::kind_ro_image, vk::DescriptorType::eSampledImage),
+            std::make_pair(arg_spec_t::kind_wo_image, vk::DescriptorType::eStorageImage),
+            std::make_pair(arg_spec_t::kind_sampler, vk::DescriptorType::eSampler)
     };
 
-    vk::DescriptorType find_descriptor_type(details::arg_spec_t::kind_t argKind) {
+    vk::DescriptorType find_descriptor_type(arg_spec_t::kind_t argKind) {
         auto found = std::find_if(std::begin(kArgKind_DescriptorType_Map),
                                   std::end(kArgKind_DescriptorType_Map),
                                   [argKind](decltype(kArgKind_DescriptorType_Map)::const_reference p) {
@@ -72,16 +72,16 @@ namespace {
 
 
     const auto kSpvMapArgType_ArgKind_Map = {
-            std::make_pair("pod", details::arg_spec_t::kind_pod),
-            std::make_pair("pod_ubo", details::arg_spec_t::kind_pod_ubo),
-            std::make_pair("buffer", details::arg_spec_t::kind_buffer),
-            std::make_pair("ro_image", details::arg_spec_t::kind_ro_image),
-            std::make_pair("wo_image", details::arg_spec_t::kind_wo_image),
-            std::make_pair("sampler", details::arg_spec_t::kind_sampler),
-            std::make_pair("local", details::arg_spec_t::kind_local)
+            std::make_pair("pod", arg_spec_t::kind_pod),
+            std::make_pair("pod_ubo", arg_spec_t::kind_pod_ubo),
+            std::make_pair("buffer", arg_spec_t::kind_buffer),
+            std::make_pair("ro_image", arg_spec_t::kind_ro_image),
+            std::make_pair("wo_image", arg_spec_t::kind_wo_image),
+            std::make_pair("sampler", arg_spec_t::kind_sampler),
+            std::make_pair("local", arg_spec_t::kind_local)
     };
 
-    details::arg_spec_t::kind_t find_arg_kind(const std::string &argType) {
+    arg_spec_t::kind_t find_arg_kind(const std::string &argType) {
         auto found = std::find_if(std::begin(kSpvMapArgType_ArgKind_Map),
                                   std::end(kSpvMapArgType_ArgKind_Map),
                                   [&argType](decltype(kSpvMapArgType_ArgKind_Map)::const_reference p) {
@@ -93,7 +93,7 @@ namespace {
         return found->second;
     }
 
-    details::spv_map create_spv_map(const char *spvmapFilename) {
+    spv_map create_spv_map(const char *spvmapFilename) {
         // Read the spvmap file into a string buffer
         std::unique_ptr<std::FILE, decltype(&std::fclose)> spvmap_file(AndroidFopen(spvmapFilename, "rb"),
                                                                        &std::fclose);
@@ -108,7 +108,7 @@ namespace {
 
         // parse the spvmap file contents
         std::istringstream in(buffer);
-        return details::spv_map::parse(in);
+        return spv_map::parse(in);
     }
 
     std::string read_csv_field(std::istream& in) {
@@ -178,8 +178,8 @@ namespace {
         return std::move(device.allocateDescriptorSetsUnique(createInfo)[0]);
     }
 
-    vk::UniqueDescriptorSetLayout create_literalsampler_descriptor_layout(vk::Device device,
-                                                                         const details::spv_map& spvMap) {
+    vk::UniqueDescriptorSetLayout create_literalsampler_descriptor_layout(vk::Device    device,
+                                                                         const spv_map& spvMap) {
         vk::UniqueDescriptorSetLayout result;
 
         if (!spvMap.samplers.empty()) {
@@ -207,9 +207,9 @@ namespace {
         return result;
     }
 
-    vk::UniqueDescriptorSetLayout create_arg_descriptor_layout(vk::Device               device,
-                                                               const details::spv_map&  spvMap,
-                                                               const std::string&       entryPoint) {
+    vk::UniqueDescriptorSetLayout create_arg_descriptor_layout(vk::Device           device,
+                                                               const spv_map&       spvMap,
+                                                               const std::string&   entryPoint) {
         const auto kernel = spvMap.findKernel(entryPoint);
         if (!kernel) {
             throw std::runtime_error("entryPoint not found; cannot create descriptor layout");
@@ -250,7 +250,7 @@ namespace {
         return device.createPipelineLayoutUnique(createInfo);
     }
 
-    std::vector<std::string> validate_sampler(const details::sampler_spec_t& sampler) {
+    std::vector<std::string> validate_sampler(const sampler_spec_t& sampler) {
         std::vector<std::string> result;
 
         if (sampler.opencl_flags == 0) {
@@ -266,17 +266,17 @@ namespace {
         return result;
     }
 
-    std::vector<std::string> validate_kernel_arg(const details::arg_spec_t& arg) {
+    std::vector<std::string> validate_kernel_arg(const arg_spec_t& arg) {
         std::vector<std::string> result;
 
-        if (arg.kind == details::arg_spec_t::kind_unknown) {
+        if (arg.kind == arg_spec_t::kind_unknown) {
             result.push_back("kernel argument kind unknown");
         }
         if (arg.ordinal < 0) {
             result.push_back("kernel argument missing ordinal");
         }
 
-        if (arg.kind == details::arg_spec_t::kind_local) {
+        if (arg.kind == arg_spec_t::kind_local) {
             if (arg.spec_constant < 0) {
                 result.push_back("kernel argument missing spec constant");
             }
@@ -296,7 +296,7 @@ namespace {
         return result;
     }
 
-    std::vector<std::string> validate_kernel(const details::kernel_spec_t& kernel) {
+    std::vector<std::string> validate_kernel(const kernel_spec_t& kernel) {
         std::vector<std::string> result;
         std::vector<std::string> tempErrors;
 
@@ -312,7 +312,7 @@ namespace {
             result.insert(result.end(), tempErrors.begin(), tempErrors.end());
             tempErrors.clear();
 
-            if (ka.kind != details::arg_spec_t::kind_local && ka.descriptor_set != arg_ds) {
+            if (ka.kind != arg_spec_t::kind_local && ka.descriptor_set != arg_ds) {
                 result.push_back("kernel arg descriptor_sets don't match");
             }
         }
@@ -323,7 +323,7 @@ namespace {
         return result;
     }
 
-    std::vector<std::string> validate_spvmap(const details::spv_map& spvmap) {
+    std::vector<std::string> validate_spvmap(const spv_map& spvmap) {
         std::vector<std::string> result;
         std::vector<std::string> tempErrors;
 
@@ -347,8 +347,8 @@ namespace {
         return result;
     }
 
-    details::sampler_spec_t parse_spvmap_sampler(key_value_t tag, std::istream& in) {
-        details::sampler_spec_t result;
+    sampler_spec_t parse_spvmap_sampler(key_value_t tag, std::istream& in) {
+        sampler_spec_t result;
 
         result.opencl_flags = std::atoi(tag.second.c_str());
 
@@ -365,8 +365,8 @@ namespace {
         return result;
     }
 
-    details::arg_spec_t parse_spvmap_kernel_arg(key_value_t tag, std::istream& in) {
-            details::arg_spec_t result;
+    arg_spec_t parse_spvmap_kernel_arg(key_value_t tag, std::istream& in) {
+            arg_spec_t result;
 
             while (!in.eof()) {
                 tag = read_key_value_pair(in);
@@ -392,7 +392,7 @@ namespace {
             return result;
         }
 
-    vk::Sampler getCachedSampler(device_t& device, const details::sampler_spec_t& s) {
+    vk::Sampler getCachedSampler(device_t& device, const sampler_spec_t& s) {
         if (!device.mSamplerCache) {
             device.mSamplerCache.reset(new device_t::sampler_cache_t);
         }
@@ -406,94 +406,90 @@ namespace {
 
 namespace clspv_utils {
 
-    namespace details {
+    spv_map spv_map::parse(std::istream &in) {
+        spv_map result;
 
-        spv_map spv_map::parse(std::istream &in) {
-            spv_map result;
+        while (!in.eof()) {
+            // read one line
+            std::string line;
 
-            while (!in.eof()) {
-                // read one line
-                std::string line;
+            // spvmap files may have been generated on a system which uses different line ending
+            // conventions than the system on which the consumer runs. Safer to fetch lines
+            // using a function which recognizes multiple line endings.
+            crlf_savvy::getline(in, line);
 
-                // spvmap files may have been generated on a system which uses different line ending
-                // conventions than the system on which the consumer runs. Safer to fetch lines
-                // using a function which recognizes multiple line endings.
-                crlf_savvy::getline(in, line);
+            std::istringstream in_line(line);
+            auto tag = read_key_value_pair(in_line);
+            if ("sampler" == tag.first) {
+                auto sampler = parse_spvmap_sampler(tag, in_line);
 
-                std::istringstream in_line(line);
-                auto tag = read_key_value_pair(in_line);
-                if ("sampler" == tag.first) {
-                    auto sampler = parse_spvmap_sampler(tag, in_line);
+                // all samplers, if any, are documented to share descriptor set 0
+                assert(sampler.descriptor_set == 0);
 
-                    // all samplers, if any, are documented to share descriptor set 0
-                    assert(sampler.descriptor_set == 0);
-
-                    if (-1 == result.samplers_desc_set) {
-                        result.samplers_desc_set = sampler.descriptor_set;
-                    }
-
-                    result.samplers.push_back(sampler);
-                } else if ("kernel" == tag.first) {
-                    auto kernel_arg = parse_spvmap_kernel_arg(tag, in_line);
-
-                    auto kernel = result.findKernel(tag.second);
-                    if (!kernel) {
-                        result.kernels.push_back(kernel_spec_t());
-                        kernel = &result.kernels.back();
-                        kernel->name = tag.second;
-                    }
-                    assert(kernel);
-
-                    if (-1 == kernel->descriptor_set && -1 != kernel_arg.descriptor_set) {
-                        kernel->descriptor_set = kernel_arg.descriptor_set;
-                    }
-
-                    kernel->args.push_back(kernel_arg);
+                if (-1 == result.samplers_desc_set) {
+                    result.samplers_desc_set = sampler.descriptor_set;
                 }
-            }
 
-            // Sort the args for each kernel such that pods are grouped together at the end of the
-            // sequence, and that the non-pod and pod groups are each individually sorted by
-            // increasing ordinal
-            for (auto& k : result.kernels) {
-                std::sort(k.args.begin(), k.args.end(), [](const arg_spec_t& lhs, const arg_spec_t& rhs) {
-                    auto isPod = [](arg_spec_t::kind_t kind) {
-                        return (kind == arg_spec_t::kind_pod || kind == arg_spec_t::kind_pod_ubo);
-                    };
+                result.samplers.push_back(sampler);
+            } else if ("kernel" == tag.first) {
+                auto kernel_arg = parse_spvmap_kernel_arg(tag, in_line);
 
-                    const auto lhs_is_pod = isPod(lhs.kind);
-                    const auto rhs_is_pod = isPod(rhs.kind);
-
-                    return (lhs_is_pod == rhs_is_pod ? lhs.ordinal < rhs.ordinal : !lhs_is_pod);
-                });
-            }
-
-            auto validationErrors = validate_spvmap(result);
-            if (!validationErrors.empty()) {
-                std::ostringstream os;
-                for (auto& s : validationErrors) {
-                    os << s << std::endl;
+                auto kernel = result.findKernel(tag.second);
+                if (!kernel) {
+                    result.kernels.push_back(kernel_spec_t());
+                    kernel = &result.kernels.back();
+                    kernel->name = tag.second;
                 }
-                throw std::runtime_error(os.str());
+                assert(kernel);
+
+                if (-1 == kernel->descriptor_set && -1 != kernel_arg.descriptor_set) {
+                    kernel->descriptor_set = kernel_arg.descriptor_set;
+                }
+
+                kernel->args.push_back(kernel_arg);
             }
-
-            return result;
         }
 
-        kernel_spec_t* spv_map::findKernel(const std::string& name) {
-            return const_cast<kernel_spec_t*>(const_cast<const spv_map*>(this)->findKernel(name));
+        // Sort the args for each kernel such that pods are grouped together at the end of the
+        // sequence, and that the non-pod and pod groups are each individually sorted by
+        // increasing ordinal
+        for (auto& k : result.kernels) {
+            std::sort(k.args.begin(), k.args.end(), [](const arg_spec_t& lhs, const arg_spec_t& rhs) {
+                auto isPod = [](arg_spec_t::kind_t kind) {
+                    return (kind == arg_spec_t::kind_pod || kind == arg_spec_t::kind_pod_ubo);
+                };
+
+                const auto lhs_is_pod = isPod(lhs.kind);
+                const auto rhs_is_pod = isPod(rhs.kind);
+
+                return (lhs_is_pod == rhs_is_pod ? lhs.ordinal < rhs.ordinal : !lhs_is_pod);
+            });
         }
 
-        const kernel_spec_t* spv_map::findKernel(const std::string& name) const {
-            auto kernel = std::find_if(kernels.begin(), kernels.end(),
-                                       [&name](const kernel_spec_t &iter) {
-                                           return iter.name == name;
-                                       });
-
-            return (kernel == kernels.end() ? nullptr : &(*kernel));
+        auto validationErrors = validate_spvmap(result);
+        if (!validationErrors.empty()) {
+            std::ostringstream os;
+            for (auto& s : validationErrors) {
+                os << s << std::endl;
+            }
+            throw std::runtime_error(os.str());
         }
 
-    } // namespace details
+        return result;
+    }
+
+    kernel_spec_t* spv_map::findKernel(const std::string& name) {
+        return const_cast<kernel_spec_t*>(const_cast<const spv_map*>(this)->findKernel(name));
+    }
+
+    const kernel_spec_t* spv_map::findKernel(const std::string& name) const {
+        auto kernel = std::find_if(kernels.begin(), kernels.end(),
+                                   [&name](const kernel_spec_t &iter) {
+                                       return iter.name == name;
+                                   });
+
+        return (kernel == kernels.end() ? nullptr : &(*kernel));
+    }
 
     vk::UniqueSampler createCompatibleSampler(vk::Device device, int opencl_flags) {
         const vk::Filter filter = ((opencl_flags & CLK_FILTER_MASK) == CLK_FILTER_LINEAR ?
@@ -609,7 +605,7 @@ namespace clspv_utils {
 
         std::transform(mSpvMap.kernels.begin(), mSpvMap.kernels.end(),
                        std::back_inserter(result),
-                       [](const details::kernel_spec_t& k) { return k.name; });
+                       [](const kernel_spec_t& k) { return k.name; });
 
         return result;
     }
@@ -744,6 +740,7 @@ namespace clspv_utils {
                 .setPName(mEntryPoint.c_str())
                 .setPSpecializationInfo(&specializationInfo);
 
+        // TODO: Implement a pipeline caching mechanism
         mPipeline = mDevice.mDevice.createComputePipelineUnique(vk::PipelineCache(), createInfo);
     }
 
@@ -836,8 +833,8 @@ namespace clspv_utils {
         return ka.binding;
     }
 
-    std::uint32_t kernel_invocation::validateArgType(std::size_t                    ordinal,
-                                                     details::arg_spec_t::kind_t  kind) const {
+    std::uint32_t kernel_invocation::validateArgType(std::size_t        ordinal,
+                                                     arg_spec_t::kind_t kind) const {
         if (ordinal >= mArgList.size()) {
             throw std::runtime_error("adding too many arguments to kernel invocation");
         }
@@ -913,7 +910,7 @@ namespace clspv_utils {
     }
 
     void kernel_invocation::addLocalArraySizeArgument(unsigned int numElements) {
-        validateArgType(countArguments(), details::arg_spec_t::kind_t::kind_local);
+        validateArgType(countArguments(), arg_spec_t::kind_t::kind_local);
         mSpecConstantArguments.push_back(numElements);
     }
 

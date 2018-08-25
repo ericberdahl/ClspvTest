@@ -17,55 +17,53 @@
 
 namespace clspv_utils {
 
-    namespace details {
-        struct sampler_spec_t {
-            int opencl_flags    = 0;
-            int descriptor_set  = -1;
-            int binding         = -1;
+    struct sampler_spec_t {
+        int opencl_flags    = 0;
+        int descriptor_set  = -1;
+        int binding         = -1;
+    };
+
+    struct arg_spec_t {
+        enum kind_t {
+            kind_unknown,
+            kind_pod,
+            kind_pod_ubo,
+            kind_buffer,
+            kind_ro_image,
+            kind_wo_image,
+            kind_sampler,
+            kind_local
         };
 
-        struct arg_spec_t {
-            enum kind_t {
-                kind_unknown,
-                kind_pod,
-                kind_pod_ubo,
-                kind_buffer,
-                kind_ro_image,
-                kind_wo_image,
-                kind_sampler,
-                kind_local
-            };
+        kind_t  kind            = kind_unknown;
+        int     ordinal         = -1;
+        int     descriptor_set  = -1;
+        int     binding         = -1;
+        int     offset          = -1;
+        int     spec_constant   = -1;
+    };
 
-            kind_t  kind            = kind_unknown;
-            int     ordinal         = -1;
-            int     descriptor_set  = -1;
-            int     binding         = -1;
-            int     offset          = -1;
-            int     spec_constant   = -1;
-        };
+    struct kernel_spec_t {
+        typedef std::vector<arg_spec_t> arg_list_t;
 
-        struct kernel_spec_t {
-            typedef std::vector<arg_spec_t> arg_list_t;
+        std::string name;
+        int         descriptor_set  = -1;
+        arg_list_t  args;
+    };
 
-            std::string name;
-            int         descriptor_set  = -1;
-            arg_list_t  args;
-        };
+    struct spv_map {
+        typedef std::vector<sampler_spec_t> literal_sampler_list_t;
+        typedef std::vector<kernel_spec_t>  kernel_list_t;
 
-        struct spv_map {
-            typedef std::vector<sampler_spec_t> literal_sampler_list_t;
-            typedef std::vector<kernel_spec_t>  kernel_list_t;
+        static spv_map parse(std::istream &in);
 
-            static spv_map parse(std::istream &in);
+        kernel_spec_t* findKernel(const std::string& name);
+        const kernel_spec_t* findKernel(const std::string& name) const;
 
-            kernel_spec_t* findKernel(const std::string& name);
-            const kernel_spec_t* findKernel(const std::string& name) const;
-
-            literal_sampler_list_t  samplers;
-            int                     samplers_desc_set   = -1;
-            kernel_list_t           kernels;
-        };
-    } // namespace details
+        literal_sampler_list_t  samplers;
+        int                     samplers_desc_set   = -1;
+        kernel_list_t           kernels;
+    };
 
     struct execution_time_t {
         struct vulkan_timestamps_t {
@@ -114,58 +112,26 @@ namespace clspv_utils {
 
     vk::UniqueSampler createCompatibleSampler(vk::Device device, int opencl_flags);
 
-    class kernel;
-
-    // TODO: Refactor kernel_module into two classes, module_interface and kernel_module. module_interface is more about which entries exist and kernel_module is more about a loaded module.
-    class kernel_module {
-    public:
-        explicit                    kernel_module(const std::string& moduleName);
-
-                                    ~kernel_module();
-
-        kernel                      createKernel(const std::string&     entryPoint,
-                                                 const vk::Extent3D&    workgroup_sizes);
-
-        void                        load(device_t device);
-        bool                        isLoaded() const { return (bool)getShaderModule(); }
-
-        std::string                 getName() const { return mName; }
-        std::vector<std::string>    getEntryPoints() const;
-        vk::ShaderModule            getShaderModule() const { return *mShaderModule; }
-
-    private:
-        kernel_layout_t             createKernelLayout(const std::string& entryPoint) const;
-
-    private:
-        std::string                     mName;
-        details::spv_map                mSpvMap;
-        device_t                        mDevice;
-        vk::UniqueShaderModule          mShaderModule;
-
-        vk::UniqueDescriptorSetLayout   mLiteralSamplerDescriptorLayout;
-        vk::UniqueDescriptorSet         mLiteralSamplerDescriptor;
-    };
-
     class kernel_invocation;
 
     class kernel {
     public:
-        typedef vk::ArrayProxy<const details::arg_spec_t> arg_list_proxy_t;
+        typedef vk::ArrayProxy<const arg_spec_t> arg_list_proxy_t;
 
-        kernel();
+                            kernel();
 
-        kernel(device_t             device,
-               kernel_layout_t      layout,
-               vk::ShaderModule     shaderModule,
-               std::string          entryPoint,
-               const vk::Extent3D&  workgroup_sizes,
-               arg_list_proxy_t     args);
+                            kernel(device_t             device,
+                                   kernel_layout_t      layout,
+                                   vk::ShaderModule     shaderModule,
+                                   std::string          entryPoint,
+                                   const vk::Extent3D&  workgroup_sizes,
+                                   arg_list_proxy_t     args);
 
-        kernel(kernel&& other);
+                            kernel(kernel&& other);
 
-        ~kernel();
+                            ~kernel();
 
-        kernel& operator=(kernel&& other);
+        kernel&             operator=(kernel&& other);
 
         kernel_invocation   createInvocation();
         void                bindCommand(vk::CommandBuffer command) const;
@@ -193,6 +159,36 @@ namespace clspv_utils {
     {
         lhs.swap(rhs);
     }
+
+    // TODO: Refactor kernel_module into two classes, module_interface and kernel_module. module_interface is more about which entries exist and kernel_module is more about a loaded module.
+    class kernel_module {
+    public:
+        explicit                    kernel_module(const std::string& moduleName);
+
+                                    ~kernel_module();
+
+        kernel                      createKernel(const std::string&     entryPoint,
+                                                 const vk::Extent3D&    workgroup_sizes);
+
+        void                        load(device_t device);
+        bool                        isLoaded() const { return (bool)getShaderModule(); }
+
+        std::string                 getName() const { return mName; }
+        std::vector<std::string>    getEntryPoints() const;
+        vk::ShaderModule            getShaderModule() const { return *mShaderModule; }
+
+    private:
+        kernel_layout_t             createKernelLayout(const std::string& entryPoint) const;
+
+    private:
+        std::string                     mName;
+        spv_map                         mSpvMap;
+        device_t                        mDevice;
+        vk::UniqueShaderModule          mShaderModule;
+
+        vk::UniqueDescriptorSetLayout   mLiteralSamplerDescriptorLayout;
+        vk::UniqueDescriptorSet         mLiteralSamplerDescriptor;
+    };
 
     class kernel_invocation {
     public:
@@ -230,7 +226,7 @@ namespace clspv_utils {
         // Sanity check that the nth argument (specified by ordinal) has the indicated
         // spvmap type. Throw an exception if false. Return the binding number if true.
         std::uint32_t   validateArgType(std::size_t ordinal, vk::DescriptorType kind) const;
-        std::uint32_t   validateArgType(std::size_t ordinal, details::arg_spec_t::kind_t kind) const;
+        std::uint32_t   validateArgType(std::size_t ordinal, arg_spec_t::kind_t kind) const;
 
         std::size_t countArguments() const;
 
