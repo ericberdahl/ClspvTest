@@ -25,20 +25,20 @@ namespace {
         return (spv_map.samplers.empty() ? -1 : spv_map.samplers[0].descriptor_set);
     }
 
-    int kernel_descriptor_set(const details::spv_map::kernel& kernel) {
+    int kernel_descriptor_set(const details::kernel_spec_t& kernel) {
         return (kernel.args.empty() ? -1 : kernel.args[0].descriptor_set);
     }
 
     const auto kArgKind_DescriptorType_Map = {
-            std::make_pair(details::spv_map::arg::kind_pod_ubo, vk::DescriptorType::eUniformBuffer),
-            std::make_pair(details::spv_map::arg::kind_pod, vk::DescriptorType::eStorageBuffer),
-            std::make_pair(details::spv_map::arg::kind_buffer, vk::DescriptorType::eStorageBuffer),
-            std::make_pair(details::spv_map::arg::kind_ro_image, vk::DescriptorType::eSampledImage),
-            std::make_pair(details::spv_map::arg::kind_wo_image, vk::DescriptorType::eStorageImage),
-            std::make_pair(details::spv_map::arg::kind_sampler, vk::DescriptorType::eSampler)
+            std::make_pair(details::arg_spec_t::kind_pod_ubo, vk::DescriptorType::eUniformBuffer),
+            std::make_pair(details::arg_spec_t::kind_pod, vk::DescriptorType::eStorageBuffer),
+            std::make_pair(details::arg_spec_t::kind_buffer, vk::DescriptorType::eStorageBuffer),
+            std::make_pair(details::arg_spec_t::kind_ro_image, vk::DescriptorType::eSampledImage),
+            std::make_pair(details::arg_spec_t::kind_wo_image, vk::DescriptorType::eStorageImage),
+            std::make_pair(details::arg_spec_t::kind_sampler, vk::DescriptorType::eSampler)
     };
 
-    vk::DescriptorType find_descriptor_type(details::spv_map::arg::kind_t argKind) {
+    vk::DescriptorType find_descriptor_type(details::arg_spec_t::kind_t argKind) {
         auto found = std::find_if(std::begin(kArgKind_DescriptorType_Map),
                                   std::end(kArgKind_DescriptorType_Map),
                                   [argKind](decltype(kArgKind_DescriptorType_Map)::const_reference p) {
@@ -72,16 +72,16 @@ namespace {
 
 
     const auto kSpvMapArgType_ArgKind_Map = {
-            std::make_pair("pod", details::spv_map::arg::kind_pod),
-            std::make_pair("pod_ubo", details::spv_map::arg::kind_pod_ubo),
-            std::make_pair("buffer", details::spv_map::arg::kind_buffer),
-            std::make_pair("ro_image", details::spv_map::arg::kind_ro_image),
-            std::make_pair("wo_image", details::spv_map::arg::kind_wo_image),
-            std::make_pair("sampler", details::spv_map::arg::kind_sampler),
-            std::make_pair("local", details::spv_map::arg::kind_local)
+            std::make_pair("pod", details::arg_spec_t::kind_pod),
+            std::make_pair("pod_ubo", details::arg_spec_t::kind_pod_ubo),
+            std::make_pair("buffer", details::arg_spec_t::kind_buffer),
+            std::make_pair("ro_image", details::arg_spec_t::kind_ro_image),
+            std::make_pair("wo_image", details::arg_spec_t::kind_wo_image),
+            std::make_pair("sampler", details::arg_spec_t::kind_sampler),
+            std::make_pair("local", details::arg_spec_t::kind_local)
     };
 
-    details::spv_map::arg::kind_t find_arg_kind(const std::string &argType) {
+    details::arg_spec_t::kind_t find_arg_kind(const std::string &argType) {
         auto found = std::find_if(std::begin(kSpvMapArgType_ArgKind_Map),
                                   std::end(kSpvMapArgType_ArgKind_Map),
                                   [&argType](decltype(kSpvMapArgType_ArgKind_Map)::const_reference p) {
@@ -250,7 +250,7 @@ namespace {
         return device.createPipelineLayoutUnique(createInfo);
     }
 
-    std::vector<std::string> validate_sampler(const details::spv_map::sampler& sampler) {
+    std::vector<std::string> validate_sampler(const details::sampler_spec_t& sampler) {
         std::vector<std::string> result;
 
         if (sampler.opencl_flags == 0) {
@@ -266,17 +266,17 @@ namespace {
         return result;
     }
 
-    std::vector<std::string> validate_kernel_arg(const details::spv_map::arg& arg) {
+    std::vector<std::string> validate_kernel_arg(const details::arg_spec_t& arg) {
         std::vector<std::string> result;
 
-        if (arg.kind == details::spv_map::arg::kind_unknown) {
+        if (arg.kind == details::arg_spec_t::kind_unknown) {
             result.push_back("kernel argument kind unknown");
         }
         if (arg.ordinal < 0) {
             result.push_back("kernel argument missing ordinal");
         }
 
-        if (arg.kind == details::spv_map::arg::kind_local) {
+        if (arg.kind == details::arg_spec_t::kind_local) {
             if (arg.spec_constant < 0) {
                 result.push_back("kernel argument missing spec constant");
             }
@@ -296,7 +296,7 @@ namespace {
         return result;
     }
 
-    std::vector<std::string> validate_kernel(const details::spv_map::kernel& kernel) {
+    std::vector<std::string> validate_kernel(const details::kernel_spec_t& kernel) {
         std::vector<std::string> result;
         std::vector<std::string> tempErrors;
 
@@ -304,16 +304,21 @@ namespace {
             result.push_back("kernel has no name");
         }
 
+        // All arguments for a given kernel that are passed in a descriptor set need to be in
+        // the same descriptor set
         const int arg_ds = kernel_descriptor_set(kernel);
         for (auto& ka : kernel.args) {
             tempErrors = validate_kernel_arg(ka);
             result.insert(result.end(), tempErrors.begin(), tempErrors.end());
             tempErrors.clear();
 
-            if (ka.kind != details::spv_map::arg::kind_local && ka.descriptor_set != arg_ds) {
+            if (ka.kind != details::arg_spec_t::kind_local && ka.descriptor_set != arg_ds) {
                 result.push_back("kernel arg descriptor_sets don't match");
             }
         }
+
+        // TODO: there cannot be both pod and pod_ubo arguments for a given kernel
+        // TODO: if there is a pod or pod_ubo argument, its descriptor set must be larger than other descriptor sets
 
         return result;
     }
@@ -342,8 +347,8 @@ namespace {
         return result;
     }
 
-    details::spv_map::sampler parse_spvmap_sampler(key_value_t tag, std::istream& in) {
-        details::spv_map::sampler result;
+    details::sampler_spec_t parse_spvmap_sampler(key_value_t tag, std::istream& in) {
+        details::sampler_spec_t result;
 
         result.opencl_flags = std::atoi(tag.second.c_str());
 
@@ -360,8 +365,8 @@ namespace {
         return result;
     }
 
-    details::spv_map::arg parse_spvmap_kernel_arg(key_value_t tag, std::istream& in) {
-            details::spv_map::arg result;
+    details::arg_spec_t parse_spvmap_kernel_arg(key_value_t tag, std::istream& in) {
+            details::arg_spec_t result;
 
             while (!in.eof()) {
                 tag = read_key_value_pair(in);
@@ -387,7 +392,7 @@ namespace {
             return result;
         }
 
-    vk::Sampler getCachedSampler(device_t& device, const details::spv_map::sampler& s) {
+    vk::Sampler getCachedSampler(device_t& device, const details::sampler_spec_t& s) {
         if (!device.mSamplerCache) {
             device.mSamplerCache.reset(new device_t::sampler_cache_t);
         }
@@ -433,7 +438,7 @@ namespace clspv_utils {
 
                     auto kernel = result.findKernel(tag.second);
                     if (!kernel) {
-                        result.kernels.push_back(spv_map::kernel());
+                        result.kernels.push_back(kernel_spec_t());
                         kernel = &result.kernels.back();
                         kernel->name = tag.second;
                     }
@@ -444,7 +449,7 @@ namespace clspv_utils {
                     }
 
                     if (kernel->args.size() <= kernel_arg.ordinal) {
-                        kernel->args.resize(kernel_arg.ordinal + 1, spv_map::arg());
+                        kernel->args.resize(kernel_arg.ordinal + 1, arg_spec_t());
                     }
                     kernel->args[kernel_arg.ordinal] = kernel_arg;
                 }
@@ -462,13 +467,13 @@ namespace clspv_utils {
             return result;
         }
 
-        spv_map::kernel* spv_map::findKernel(const std::string& name) {
-            return const_cast<kernel*>(const_cast<const spv_map*>(this)->findKernel(name));
+        kernel_spec_t* spv_map::findKernel(const std::string& name) {
+            return const_cast<kernel_spec_t*>(const_cast<const spv_map*>(this)->findKernel(name));
         }
 
-        const spv_map::kernel* spv_map::findKernel(const std::string& name) const {
+        const kernel_spec_t* spv_map::findKernel(const std::string& name) const {
             auto kernel = std::find_if(kernels.begin(), kernels.end(),
-                                       [&name](const spv_map::kernel &iter) {
+                                       [&name](const kernel_spec_t &iter) {
                                            return iter.name == name;
                                        });
 
@@ -591,7 +596,7 @@ namespace clspv_utils {
 
         std::transform(mSpvMap.kernels.begin(), mSpvMap.kernels.end(),
                        std::back_inserter(result),
-                       [](const details::spv_map::kernel& k) { return k.name; });
+                       [](const details::kernel_spec_t& k) { return k.name; });
 
         return result;
     }
@@ -819,7 +824,7 @@ namespace clspv_utils {
     }
 
     std::uint32_t kernel_invocation::validateArgType(std::size_t                    ordinal,
-                                                     details::spv_map::arg::kind_t  kind) const {
+                                                     details::arg_spec_t::kind_t  kind) const {
         if (ordinal >= mArgList.size()) {
             throw std::runtime_error("adding too many arguments to kernel invocation");
         }
@@ -895,7 +900,7 @@ namespace clspv_utils {
     }
 
     void kernel_invocation::addLocalArraySizeArgument(unsigned int numElements) {
-        validateArgType(countArguments(), details::spv_map::arg::kind_t::kind_local);
+        validateArgType(countArguments(), details::arg_spec_t::kind_t::kind_local);
         mSpecConstantArguments.push_back(numElements);
     }
 

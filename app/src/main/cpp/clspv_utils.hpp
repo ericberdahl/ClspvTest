@@ -18,49 +18,52 @@
 namespace clspv_utils {
 
     namespace details {
+        struct sampler_spec_t {
+            int opencl_flags    = 0;
+            int descriptor_set  = -1;
+            int binding         = -1;
+        };
+
+        struct arg_spec_t {
+            enum kind_t {
+                kind_unknown,
+                kind_pod,
+                kind_pod_ubo,
+                kind_buffer,
+                kind_ro_image,
+                kind_wo_image,
+                kind_sampler,
+                kind_local
+            };
+
+            kind_t  kind            = kind_unknown;
+            int     ordinal         = -1;
+            int     descriptor_set  = -1;
+            int     binding         = -1;
+            int     offset          = -1;
+            int     spec_constant   = -1;
+        };
+
+        struct kernel_spec_t {
+            typedef std::vector<arg_spec_t> arg_list_t;
+
+            std::string name;
+            int         descriptor_set  = -1;
+            arg_list_t  args;
+        };
+
         struct spv_map {
-            struct sampler {
-                int opencl_flags    = 0;
-                int descriptor_set  = -1;
-                int binding         = -1;
-            };
-
-            struct arg {
-                enum kind_t {
-                    kind_unknown,
-                    kind_pod,
-                    kind_pod_ubo,
-                    kind_buffer,
-                    kind_ro_image,
-                    kind_wo_image,
-                    kind_sampler,
-                    kind_local
-                };
-
-                kind_t  kind            = kind_unknown;
-                int     ordinal         = -1;
-                int     descriptor_set  = -1;
-                int     binding         = -1;
-                int     offset          = -1;
-                int     spec_constant   = -1;
-            };
-
-            struct kernel {
-                typedef std::vector<arg>    arg_list_t;
-
-                std::string name;
-                int         descriptor_set  = -1;
-                arg_list_t  args;
-            };
+            typedef std::vector<sampler_spec_t> literal_sampler_list_t;
+            typedef std::vector<kernel_spec_t>  kernel_list_t;
 
             static spv_map parse(std::istream &in);
 
-            kernel* findKernel(const std::string& name);
-            const kernel* findKernel(const std::string& name) const;
+            kernel_spec_t* findKernel(const std::string& name);
+            const kernel_spec_t* findKernel(const std::string& name) const;
 
-            std::vector<sampler>    samplers;
+            literal_sampler_list_t  samplers;
             int                     samplers_desc_set   = -1;
-            std::vector<kernel>     kernels;
+            kernel_list_t           kernels;
         };
     } // namespace details
 
@@ -147,7 +150,7 @@ namespace clspv_utils {
 
     class kernel {
     public:
-        typedef vk::ArrayProxy<const details::spv_map::arg> arg_list_proxy_t;
+        typedef vk::ArrayProxy<const details::arg_spec_t> arg_list_proxy_t;
 
         kernel();
 
@@ -227,7 +230,7 @@ namespace clspv_utils {
         // Sanity check that the nth argument (specified by ordinal) has the indicated
         // spvmap type. Throw an exception if false. Return the binding number if true.
         std::uint32_t   validateArgType(std::size_t ordinal, vk::DescriptorType kind) const;
-        std::uint32_t   validateArgType(std::size_t ordinal, details::spv_map::arg::kind_t kind) const;
+        std::uint32_t   validateArgType(std::size_t ordinal, details::arg_spec_t::kind_t kind) const;
 
         std::size_t countArguments() const;
 
