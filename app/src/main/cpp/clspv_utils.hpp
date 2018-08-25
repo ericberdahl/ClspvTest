@@ -46,9 +46,11 @@ namespace clspv_utils {
             };
 
             struct kernel {
-                std::string         name;
-                int                 descriptor_set  = -1;
-                std::vector<arg>    args;
+                typedef std::vector<arg>    arg_list_t;
+
+                std::string name;
+                int         descriptor_set  = -1;
+                arg_list_t  args;
             };
 
             static spv_map parse(std::istream &in);
@@ -145,13 +147,16 @@ namespace clspv_utils {
 
     class kernel {
     public:
+        typedef vk::ArrayProxy<const details::spv_map::arg> arg_list_proxy_t;
+
         kernel();
 
         kernel(device_t             device,
                kernel_layout_t      layout,
                vk::ShaderModule     shaderModule,
                std::string          entryPoint,
-               const vk::Extent3D&  workgroup_sizes);
+               const vk::Extent3D&  workgroup_sizes,
+               arg_list_proxy_t     args);
 
         kernel(kernel&& other);
 
@@ -178,6 +183,7 @@ namespace clspv_utils {
         vk::Extent3D        mWorkgroupSizes;
         kernel_layout_t     mLayout;
         vk::UniquePipeline  mPipeline;
+        arg_list_proxy_t    mArgList;
     };
 
     inline void swap(kernel& lhs, kernel& rhs)
@@ -187,11 +193,14 @@ namespace clspv_utils {
 
     class kernel_invocation {
     public:
+        typedef kernel::arg_list_proxy_t arg_list_proxy_t;
+
                     kernel_invocation();
 
         explicit    kernel_invocation(kernel&           kernel,
                                       device_t          device,
-                                      vk::DescriptorSet argumentDescSet);
+                                      vk::DescriptorSet argumentDescSet,
+                                      arg_list_proxy_t  argList);
 
                     kernel_invocation(kernel_invocation&& other);
 
@@ -215,6 +224,13 @@ namespace clspv_utils {
         void    updateDescriptorSets();
         void    submitCommand();
 
+        // Sanity check that the nth argument (specified by ordinal) has the indicated
+        // spvmap type. Throw an exception if false. Return the binding number if true.
+        std::uint32_t   validateArgType(std::size_t ordinal, vk::DescriptorType kind) const;
+        std::uint32_t   validateArgType(std::size_t ordinal, details::spv_map::arg::kind_t kind) const;
+
+        std::size_t countArguments() const;
+
     private:
         enum QueryIndex {
             kQueryIndex_FirstIndex = 0,
@@ -226,20 +242,22 @@ namespace clspv_utils {
         };
 
     private:
-        kernel*                                 mKernel;
+        kernel*                                 mKernel = nullptr;
         device_t                                mDevice;
+        arg_list_proxy_t                        mArgList;
         vk::UniqueCommandBuffer                 mCommand;
         vk::UniqueQueryPool                     mQueryPool;
 
         vk::DescriptorSet                       mArgumentDescriptorSet;
 
-        std::vector<int32_t>                    mSpecConstantArguments;
         std::vector<vk::BufferMemoryBarrier>    mBufferMemoryBarriers;
         std::vector<vk::ImageMemoryBarrier>     mImageMemoryBarriers;
 
         std::vector<vk::DescriptorImageInfo>    mImageArgumentInfo;
         std::vector<vk::DescriptorBufferInfo>   mBufferArgumentInfo;
+
         std::vector<vk::WriteDescriptorSet>     mArgumentDescriptorWrites;
+        std::vector<int32_t>                    mSpecConstantArguments;
     };
 
     inline void swap(kernel_invocation & lhs, kernel_invocation & rhs)

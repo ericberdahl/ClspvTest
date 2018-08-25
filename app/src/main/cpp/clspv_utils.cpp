@@ -178,31 +178,6 @@ namespace {
         return std::move(device.allocateDescriptorSetsUnique(createInfo)[0]);
     }
 
-    vk::UniqueDescriptorSetLayout create_descriptor_set_layout(
-            vk::Device                                  device,
-            vk::ArrayProxy<const vk::DescriptorType>    descriptorTypes)
-    {
-        std::vector<vk::DescriptorSetLayoutBinding> bindingSet;
-
-        vk::DescriptorSetLayoutBinding binding;
-        binding.setStageFlags(vk::ShaderStageFlagBits::eCompute)
-                .setDescriptorCount(1)
-                .setBinding(0);
-
-        for (auto type : descriptorTypes) {
-            binding.descriptorType = type;
-            bindingSet.push_back(binding);
-
-            ++binding.binding;
-        }
-
-        vk::DescriptorSetLayoutCreateInfo createInfo;
-        createInfo.setBindingCount(bindingSet.size())
-                .setPBindings(bindingSet.size() ? bindingSet.data() : nullptr);
-
-        return device.createDescriptorSetLayoutUnique(createInfo);
-    }
-
     vk::UniqueDescriptorSetLayout create_literalsampler_descriptor_layout(vk::Device device,
                                                                          const details::spv_map& spvMap) {
         vk::UniqueDescriptorSetLayout result;
@@ -210,9 +185,23 @@ namespace {
         if (!spvMap.samplers.empty()) {
             assert(0 == spvMap.samplers_desc_set);
 
-            const std::vector<vk::DescriptorType> descriptorTypes(spvMap.samplers.size(),
-                                                                  vk::DescriptorType::eSampler);
-            result = create_descriptor_set_layout(device, descriptorTypes);
+            std::vector<vk::DescriptorSetLayoutBinding> bindingSet;
+
+            vk::DescriptorSetLayoutBinding binding;
+            binding.setStageFlags(vk::ShaderStageFlagBits::eCompute)
+                    .setDescriptorCount(1);
+
+            for (auto& s : spvMap.samplers) {
+                binding.descriptorType = vk::DescriptorType::eSampler;
+                binding.binding = s.binding;
+                bindingSet.push_back(binding);
+            }
+
+            vk::DescriptorSetLayoutCreateInfo createInfo;
+            createInfo.setBindingCount(bindingSet.size())
+                    .setPBindings(bindingSet.size() ? bindingSet.data() : nullptr);
+
+            result = device.createDescriptorSetLayoutUnique(createInfo);
         }
 
         return result;
@@ -226,21 +215,29 @@ namespace {
             throw std::runtime_error("entryPoint not found; cannot create descriptor layout");
         }
 
-        std::vector<vk::DescriptorType> descriptorTypes;
-
         assert(kernel->descriptor_set == (spvMap.samplers.empty() ? 0 : 1));
 
-        // If the caller has asked only for a pipeline layout for a single entry point,
-        // create empty descriptor layouts for all argument descriptors other than the
-        // one used by the requested entry point.
+        std::vector<vk::DescriptorSetLayoutBinding> bindingSet;
+
+        vk::DescriptorSetLayoutBinding binding;
+        binding.setStageFlags(vk::ShaderStageFlagBits::eCompute)
+                .setDescriptorCount(1);
+
         for (auto &ka : kernel->args) {
             // ignore any argument not in offset 0
             if (0 != ka.offset) continue;
 
-            descriptorTypes.push_back(find_descriptor_type(ka.kind));
+            binding.descriptorType = find_descriptor_type(ka.kind);
+            binding.binding = ka.binding;
+
+            bindingSet.push_back(binding);
         }
 
-        return create_descriptor_set_layout(device, descriptorTypes);
+        vk::DescriptorSetLayoutCreateInfo createInfo;
+        createInfo.setBindingCount(bindingSet.size())
+                .setPBindings(bindingSet.size() ? bindingSet.data() : nullptr);
+
+        return device.createDescriptorSetLayoutUnique(createInfo);
     }
 
     vk::UniquePipelineLayout create_pipeline_layout(vk::Device                                      device,
@@ -636,10 +633,12 @@ namespace clspv_utils {
                       createKernelLayout(entryPoint),
                       *mShaderModule,
                       entryPoint,
-                      workgroup_sizes);
+                      workgroup_sizes,
+                      mSpvMap.findKernel(entryPoint)->args);
     }
 
     kernel::kernel()
+            : mArgList(nullptr)
     {
     }
 
@@ -647,13 +646,15 @@ namespace clspv_utils {
                    kernel_layout_t      layout,
                    vk::ShaderModule     shaderModule,
                    std::string          entryPoint,
-                   const vk::Extent3D&  workgroup_sizes) :
+                   const vk::Extent3D&  workgroup_sizes,
+                   arg_list_proxy_t     args) :
             mDevice(device),
             mShaderModule(shaderModule),
             mEntryPoint(entryPoint),
             mWorkgroupSizes(workgroup_sizes),
             mLayout(std::move(layout)),
-            mPipeline()
+            mPipeline(),
+            mArgList(args)
     {
         updatePipeline(nullptr);
     }
@@ -683,13 +684,15 @@ namespace clspv_utils {
         swap(mWorkgroupSizes, other.mWorkgroupSizes);
         swap(mLayout, other.mLayout);
         swap(mPipeline, other.mPipeline);
+        swap(mArgList, other.mArgList);
     }
 
     kernel_invocation kernel::createInvocation()
     {
         return kernel_invocation(*this,
                                  mDevice,
-                                 *mLayout.mArgumentsDescriptor);
+                                 *mLayout.mArgumentsDescriptor,
+                                 mArgList);
     }
 
     void kernel::updatePipeline(vk::ArrayProxy<int32_t> otherSpecConstants) {
@@ -742,18 +745,20 @@ namespace clspv_utils {
     }
 
     kernel_invocation::kernel_invocation()
-            : mKernel(nullptr)
+            : mArgList(nullptr)
     {
         // this space intentionally left blank
     }
 
     kernel_invocation::kernel_invocation(kernel&            kernel,
                                          device_t           device,
-                                         vk::DescriptorSet  argumentDescSet)
+                                         vk::DescriptorSet  argumentDescSet,
+                                         arg_list_proxy_t   argList)
             : kernel_invocation()
     {
         mKernel = &kernel;
         mDevice = device;
+        mArgList = argList;
         mArgumentDescriptorSet = argumentDescSet;
 
         mCommand = vulkan_utils::allocate_command_buffer(mDevice.mDevice, mDevice.mCommandPool);
@@ -780,6 +785,7 @@ namespace clspv_utils {
 
         swap(mKernel, other.mKernel);
         swap(mDevice, other.mDevice);
+        swap(mArgList, other.mArgList);
         swap(mCommand, other.mCommand);
         swap(mQueryPool, other.mQueryPool);
 
@@ -794,6 +800,38 @@ namespace clspv_utils {
         swap(mArgumentDescriptorWrites, other.mArgumentDescriptorWrites);
     }
 
+    std::size_t kernel_invocation::countArguments() const {
+        return mArgumentDescriptorWrites.size() + mSpecConstantArguments.size();
+    }
+
+    std::uint32_t kernel_invocation::validateArgType(std::size_t        ordinal,
+                                                     vk::DescriptorType kind) const {
+        if (ordinal >= mArgList.size()) {
+            throw std::runtime_error("adding too many arguments to kernel invocation");
+        }
+
+        auto& ka = mArgList.data()[ordinal];
+        if (find_descriptor_type(ka.kind) != kind) {
+            throw std::runtime_error("adding incompatible argument to kernel invocation");
+        }
+
+        return ka.binding;
+    }
+
+    std::uint32_t kernel_invocation::validateArgType(std::size_t                    ordinal,
+                                                     details::spv_map::arg::kind_t  kind) const {
+        if (ordinal >= mArgList.size()) {
+            throw std::runtime_error("adding too many arguments to kernel invocation");
+        }
+
+        auto& ka = mArgList.data()[ordinal];
+        if (ka.kind != kind) {
+            throw std::runtime_error("adding incompatible argument to kernel invocation");
+        }
+
+        return ka.binding;
+    }
+
     void kernel_invocation::addStorageBufferArgument(vulkan_utils::storage_buffer& buffer) {
         mBufferMemoryBarriers.push_back(buffer.prepareForRead());
         mBufferMemoryBarriers.push_back(buffer.prepareForWrite());
@@ -801,7 +839,7 @@ namespace clspv_utils {
 
         vk::WriteDescriptorSet argSet;
         argSet.setDstSet(mArgumentDescriptorSet)
-                .setDstBinding(mArgumentDescriptorWrites.size())
+                .setDstBinding(validateArgType(countArguments(), vk::DescriptorType::eStorageBuffer))
                 .setDescriptorCount(1)
                 .setDescriptorType(vk::DescriptorType::eStorageBuffer);
         mArgumentDescriptorWrites.push_back(argSet);
@@ -813,7 +851,7 @@ namespace clspv_utils {
 
         vk::WriteDescriptorSet argSet;
         argSet.setDstSet(mArgumentDescriptorSet)
-                .setDstBinding(mArgumentDescriptorWrites.size())
+                .setDstBinding(validateArgType(countArguments(), vk::DescriptorType::eUniformBuffer))
                 .setDescriptorCount(1)
                 .setDescriptorType(vk::DescriptorType::eUniformBuffer);
         mArgumentDescriptorWrites.push_back(argSet);
@@ -826,7 +864,7 @@ namespace clspv_utils {
 
         vk::WriteDescriptorSet argSet;
         argSet.setDstSet(mArgumentDescriptorSet)
-                .setDstBinding(mArgumentDescriptorWrites.size())
+                .setDstBinding(validateArgType(countArguments(), vk::DescriptorType::eSampler))
                 .setDescriptorCount(1)
                 .setDescriptorType(vk::DescriptorType::eSampler);
         mArgumentDescriptorWrites.push_back(argSet);
@@ -838,7 +876,7 @@ namespace clspv_utils {
 
         vk::WriteDescriptorSet argSet;
         argSet.setDstSet(mArgumentDescriptorSet)
-                .setDstBinding(mArgumentDescriptorWrites.size())
+                .setDstBinding(validateArgType(countArguments(), vk::DescriptorType::eSampledImage))
                 .setDescriptorCount(1)
                 .setDescriptorType(vk::DescriptorType::eSampledImage);
         mArgumentDescriptorWrites.push_back(argSet);
@@ -850,13 +888,14 @@ namespace clspv_utils {
 
         vk::WriteDescriptorSet argSet;
         argSet.setDstSet(mArgumentDescriptorSet)
-                .setDstBinding(mArgumentDescriptorWrites.size())
+                .setDstBinding(validateArgType(countArguments(), vk::DescriptorType::eStorageImage))
                 .setDescriptorCount(1)
                 .setDescriptorType(vk::DescriptorType::eStorageImage);
         mArgumentDescriptorWrites.push_back(argSet);
     }
 
     void kernel_invocation::addLocalArraySizeArgument(unsigned int numElements) {
+        validateArgType(countArguments(), details::spv_map::arg::kind_t::kind_local);
         mSpecConstantArguments.push_back(numElements);
     }
 
