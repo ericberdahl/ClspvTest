@@ -448,11 +448,24 @@ namespace clspv_utils {
                         kernel->descriptor_set = kernel_arg.descriptor_set;
                     }
 
-                    if (kernel->args.size() <= kernel_arg.ordinal) {
-                        kernel->args.resize(kernel_arg.ordinal + 1, arg_spec_t());
-                    }
-                    kernel->args[kernel_arg.ordinal] = kernel_arg;
+                    kernel->args.push_back(kernel_arg);
                 }
+            }
+
+            // Sort the args for each kernel such that pods are grouped together at the end of the
+            // sequence, and that the non-pod and pod groups are each individually sorted by
+            // increasing ordinal
+            for (auto& k : result.kernels) {
+                std::sort(k.args.begin(), k.args.end(), [](const arg_spec_t& lhs, const arg_spec_t& rhs) {
+                    auto isPod = [](arg_spec_t::kind_t kind) {
+                        return (kind == arg_spec_t::kind_pod || kind == arg_spec_t::kind_pod_ubo);
+                    };
+
+                    const auto lhs_is_pod = isPod(lhs.kind);
+                    const auto rhs_is_pod = isPod(rhs.kind);
+
+                    return (lhs_is_pod == rhs_is_pod ? lhs.ordinal < rhs.ordinal : !lhs_is_pod);
+                });
             }
 
             auto validationErrors = validate_spvmap(result);
