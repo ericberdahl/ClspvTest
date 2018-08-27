@@ -17,6 +17,28 @@
 
 namespace clspv_utils {
 
+    struct device_t {
+        typedef std::map<int,vk::UniqueSampler> sampler_cache_t;
+
+        device_t() {}
+
+        device_t(vk::PhysicalDevice                  physicalDevice,
+                 vk::Device                          device,
+                 vk::PhysicalDeviceMemoryProperties  memoryProperties,
+                 vk::DescriptorPool                  descriptorPool,
+                 vk::CommandPool                     commandPool,
+                 vk::Queue                           computeQueue);
+
+        vk::PhysicalDevice                  mPhysicalDevice;
+        vk::Device                          mDevice;
+        vk::PhysicalDeviceMemoryProperties  mMemoryProperties;
+        vk::DescriptorPool                  mDescriptorPool;
+        vk::CommandPool                     mCommandPool;
+        vk::Queue                           mComputeQueue;
+
+        std::shared_ptr<sampler_cache_t>    mSamplerCache;
+    };
+
     struct sampler_spec_t {
         int opencl_flags    = 0;
         int descriptor_set  = -1;
@@ -56,6 +78,7 @@ namespace clspv_utils {
 
         int                         getArgDescriptorSet() const;
         const std::string&          getEntryPoint() const { return mName; }
+        vk::UniqueDescriptorSetLayout createArgDescriptorLayout(const device_t& device) const;
 
         const sampler_list_proxy_t& getLiteralSamplers() const { return mLiteralSamplers; }
         int                         getLiteralSamplersDescriptorSet() const;
@@ -71,15 +94,27 @@ namespace clspv_utils {
     };
 
     struct spv_map {
+    public:
         typedef std::vector<sampler_spec_t>     sampler_list_t;
         typedef std::vector<kernel_interface>   kernel_list_t;
 
+        spv_map();
+
         static spv_map parse(std::istream &in);
 
-        const kernel_interface* findKernel(const std::string& name) const;
+        const kernel_interface* findKernel(const std::string& entryPoint) const;
 
+        std::vector<std::string>    getEntryPoints() const;
+
+        int                         getLiteralSamplersDescriptorSet() const;
+
+        vk::UniqueDescriptorSetLayout createLiteralSamplerDescriptorLayout(const device_t& device) const;
+
+    private:
+        void    addLiteralSampler(sampler_spec_t sampler);
+
+    public:
         sampler_list_t  samplers;
-        int             samplers_desc_set   = -1;
         kernel_list_t   kernels;
     };
 
@@ -106,27 +141,7 @@ namespace clspv_utils {
         vk::UniquePipelineLayout        mPipelineLayout;
     };
 
-    struct device_t {
-        typedef std::map<int,vk::UniqueSampler> sampler_cache_t;
-
-        device_t() {}
-
-        device_t(vk::PhysicalDevice                  physicalDevice,
-                 vk::Device                          device,
-                 vk::PhysicalDeviceMemoryProperties  memoryProperties,
-                 vk::DescriptorPool                  descriptorPool,
-                 vk::CommandPool                     commandPool,
-                 vk::Queue                           computeQueue);
-
-        vk::PhysicalDevice                  mPhysicalDevice;
-        vk::Device                          mDevice;
-        vk::PhysicalDeviceMemoryProperties  mMemoryProperties;
-        vk::DescriptorPool                  mDescriptorPool;
-        vk::CommandPool                     mCommandPool;
-        vk::Queue                           mComputeQueue;
-
-        std::shared_ptr<sampler_cache_t>    mSamplerCache;
-    };
+    bool isSamplerSupported(int opencl_flags);
 
     vk::UniqueSampler createCompatibleSampler(vk::Device device, int opencl_flags);
 
@@ -192,7 +207,7 @@ namespace clspv_utils {
         bool                        isLoaded() const { return (bool)getShaderModule(); }
 
         std::string                 getName() const { return mName; }
-        std::vector<std::string>    getEntryPoints() const;
+        std::vector<std::string>    getEntryPoints() const { return mSpvMap.getEntryPoints(); }
         vk::ShaderModule            getShaderModule() const { return *mShaderModule; }
 
     private:

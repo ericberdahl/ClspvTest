@@ -21,10 +21,6 @@
 namespace {
     using namespace clspv_utils;
 
-    int sampler_descriptor_set(const spv_map& spv_map) {
-        return (spv_map.samplers.empty() ? -1 : spv_map.samplers[0].descriptor_set);
-    }
-
     const auto kArgKind_DescriptorType_Map = {
             std::make_pair(arg_spec_t::kind_pod_ubo, vk::DescriptorType::eUniformBuffer),
             std::make_pair(arg_spec_t::kind_pod, vk::DescriptorType::eStorageBuffer),
@@ -87,6 +83,15 @@ namespace {
             throw std::runtime_error("unknown argType encountered");
         }
         return found->second;
+    }
+
+    vk::Filter get_vk_filter(int opencl_flags) {
+        return ((opencl_flags & CLK_FILTER_MASK) == CLK_FILTER_LINEAR ? vk::Filter::eLinear
+                                                                      : vk::Filter::eNearest);
+    }
+
+    vk::Bool32 get_vk_unnormalized_coordinates(int opencl_flags) {
+        return ((opencl_flags & CLK_NORMALIZED_COORDS_MASK) == CLK_NORMALIZED_COORDS_FALSE ? VK_TRUE : VK_FALSE);
     }
 
     spv_map create_spv_map(const char *spvmapFilename) {
@@ -173,65 +178,6 @@ namespace {
         return std::move(device.mDevice.allocateDescriptorSetsUnique(createInfo)[0]);
     }
 
-    vk::UniqueDescriptorSetLayout create_literalsampler_descriptor_layout(vk::Device    device,
-                                                                         const spv_map& spvMap) {
-        vk::UniqueDescriptorSetLayout result;
-
-        if (!spvMap.samplers.empty()) {
-            assert(0 == spvMap.samplers_desc_set);
-
-            std::vector<vk::DescriptorSetLayoutBinding> bindingSet;
-
-            vk::DescriptorSetLayoutBinding binding;
-            binding.setStageFlags(vk::ShaderStageFlagBits::eCompute)
-                    .setDescriptorCount(1);
-
-            for (auto& s : spvMap.samplers) {
-                binding.descriptorType = vk::DescriptorType::eSampler;
-                binding.binding = s.binding;
-                bindingSet.push_back(binding);
-            }
-
-            vk::DescriptorSetLayoutCreateInfo createInfo;
-            createInfo.setBindingCount(bindingSet.size())
-                    .setPBindings(bindingSet.size() ? bindingSet.data() : nullptr);
-
-            result = device.createDescriptorSetLayoutUnique(createInfo);
-        }
-        else {
-            assert(-1 == spvMap.samplers_desc_set);
-        }
-
-        return result;
-    }
-
-    vk::UniqueDescriptorSetLayout create_arg_descriptor_layout(vk::Device               device,
-                                                               const kernel_interface&  kernel) {
-        assert(kernel.getArgDescriptorSet() == (kernel.getLiteralSamplers().empty() ? 0 : 1));
-
-        std::vector<vk::DescriptorSetLayoutBinding> bindingSet;
-
-        vk::DescriptorSetLayoutBinding binding;
-        binding.setStageFlags(vk::ShaderStageFlagBits::eCompute)
-                .setDescriptorCount(1);
-
-        for (auto &ka : kernel.mArgSpecs) {
-            // ignore any argument not in offset 0
-            if (0 != ka.offset) continue;
-
-            binding.descriptorType = find_descriptor_type(ka.kind);
-            binding.binding = ka.binding;
-
-            bindingSet.push_back(binding);
-        }
-
-        vk::DescriptorSetLayoutCreateInfo createInfo;
-        createInfo.setBindingCount(bindingSet.size())
-                .setPBindings(bindingSet.size() ? bindingSet.data() : nullptr);
-
-        return device.createDescriptorSetLayoutUnique(createInfo);
-    }
-
     vk::UniquePipelineLayout create_pipeline_layout(vk::Device                                      device,
                                                     vk::ArrayProxy<const vk::DescriptorSetLayout>   layouts)
     {
@@ -242,89 +188,59 @@ namespace {
         return device.createPipelineLayoutUnique(createInfo);
     }
 
-    std::vector<std::string> validate_sampler(const sampler_spec_t& sampler) {
-        std::vector<std::string> result;
+    void validate_sampler(const sampler_spec_t& sampler) {
+        const auto fail = [](const char* message) {
+            throw std::runtime_error(message);
+        };
 
         if (sampler.opencl_flags == 0) {
-            result.push_back("sampler missing OpenCL flags");
+            fail("sampler missing OpenCL flags");
         }
         if (sampler.descriptor_set < 0) {
-            result.push_back("sampler missing descriptorSet");
+            fail("sampler missing descriptorSet");
         }
         if (sampler.binding < 0) {
-            result.push_back("sampler missing binding");
+            fail("sampler missing binding");
         }
 
-        return result;
+        // all samplers, are documented to share descriptor set 0
+        if (sampler.descriptor_set != 0) {
+            fail("all clspv literal samplers must use descriptor set 0");
+        }
+
+        if (!isSamplerSupported(sampler.opencl_flags)) {
+            fail("sampler is not representable in Vulkan");
+        }
     }
 
-    std::vector<std::string> validate_kernel_arg(const arg_spec_t& arg) {
-        std::vector<std::string> result;
+    void validate_kernel_arg(const arg_spec_t& arg) {
+        const auto fail = [](const char* message) {
+            throw std::runtime_error(message);
+        };
 
         if (arg.kind == arg_spec_t::kind_unknown) {
-            result.push_back("kernel argument kind unknown");
+            fail("kernel argument kind unknown");
         }
         if (arg.ordinal < 0) {
-            result.push_back("kernel argument missing ordinal");
+            fail("kernel argument missing ordinal");
         }
 
         if (arg.kind == arg_spec_t::kind_local) {
             if (arg.spec_constant < 0) {
-                result.push_back("kernel argument missing spec constant");
+                fail("local kernel argument missing spec constant");
             }
         }
         else {
             if (arg.descriptor_set < 0) {
-                result.push_back("kernel argument missing descriptorSet");
+                fail("kernel argument missing descriptorSet");
             }
             if (arg.binding < 0) {
-                result.push_back("kernel argument missing binding");
+                fail("kernel argument missing binding");
             }
             if (arg.offset < 0) {
-                result.push_back("kernel argument missing offset");
+                fail("kernel argument missing offset");
             }
         }
-
-        return result;
-    }
-
-    std::vector<std::string> validate_kernel(const kernel_interface& kernel) {
-        std::vector<std::string> result;
-        std::vector<std::string> tempErrors;
-
-        // All arguments for a given kernel that are passed in a descriptor set need to be in
-        // the same descriptor set
-        for (auto& ka : kernel.mArgSpecs) {
-            tempErrors = validate_kernel_arg(ka);
-            result.insert(result.end(), tempErrors.begin(), tempErrors.end());
-            tempErrors.clear();
-        }
-
-        return result;
-    }
-
-    std::vector<std::string> validate_spvmap(const spv_map& spvmap) {
-        std::vector<std::string> result;
-        std::vector<std::string> tempErrors;
-
-        for (auto& k : spvmap.kernels) {
-            tempErrors = validate_kernel(k);
-            result.insert(result.end(), tempErrors.begin(), tempErrors.end());
-            tempErrors.clear();
-        }
-
-        const int sampler_ds = sampler_descriptor_set(spvmap);
-        for (auto& s : spvmap.samplers) {
-            tempErrors = validate_sampler(s);
-            result.insert(result.end(), tempErrors.begin(), tempErrors.end());
-            tempErrors.clear();
-
-            if (s.descriptor_set != sampler_ds) {
-                result.push_back("sampler descriptor_sets don't match");
-            }
-        }
-
-        return result;
     }
 
     sampler_spec_t parse_spvmap_sampler(key_value_t tag, std::istream& in) {
@@ -346,33 +262,33 @@ namespace {
     }
 
     arg_spec_t parse_spvmap_kernel_arg(key_value_t tag, std::istream& in) {
-            arg_spec_t result;
+        arg_spec_t result;
 
-            while (!in.eof()) {
-                tag = read_key_value_pair(in);
+        while (!in.eof()) {
+            tag = read_key_value_pair(in);
 
-                if ("argOrdinal" == tag.first) {
-                    result.ordinal = std::atoi(tag.second.c_str());
-                } else if ("descriptorSet" == tag.first) {
-                    result.descriptor_set = std::atoi(tag.second.c_str());
-                } else if ("binding" == tag.first) {
-                    result.binding = std::atoi(tag.second.c_str());
-                } else if ("offset" == tag.first) {
-                    result.offset = std::atoi(tag.second.c_str());
-                } else if ("argKind" == tag.first) {
-                    result.kind = find_arg_kind(tag.second);
-                } else if ("arrayElemSize" == tag.first) {
-                    // arrayElemSize is ignored by clspvtest
-                } else if ("arrayNumElemSpecId" == tag.first) {
-                    result.spec_constant = std::atoi(tag.second.c_str());
-                }
-
+            if ("argOrdinal" == tag.first) {
+                result.ordinal = std::atoi(tag.second.c_str());
+            } else if ("descriptorSet" == tag.first) {
+                result.descriptor_set = std::atoi(tag.second.c_str());
+            } else if ("binding" == tag.first) {
+                result.binding = std::atoi(tag.second.c_str());
+            } else if ("offset" == tag.first) {
+                result.offset = std::atoi(tag.second.c_str());
+            } else if ("argKind" == tag.first) {
+                result.kind = find_arg_kind(tag.second);
+            } else if ("arrayElemSize" == tag.first) {
+                // arrayElemSize is ignored by clspvtest
+            } else if ("arrayNumElemSpecId" == tag.first) {
+                result.spec_constant = std::atoi(tag.second.c_str());
             }
 
-            return result;
         }
 
-    vk::Sampler getCachedSampler(device_t& device, const sampler_spec_t& s) {
+        return result;
+    }
+
+    vk::Sampler get_cached_sampler(device_t& device, const sampler_spec_t& s) {
         if (!device.mSamplerCache) {
             device.mSamplerCache.reset(new device_t::sampler_cache_t);
         }
@@ -418,8 +334,12 @@ namespace clspv_utils {
 
     void kernel_interface::validate() const
     {
+        const auto fail = [](const char* message) {
+            throw std::runtime_error(message);
+        };
+
         if (mName.empty()) {
-            throw std::runtime_error("kernel has no name");
+            fail("kernel has no name");
         }
 
         const int arg_ds = getArgDescriptorSet();
@@ -427,16 +347,20 @@ namespace clspv_utils {
             // All arguments for a given kernel that are passed in a descriptor set need to be in
             // the same descriptor set
             if (ka.kind != arg_spec_t::kind_local && ka.descriptor_set != arg_ds) {
-                throw std::runtime_error("kernel arg descriptor_sets don't match");
+                fail("kernel arg descriptor_sets don't match");
             }
+
+            validate_kernel_arg(ka);
         }
 
         const int sampler_ds = getLiteralSamplersDescriptorSet();
         for (auto& ls : mLiteralSamplers) {
             // All literal samplers for a given kernel need to be in the same descriptor set
             if (ls.descriptor_set != sampler_ds) {
-                throw std::runtime_error("literal sampler descriptor_sets don't match");
+                fail("literal sampler descriptor_sets don't match");
             }
+
+            validate_sampler(ls);
         }
 
         // TODO: mArgSpec entries are in increasing binding, and pod/pod_ubo's come after non-pod/non-pod_ubo's
@@ -458,6 +382,36 @@ namespace clspv_utils {
         return (found == mLiteralSamplers.end() ? -1 : found->descriptor_set);
     }
 
+    vk::UniqueDescriptorSetLayout kernel_interface::createArgDescriptorLayout(const device_t& device) const
+    {
+        assert(getArgDescriptorSet() == (getLiteralSamplers().empty() ? 0 : 1));
+
+        std::vector<vk::DescriptorSetLayoutBinding> bindingSet;
+
+        vk::DescriptorSetLayoutBinding binding;
+        binding.setStageFlags(vk::ShaderStageFlagBits::eCompute)
+                .setDescriptorCount(1);
+
+        for (auto &ka : mArgSpecs) {
+            // ignore any argument not in offset 0
+            if (0 != ka.offset) continue;
+
+            binding.descriptorType = find_descriptor_type(ka.kind);
+            binding.binding = ka.binding;
+
+            bindingSet.push_back(binding);
+        }
+
+        vk::DescriptorSetLayoutCreateInfo createInfo;
+        createInfo.setBindingCount(bindingSet.size())
+                .setPBindings(bindingSet.size() ? bindingSet.data() : nullptr);
+
+        return device.mDevice.createDescriptorSetLayoutUnique(createInfo);
+    }
+
+    spv_map::spv_map() {
+    }
+
     spv_map spv_map::parse(std::istream &in) {
         spv_map result;
 
@@ -475,20 +429,9 @@ namespace clspv_utils {
             std::istringstream in_line(line);
             auto tag = read_key_value_pair(in_line);
             if ("sampler" == tag.first) {
-                auto sampler = parse_spvmap_sampler(tag, in_line);
-
-                // all samplers, if any, are documented to share descriptor set 0
-                assert(sampler.descriptor_set == 0);
-
-                if (-1 == result.samplers_desc_set) {
-                    result.samplers_desc_set = sampler.descriptor_set;
-                }
-
-                result.samplers.push_back(sampler);
+                result.addLiteralSampler(parse_spvmap_sampler(tag, in_line));
             } else if ("kernel" == tag.first) {
-                auto kernel_arg = parse_spvmap_kernel_arg(tag, in_line);
-
-                kernel_args[tag.second].push_back(kernel_arg);
+                kernel_args[tag.second].push_back(parse_spvmap_kernel_arg(tag, in_line));
             }
         }
 
@@ -496,16 +439,12 @@ namespace clspv_utils {
             result.kernels.push_back(kernel_interface(k.first, result.samplers, k.second));
         }
 
-        auto validationErrors = validate_spvmap(result);
-        if (!validationErrors.empty()) {
-            std::ostringstream os;
-            for (auto& s : validationErrors) {
-                os << s << std::endl;
-            }
-            throw std::runtime_error(os.str());
-        }
-
         return result;
+    }
+
+    void spv_map::addLiteralSampler(clspv_utils::sampler_spec_t sampler) {
+        validate_sampler(sampler);
+        samplers.push_back(sampler);
     }
 
     const kernel_interface* spv_map::findKernel(const std::string& name) const {
@@ -517,15 +456,72 @@ namespace clspv_utils {
         return (kernel == kernels.end() ? nullptr : &(*kernel));
     }
 
+    int spv_map::getLiteralSamplersDescriptorSet() const {
+        auto found = std::find_if(samplers.begin(), samplers.end(), [](const sampler_spec_t& ss) {
+            return (-1 != ss.descriptor_set);
+        });
+        return (found == samplers.end() ? -1 : found->descriptor_set);
+    }
+
+    vk::UniqueDescriptorSetLayout spv_map::createLiteralSamplerDescriptorLayout(const device_t& device) const
+    {
+        vk::UniqueDescriptorSetLayout result;
+
+        if (!samplers.empty()) {
+            assert(0 == getLiteralSamplersDescriptorSet());
+
+            std::vector<vk::DescriptorSetLayoutBinding> bindingSet;
+
+            vk::DescriptorSetLayoutBinding binding;
+            binding.setStageFlags(vk::ShaderStageFlagBits::eCompute)
+                    .setDescriptorCount(1);
+
+            for (auto& s : samplers) {
+                binding.descriptorType = vk::DescriptorType::eSampler;
+                binding.binding = s.binding;
+                bindingSet.push_back(binding);
+            }
+
+            vk::DescriptorSetLayoutCreateInfo createInfo;
+            createInfo.setBindingCount(bindingSet.size())
+                    .setPBindings(bindingSet.size() ? bindingSet.data() : nullptr);
+
+            result = device.mDevice.createDescriptorSetLayoutUnique(createInfo);
+        }
+        else {
+            assert(-1 == getLiteralSamplersDescriptorSet());
+        }
+
+        return result;
+    }
+
+    std::vector<std::string> spv_map::getEntryPoints() const
+    {
+        std::vector<std::string> result;
+
+        std::transform(kernels.begin(), kernels.end(),
+                       std::back_inserter(result),
+                       [](const kernel_interface& k) { return k.getEntryPoint(); });
+
+        return result;
+    }
+
+    bool isSamplerSupported(int opencl_flags)
+    {
+        const vk::Bool32 unnormalizedCoordinates    = get_vk_unnormalized_coordinates(opencl_flags);
+        const vk::SamplerAddressMode addressMode    = find_address_mode(opencl_flags);
+
+        return (!unnormalizedCoordinates || addressMode == vk::SamplerAddressMode::eClampToEdge || addressMode == vk::SamplerAddressMode::eClampToBorder);
+    }
+
     vk::UniqueSampler createCompatibleSampler(vk::Device device, int opencl_flags) {
-        const vk::Filter filter = ((opencl_flags & CLK_FILTER_MASK) == CLK_FILTER_LINEAR ?
-                                   vk::Filter::eLinear :
-                                   vk::Filter::eNearest);
-        const vk::Bool32 unnormalizedCoordinates = ((opencl_flags & CLK_NORMALIZED_COORDS_MASK) == CLK_NORMALIZED_COORDS_FALSE ? VK_TRUE : VK_FALSE);
-        const auto addressMode = find_address_mode(opencl_flags);
-        if (unnormalizedCoordinates && (addressMode != vk::SamplerAddressMode::eClampToEdge && addressMode != vk::SamplerAddressMode::eClampToBorder)) {
+        if (!isSamplerSupported(opencl_flags)) {
             throw std::runtime_error("This OpenCL sampler cannot be represented in Vulkan");
         }
+
+        const vk::Filter filter                     = get_vk_filter(opencl_flags);
+        const vk::Bool32 unnormalizedCoordinates    = get_vk_unnormalized_coordinates(opencl_flags);
+        const vk::SamplerAddressMode addressMode    = find_address_mode(opencl_flags);
 
         vk::SamplerCreateInfo samplerCreateInfo;
         samplerCreateInfo.setMagFilter(filter)
@@ -589,45 +585,33 @@ namespace clspv_utils {
         // Create literal sampler descriptor set
         //
 
-        std::vector<vk::DescriptorImageInfo> literalSamplerInfo;
-        for (auto s : mSpvMap.samplers) {
-            vk::DescriptorImageInfo samplerInfo;
-            samplerInfo.setSampler(getCachedSampler(mDevice, s));
-
-            literalSamplerInfo.push_back(samplerInfo);
-        }
-
-        mLiteralSamplerDescriptorLayout = create_literalsampler_descriptor_layout(mDevice.mDevice, mSpvMap);
+        mLiteralSamplerDescriptorLayout = mSpvMap.createLiteralSamplerDescriptorLayout(mDevice);
         if (mLiteralSamplerDescriptorLayout) {
             mLiteralSamplerDescriptor = allocate_descriptor_set(mDevice,
                                                                 *mLiteralSamplerDescriptorLayout);
 
-            vk::WriteDescriptorSet literalSamplerSet;
-            literalSamplerSet.setDstSet(*mLiteralSamplerDescriptor)
-                    .setDstBinding(0)
-                    .setDescriptorCount(1)
-                    .setDescriptorType(vk::DescriptorType::eSampler);
-
+            std::vector<vk::DescriptorImageInfo> literalSamplerInfo;
             std::vector<vk::WriteDescriptorSet> literalSamplerDescriptorWrites;
 
-            for (auto& lsd : literalSamplerInfo) {
-                literalSamplerSet.setPImageInfo(&lsd);
+            literalSamplerInfo.reserve(mSpvMap.samplers.size());
+            literalSamplerDescriptorWrites.reserve(mSpvMap.samplers.size());
+
+            for (auto s : mSpvMap.samplers) {
+                vk::DescriptorImageInfo samplerInfo;
+                samplerInfo.setSampler(get_cached_sampler(mDevice, s));
+                literalSamplerInfo.push_back(samplerInfo);
+
+                vk::WriteDescriptorSet literalSamplerSet;
+                literalSamplerSet.setDstSet(*mLiteralSamplerDescriptor)
+                        .setDstBinding(s.binding)
+                        .setDescriptorCount(1)
+                        .setDescriptorType(vk::DescriptorType::eSampler)
+                        .setPImageInfo(&literalSamplerInfo.back());
                 literalSamplerDescriptorWrites.push_back(literalSamplerSet);
-                ++literalSamplerSet.dstBinding;
             }
 
             mDevice.mDevice.updateDescriptorSets(literalSamplerDescriptorWrites, nullptr);
         }
-    }
-
-    std::vector<std::string> kernel_module::getEntryPoints() const {
-        std::vector<std::string> result;
-
-        std::transform(mSpvMap.kernels.begin(), mSpvMap.kernels.end(),
-                       std::back_inserter(result),
-                       [](const kernel_interface& k) { return k.getEntryPoint(); });
-
-        return result;
     }
 
     kernel_layout_t kernel_module::createKernelLayout(const std::string& entryPoint) const {
@@ -643,7 +627,7 @@ namespace clspv_utils {
         }
 
         if (-1 != kernelInterface->getArgDescriptorSet()) {
-            result.mArgumentDescriptorLayout = create_arg_descriptor_layout(mDevice.mDevice, *kernelInterface);
+            result.mArgumentDescriptorLayout = kernelInterface->createArgDescriptorLayout(mDevice);
 
             result.mArgumentsDescriptor = allocate_descriptor_set(mDevice,
                                                                   *result.mArgumentDescriptorLayout);
@@ -839,28 +823,38 @@ namespace clspv_utils {
     }
 
     std::uint32_t kernel_invocation::validateArgType(std::size_t        ordinal,
-                                                     vk::DescriptorType kind) const {
+                                                     vk::DescriptorType kind) const
+    {
+        const auto fail = [](const char* message) {
+            throw std::runtime_error(message);
+        };
+
         if (ordinal >= mArgList.size()) {
-            throw std::runtime_error("adding too many arguments to kernel invocation");
+            fail("adding too many arguments to kernel invocation");
         }
 
         auto& ka = mArgList.data()[ordinal];
         if (find_descriptor_type(ka.kind) != kind) {
-            throw std::runtime_error("adding incompatible argument to kernel invocation");
+            fail("adding incompatible argument to kernel invocation");
         }
 
         return ka.binding;
     }
 
     std::uint32_t kernel_invocation::validateArgType(std::size_t        ordinal,
-                                                     arg_spec_t::kind_t kind) const {
+                                                     arg_spec_t::kind_t kind) const
+    {
+        const auto fail = [](const char* message) {
+            throw std::runtime_error(message);
+        };
+
         if (ordinal >= mArgList.size()) {
-            throw std::runtime_error("adding too many arguments to kernel invocation");
+            fail("adding too many arguments to kernel invocation");
         }
 
         auto& ka = mArgList.data()[ordinal];
         if (ka.kind != kind) {
-            throw std::runtime_error("adding incompatible argument to kernel invocation");
+            fail("adding incompatible argument to kernel invocation");
         }
 
         return ka.binding;
