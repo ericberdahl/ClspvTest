@@ -205,8 +205,8 @@ namespace {
         return result;
     }
 
-    vk::UniqueDescriptorSetLayout create_arg_descriptor_layout(vk::Device           device,
-                                                               const kernel_spec_t& kernel) {
+    vk::UniqueDescriptorSetLayout create_arg_descriptor_layout(vk::Device               device,
+                                                               const kernel_interface&  kernel) {
         assert(kernel.getArgDescriptorSet() == (kernel.getLiteralSamplers().empty() ? 0 : 1));
 
         std::vector<vk::DescriptorSetLayoutBinding> bindingSet;
@@ -288,7 +288,7 @@ namespace {
         return result;
     }
 
-    std::vector<std::string> validate_kernel(const kernel_spec_t& kernel) {
+    std::vector<std::string> validate_kernel(const kernel_interface& kernel) {
         std::vector<std::string> result;
         std::vector<std::string> tempErrors;
 
@@ -386,15 +386,15 @@ namespace {
 
 namespace clspv_utils {
 
-    kernel_spec_t::kernel_spec_t()
+    kernel_interface::kernel_interface()
             : mLiteralSamplers(nullptr)
     {
     }
 
-    kernel_spec_t::kernel_spec_t(std::string            entryPoint,
-                                 sampler_list_proxy_t   samplers,
-                                 arg_list_t             arguments)
-            : kernel_spec_t()
+    kernel_interface::kernel_interface(std::string            entryPoint,
+                                       sampler_list_proxy_t   samplers,
+                                       arg_list_t             arguments)
+            : kernel_interface()
     {
         mName = entryPoint;
         mArgSpecs = std::move(arguments);
@@ -416,7 +416,7 @@ namespace clspv_utils {
         validate();
     }
 
-    void kernel_spec_t::validate() const
+    void kernel_interface::validate() const
     {
         if (mName.empty()) {
             throw std::runtime_error("kernel has no name");
@@ -444,14 +444,14 @@ namespace clspv_utils {
         // TODO: if there is a pod or pod_ubo argument, its descriptor set must be larger than other descriptor sets
     }
 
-    int kernel_spec_t::getArgDescriptorSet() const {
+    int kernel_interface::getArgDescriptorSet() const {
         auto found = std::find_if(mArgSpecs.begin(), mArgSpecs.end(), [](const arg_spec_t& as) {
             return (-1 != as.descriptor_set);
         });
         return (found == mArgSpecs.end() ? -1 : found->descriptor_set);
     }
 
-    int kernel_spec_t::getLiteralSamplersDescriptorSet() const {
+    int kernel_interface::getLiteralSamplersDescriptorSet() const {
         auto found = std::find_if(mLiteralSamplers.begin(), mLiteralSamplers.end(), [](const sampler_spec_t& ss) {
             return (-1 != ss.descriptor_set);
         });
@@ -461,7 +461,7 @@ namespace clspv_utils {
     spv_map spv_map::parse(std::istream &in) {
         spv_map result;
 
-        std::map<std::string, kernel_spec_t::arg_list_t> kernel_args;
+        std::map<std::string, kernel_interface::arg_list_t> kernel_args;
 
         while (!in.eof()) {
             // read one line
@@ -493,7 +493,7 @@ namespace clspv_utils {
         }
 
         for (auto& k : kernel_args) {
-            result.kernels.push_back(kernel_spec_t(k.first, result.samplers, k.second));
+            result.kernels.push_back(kernel_interface(k.first, result.samplers, k.second));
         }
 
         auto validationErrors = validate_spvmap(result);
@@ -508,9 +508,9 @@ namespace clspv_utils {
         return result;
     }
 
-    const kernel_spec_t* spv_map::findKernel(const std::string& name) const {
+    const kernel_interface* spv_map::findKernel(const std::string& name) const {
         auto kernel = std::find_if(kernels.begin(), kernels.end(),
-                                   [&name](const kernel_spec_t &iter) {
+                                   [&name](const kernel_interface &iter) {
                                        return iter.getEntryPoint() == name;
                                    });
 
@@ -625,7 +625,7 @@ namespace clspv_utils {
 
         std::transform(mSpvMap.kernels.begin(), mSpvMap.kernels.end(),
                        std::back_inserter(result),
-                       [](const kernel_spec_t& k) { return k.getEntryPoint(); });
+                       [](const kernel_interface& k) { return k.getEntryPoint(); });
 
         return result;
     }

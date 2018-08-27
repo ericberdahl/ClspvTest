@@ -43,16 +43,16 @@ namespace clspv_utils {
         int     spec_constant   = -1;
     };
 
-    class kernel_spec_t {
+    class kernel_interface {
     public:
         typedef std::vector<arg_spec_t>                 arg_list_t;
         typedef vk::ArrayProxy<const sampler_spec_t>    sampler_list_proxy_t;
 
-                    kernel_spec_t();
+        kernel_interface();
 
-                    kernel_spec_t(std::string           entryPoint,
-                                  sampler_list_proxy_t  samplers,
-                                  arg_list_t            arguments);
+        kernel_interface(std::string           entryPoint,
+                         sampler_list_proxy_t  samplers,
+                         arg_list_t            arguments);
 
         int                         getArgDescriptorSet() const;
         const std::string&          getEntryPoint() const { return mName; }
@@ -71,12 +71,12 @@ namespace clspv_utils {
     };
 
     struct spv_map {
-        typedef std::vector<sampler_spec_t> sampler_list_t;
-        typedef std::vector<kernel_spec_t>  kernel_list_t;
+        typedef std::vector<sampler_spec_t>     sampler_list_t;
+        typedef std::vector<kernel_interface>   kernel_list_t;
 
         static spv_map parse(std::istream &in);
 
-        const kernel_spec_t* findKernel(const std::string& name) const;
+        const kernel_interface* findKernel(const std::string& name) const;
 
         sampler_list_t  samplers;
         int             samplers_desc_set   = -1;
