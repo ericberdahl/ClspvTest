@@ -43,26 +43,47 @@ namespace clspv_utils {
         int     spec_constant   = -1;
     };
 
-    struct kernel_spec_t {
-        typedef std::vector<arg_spec_t> arg_list_t;
+    class kernel_spec_t {
+    public:
+        typedef std::vector<arg_spec_t>                 arg_list_t;
+        typedef vk::ArrayProxy<const sampler_spec_t>    sampler_list_proxy_t;
 
-        std::string name;
-        int         descriptor_set  = -1;
-        arg_list_t  args;
+                    kernel_spec_t();
+
+                    kernel_spec_t(std::string           entryPoint,
+                                  sampler_list_proxy_t  samplers,
+                                  arg_list_t            arguments);
+
+        int                         getArgDescriptorSet() const { return mArgDescriptorSet; }
+        const std::string&          getEntryPoint() const { return mName; }
+
+        const sampler_list_proxy_t& getLiteralSamplers() const { return mLiteralSamplers; }
+        int                         getLiteralSamplersDescriptorSet() const { return mLiteralSamplerDescriptorSet; }
+
+    private:
+        void        validate() const;
+
+    private:
+        std::string             mName;
+        int                     mArgDescriptorSet  = -1;
+
+        sampler_list_proxy_t    mLiteralSamplers;
+        int                     mLiteralSamplerDescriptorSet  = -1;
+    public:
+        arg_list_t              mArgSpecs;  // TODO: make mArgSpecs private
     };
 
     struct spv_map {
-        typedef std::vector<sampler_spec_t> literal_sampler_list_t;
+        typedef std::vector<sampler_spec_t> sampler_list_t;
         typedef std::vector<kernel_spec_t>  kernel_list_t;
 
         static spv_map parse(std::istream &in);
 
-        kernel_spec_t* findKernel(const std::string& name);
         const kernel_spec_t* findKernel(const std::string& name) const;
 
-        literal_sampler_list_t  samplers;
-        int                     samplers_desc_set   = -1;
-        kernel_list_t           kernels;
+        sampler_list_t  samplers;
+        int             samplers_desc_set   = -1;
+        kernel_list_t   kernels;
     };
 
     struct execution_time_t {

@@ -25,10 +25,6 @@ namespace {
         return (spv_map.samplers.empty() ? -1 : spv_map.samplers[0].descriptor_set);
     }
 
-    int kernel_descriptor_set(const kernel_spec_t& kernel) {
-        return (kernel.args.empty() ? -1 : kernel.args[0].descriptor_set);
-    }
-
     const auto kArgKind_DescriptorType_Map = {
             std::make_pair(arg_spec_t::kind_pod_ubo, vk::DescriptorType::eUniformBuffer),
             std::make_pair(arg_spec_t::kind_pod, vk::DescriptorType::eStorageBuffer),
@@ -215,7 +211,7 @@ namespace {
             throw std::runtime_error("entryPoint not found; cannot create descriptor layout");
         }
 
-        assert(kernel->descriptor_set == (spvMap.samplers.empty() ? 0 : 1));
+        assert(kernel->getArgDescriptorSet() == (spvMap.samplers.empty() ? 0 : 1));
 
         std::vector<vk::DescriptorSetLayoutBinding> bindingSet;
 
@@ -223,7 +219,7 @@ namespace {
         binding.setStageFlags(vk::ShaderStageFlagBits::eCompute)
                 .setDescriptorCount(1);
 
-        for (auto &ka : kernel->args) {
+        for (auto &ka : kernel->mArgSpecs) {
             // ignore any argument not in offset 0
             if (0 != ka.offset) continue;
 
@@ -300,25 +296,14 @@ namespace {
         std::vector<std::string> result;
         std::vector<std::string> tempErrors;
 
-        if (kernel.name.empty()) {
-            result.push_back("kernel has no name");
-        }
-
         // All arguments for a given kernel that are passed in a descriptor set need to be in
         // the same descriptor set
-        const int arg_ds = kernel_descriptor_set(kernel);
-        for (auto& ka : kernel.args) {
+        const int arg_ds = kernel.getArgDescriptorSet();
+        for (auto& ka : kernel.mArgSpecs) {
             tempErrors = validate_kernel_arg(ka);
             result.insert(result.end(), tempErrors.begin(), tempErrors.end());
             tempErrors.clear();
-
-            if (ka.kind != arg_spec_t::kind_local && ka.descriptor_set != arg_ds) {
-                result.push_back("kernel arg descriptor_sets don't match");
-            }
         }
-
-        // TODO: there cannot be both pod and pod_ubo arguments for a given kernel
-        // TODO: if there is a pod or pod_ubo argument, its descriptor set must be larger than other descriptor sets
 
         return result;
     }
@@ -406,8 +391,82 @@ namespace {
 
 namespace clspv_utils {
 
+    kernel_spec_t::kernel_spec_t()
+            : mLiteralSamplers(nullptr)
+    {
+    }
+
+    kernel_spec_t::kernel_spec_t(std::string            entryPoint,
+                                 sampler_list_proxy_t   samplers,
+                                 arg_list_t             arguments)
+            : kernel_spec_t()
+    {
+        mName = entryPoint;
+        mArgSpecs = std::move(arguments);
+        mLiteralSamplers = samplers;
+
+        // Take the arg descriptor set from the first argument that has a descriptor set
+        for (auto& ka : mArgSpecs) {
+            if (ka.descriptor_set != -1) {
+                mArgDescriptorSet = ka.descriptor_set;
+                break;
+            }
+        }
+
+        // Take the sampler descriptor set from the first sampler that has a descriptor set
+        for (auto& ls : mLiteralSamplers) {
+            if (ls.descriptor_set != -1) {
+                mLiteralSamplerDescriptorSet = ls.descriptor_set;
+                break;
+            }
+        }
+
+        // Sort the args such that pods are grouped together at the end of the sequence, and that
+        // the non-pod and pod groups are each individually sorted by increasing ordinal
+        std::sort(mArgSpecs.begin(), mArgSpecs.end(), [](const arg_spec_t& lhs, const arg_spec_t& rhs) {
+            auto isPod = [](arg_spec_t::kind_t kind) {
+                return (kind == arg_spec_t::kind_pod || kind == arg_spec_t::kind_pod_ubo);
+            };
+
+            const auto lhs_is_pod = isPod(lhs.kind);
+            const auto rhs_is_pod = isPod(rhs.kind);
+
+            return (lhs_is_pod == rhs_is_pod ? lhs.ordinal < rhs.ordinal : !lhs_is_pod);
+        });
+
+        validate();
+    }
+
+    void kernel_spec_t::validate() const
+    {
+        if (mName.empty()) {
+            throw std::runtime_error("kernel has no name");
+        }
+
+        for (auto& ka : mArgSpecs) {
+            // All arguments for a given kernel that are passed in a descriptor set need to be in
+            // the same descriptor set
+            if (ka.kind != arg_spec_t::kind_local && ka.descriptor_set != mArgDescriptorSet) {
+                throw std::runtime_error("kernel arg descriptor_sets don't match");
+            }
+        }
+
+        for (auto& ls : mLiteralSamplers) {
+            // All literal samplers for a given kernel need to be in the same descriptor set
+            if (ls.descriptor_set != mLiteralSamplerDescriptorSet) {
+                throw std::runtime_error("literal sampler descriptor_sets don't match");
+            }
+        }
+
+        // TODO: mArgSpec entries are in increasing binding, and pod/pod_ubo's come after non-pod/non-pod_ubo's
+        // TODO: there cannot be both pod and pod_ubo arguments for a given kernel
+        // TODO: if there is a pod or pod_ubo argument, its descriptor set must be larger than other descriptor sets
+    }
+
     spv_map spv_map::parse(std::istream &in) {
         spv_map result;
+
+        std::map<std::string, kernel_spec_t::arg_list_t> kernel_args;
 
         while (!in.eof()) {
             // read one line
@@ -434,36 +493,12 @@ namespace clspv_utils {
             } else if ("kernel" == tag.first) {
                 auto kernel_arg = parse_spvmap_kernel_arg(tag, in_line);
 
-                auto kernel = result.findKernel(tag.second);
-                if (!kernel) {
-                    result.kernels.push_back(kernel_spec_t());
-                    kernel = &result.kernels.back();
-                    kernel->name = tag.second;
-                }
-                assert(kernel);
-
-                if (-1 == kernel->descriptor_set && -1 != kernel_arg.descriptor_set) {
-                    kernel->descriptor_set = kernel_arg.descriptor_set;
-                }
-
-                kernel->args.push_back(kernel_arg);
+                kernel_args[tag.second].push_back(kernel_arg);
             }
         }
 
-        // Sort the args for each kernel such that pods are grouped together at the end of the
-        // sequence, and that the non-pod and pod groups are each individually sorted by
-        // increasing ordinal
-        for (auto& k : result.kernels) {
-            std::sort(k.args.begin(), k.args.end(), [](const arg_spec_t& lhs, const arg_spec_t& rhs) {
-                auto isPod = [](arg_spec_t::kind_t kind) {
-                    return (kind == arg_spec_t::kind_pod || kind == arg_spec_t::kind_pod_ubo);
-                };
-
-                const auto lhs_is_pod = isPod(lhs.kind);
-                const auto rhs_is_pod = isPod(rhs.kind);
-
-                return (lhs_is_pod == rhs_is_pod ? lhs.ordinal < rhs.ordinal : !lhs_is_pod);
-            });
+        for (auto& k : kernel_args) {
+            result.kernels.push_back(kernel_spec_t(k.first, result.samplers, k.second));
         }
 
         auto validationErrors = validate_spvmap(result);
@@ -478,14 +513,10 @@ namespace clspv_utils {
         return result;
     }
 
-    kernel_spec_t* spv_map::findKernel(const std::string& name) {
-        return const_cast<kernel_spec_t*>(const_cast<const spv_map*>(this)->findKernel(name));
-    }
-
     const kernel_spec_t* spv_map::findKernel(const std::string& name) const {
         auto kernel = std::find_if(kernels.begin(), kernels.end(),
                                    [&name](const kernel_spec_t &iter) {
-                                       return iter.name == name;
+                                       return iter.getEntryPoint() == name;
                                    });
 
         return (kernel == kernels.end() ? nullptr : &(*kernel));
@@ -605,7 +636,7 @@ namespace clspv_utils {
 
         std::transform(mSpvMap.kernels.begin(), mSpvMap.kernels.end(),
                        std::back_inserter(result),
-                       [](const kernel_spec_t& k) { return k.name; });
+                       [](const kernel_spec_t& k) { return k.getEntryPoint(); });
 
         return result;
     }
@@ -622,7 +653,7 @@ namespace clspv_utils {
             throw std::runtime_error("cannot create kernel layout for unknown entry point");
         }
 
-        if (-1 != kernel_arg_map->descriptor_set) {
+        if (-1 != kernel_arg_map->getArgDescriptorSet()) {
             result.mArgumentDescriptorLayout = create_arg_descriptor_layout(mDevice.mDevice, mSpvMap, entryPoint);
 
             result.mArgumentsDescriptor = allocate_descriptor_set(mDevice.mDevice,
@@ -648,7 +679,7 @@ namespace clspv_utils {
                       *mShaderModule,
                       entryPoint,
                       workgroup_sizes,
-                      mSpvMap.findKernel(entryPoint)->args);
+                      mSpvMap.findKernel(entryPoint)->mArgSpecs);
     }
 
     kernel::kernel()
