@@ -54,21 +54,18 @@ namespace clspv_utils {
                                   sampler_list_proxy_t  samplers,
                                   arg_list_t            arguments);
 
-        int                         getArgDescriptorSet() const { return mArgDescriptorSet; }
+        int                         getArgDescriptorSet() const;
         const std::string&          getEntryPoint() const { return mName; }
 
         const sampler_list_proxy_t& getLiteralSamplers() const { return mLiteralSamplers; }
-        int                         getLiteralSamplersDescriptorSet() const { return mLiteralSamplerDescriptorSet; }
+        int                         getLiteralSamplersDescriptorSet() const;
 
     private:
         void        validate() const;
 
     private:
         std::string             mName;
-        int                     mArgDescriptorSet  = -1;
-
         sampler_list_proxy_t    mLiteralSamplers;
-        int                     mLiteralSamplerDescriptorSet  = -1;
     public:
         arg_list_t              mArgSpecs;  // TODO: make mArgSpecs private
     };
