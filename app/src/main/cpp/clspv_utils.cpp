@@ -21,6 +21,46 @@
 namespace {
     using namespace clspv_utils;
 
+    typedef std::unique_ptr<std::FILE, decltype(&std::fclose)>  UniqueFILE;
+
+    UniqueFILE fopen_unique(const char* filename, const char* mode) {
+        return UniqueFILE(AndroidFopen(filename, mode), &std::fclose);
+    }
+
+    //
+    // get_data_hack works around a deficiency in std::string, prior to C++17, in which
+    // std::string::data() only returns a const char*.
+    //
+    template <typename Container>
+    void* get_data_hack(Container& c) { return c.data(); }
+
+    template <>
+    void* get_data_hack(std::string& c) { return const_cast<char*>(c.data()); }
+
+    template <typename Container>
+    void read_file_contents(const std::string& filename, Container& fileContents) {
+        const std::size_t wordSize = sizeof(typename Container::value_type);
+
+        UniqueFILE pFile = fopen_unique(filename.c_str(), "rb");
+        if (!pFile) {
+            throw std::runtime_error("can't open file: " + filename);
+        }
+
+        std::fseek(pFile.get(), 0, SEEK_END);
+
+        const auto num_bytes = std::ftell(pFile.get());
+        if (0 != (num_bytes % wordSize)) {
+            throw std::runtime_error("file size of " + filename + " inappropriate for requested type");
+        }
+
+        const auto num_words = (num_bytes + wordSize - 1) / wordSize;
+        fileContents.resize(num_words);
+        assert(num_bytes == (fileContents.size() * wordSize));
+
+        std::fseek(pFile.get(), 0, SEEK_SET);
+        std::fread(get_data_hack(fileContents), 1, num_bytes, pFile.get());
+    }
+
     const auto kArgKind_DescriptorType_Map = {
             std::make_pair(arg_spec_t::kind_pod_ubo, vk::DescriptorType::eUniformBuffer),
             std::make_pair(arg_spec_t::kind_pod, vk::DescriptorType::eStorageBuffer),
@@ -94,18 +134,9 @@ namespace {
         return ((opencl_flags & CLK_NORMALIZED_COORDS_MASK) == CLK_NORMALIZED_COORDS_FALSE ? VK_TRUE : VK_FALSE);
     }
 
-    spv_map create_spv_map(const char *spvmapFilename) {
-        // Read the spvmap file into a string buffer
-        std::unique_ptr<std::FILE, decltype(&std::fclose)> spvmap_file(AndroidFopen(spvmapFilename, "rb"),
-                                                                       &std::fclose);
-        assert(spvmap_file);
-
-        std::fseek(spvmap_file.get(), 0, SEEK_END);
-        std::string buffer(std::ftell(spvmap_file.get()), ' ');
-        std::fseek(spvmap_file.get(), 0, SEEK_SET);
-        std::fread(&buffer.front(), 1, buffer.length(), spvmap_file.get());
-
-        spvmap_file.reset();
+    spv_map create_spv_map(const std::string& moduleName) {
+        std::string buffer;
+        read_file_contents(moduleName + ".spvmap", buffer);
 
         // parse the spvmap file contents
         std::istringstream in(buffer);
@@ -139,29 +170,11 @@ namespace {
     };
 
     vk::UniqueShaderModule create_shader(vk::Device device, const std::string& spvFilename) {
-        std::unique_ptr<std::FILE, decltype(&std::fclose)> spv_file(AndroidFopen(spvFilename.c_str(), "rb"),
-                                                                    &std::fclose);
-        if (!spv_file) {
-            throw std::runtime_error("can't open file: " + spvFilename);
-        }
-
-        std::fseek(spv_file.get(), 0, SEEK_END);
-        // Use vector of uint32_t to ensure alignment is satisfied.
-        const auto num_bytes = std::ftell(spv_file.get());
-        if (0 != (num_bytes % sizeof(uint32_t))) {
-            throw std::runtime_error("file size of " + spvFilename + " inappropriate for spv file");
-        }
-        const auto num_words = (num_bytes + sizeof(uint32_t) - 1) / sizeof(uint32_t);
-        std::vector<uint32_t> spvModule(num_words);
-        assert(num_bytes == (spvModule.size() * sizeof(uint32_t)));
-
-        std::fseek(spv_file.get(), 0, SEEK_SET);
-        std::fread(spvModule.data(), 1, num_bytes, spv_file.get());
-
-        spv_file.reset();
+        std::vector<std::uint32_t> spvModule;
+        read_file_contents(spvFilename, spvModule);
 
         vk::ShaderModuleCreateInfo shaderModuleCreateInfo;
-        shaderModuleCreateInfo.setCodeSize(num_bytes)
+        shaderModuleCreateInfo.setCodeSize(spvModule.size() * sizeof(decltype(spvModule)::value_type))
                 .setPCode(spvModule.data());
 
         return device.createShaderModuleUnique(shaderModuleCreateInfo);
@@ -565,8 +578,7 @@ namespace clspv_utils {
             mShaderModule(),
             mSpvMap()
     {
-        const std::string mapFilename = mName + ".spvmap";
-        mSpvMap = create_spv_map(mapFilename.c_str());
+        mSpvMap = create_spv_map(moduleName);
     }
 
     kernel_module::~kernel_module() {
