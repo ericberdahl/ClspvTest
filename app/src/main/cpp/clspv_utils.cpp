@@ -134,15 +134,6 @@ namespace {
         return ((opencl_flags & CLK_NORMALIZED_COORDS_MASK) == CLK_NORMALIZED_COORDS_FALSE ? VK_TRUE : VK_FALSE);
     }
 
-    spv_map create_spv_map(const std::string& moduleName) {
-        std::string buffer;
-        read_file_contents(moduleName + ".spvmap", buffer);
-
-        // parse the spvmap file contents
-        std::istringstream in(buffer);
-        return spv_map::parse(in);
-    }
-
     std::string read_csv_field(std::istream& in) {
         std::string result;
 
@@ -425,15 +416,17 @@ namespace clspv_utils {
     spv_map::spv_map() {
     }
 
-    spv_map spv_map::parse(std::istream &in) {
-        spv_map result;
+    spv_map::spv_map(const std::string& moduleName)
+            : spv_map()
+    {
+        std::string buffer;
+        read_file_contents(moduleName + ".spvmap", buffer);
 
         std::map<std::string, kernel_interface::arg_list_t> kernel_args;
 
+        std::string line;
+        std::istringstream in(buffer);
         while (!in.eof()) {
-            // read one line
-            std::string line;
-
             // spvmap files may have been generated on a system which uses different line ending
             // conventions than the system on which the consumer runs. Safer to fetch lines
             // using a function which recognizes multiple line endings.
@@ -442,17 +435,15 @@ namespace clspv_utils {
             std::istringstream in_line(line);
             auto tag = read_key_value_pair(in_line);
             if ("sampler" == tag.first) {
-                result.addLiteralSampler(parse_spvmap_sampler(tag, in_line));
+                addLiteralSampler(parse_spvmap_sampler(tag, in_line));
             } else if ("kernel" == tag.first) {
                 kernel_args[tag.second].push_back(parse_spvmap_kernel_arg(tag, in_line));
             }
         }
 
         for (auto& k : kernel_args) {
-            result.kernels.push_back(kernel_interface(k.first, result.samplers, k.second));
+            kernels.push_back(kernel_interface(k.first, samplers, k.second));
         }
-
-        return result;
     }
 
     void spv_map::addLiteralSampler(clspv_utils::sampler_spec_t sampler) {
@@ -578,7 +569,7 @@ namespace clspv_utils {
             mShaderModule(),
             mSpvMap()
     {
-        mSpvMap = create_spv_map(moduleName);
+        mSpvMap = spv_map(moduleName);
     }
 
     kernel_module::~kernel_module() {

@@ -93,22 +93,22 @@ namespace clspv_utils {
         arg_list_t              mArgSpecs;  // TODO: make mArgSpecs private
     };
 
-    struct spv_map {
+    class spv_map {
     public:
         typedef std::vector<sampler_spec_t>     sampler_list_t;
         typedef std::vector<kernel_interface>   kernel_list_t;
 
-        spv_map();
+                                        spv_map();
 
-        static spv_map parse(std::istream &in);
+        explicit                        spv_map(const std::string& moduleName);
 
-        const kernel_interface* findKernel(const std::string& entryPoint) const;
+        const kernel_interface*         findKernel(const std::string& entryPoint) const;
 
-        std::vector<std::string>    getEntryPoints() const;
+        std::vector<std::string>        getEntryPoints() const;
 
-        int                         getLiteralSamplersDescriptorSet() const;
+        int                             getLiteralSamplersDescriptorSet() const;
 
-        vk::UniqueDescriptorSetLayout createLiteralSamplerDescriptorLayout(const device_t& device) const;
+        vk::UniqueDescriptorSetLayout   createLiteralSamplerDescriptorLayout(const device_t& device) const;
 
     private:
         void    addLiteralSampler(sampler_spec_t sampler);
