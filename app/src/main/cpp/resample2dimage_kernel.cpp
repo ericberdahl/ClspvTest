@@ -66,8 +66,8 @@ namespace resample2dimage_kernel {
         static_assert(0 == offsetof(scalar_args, inWidth), "inWidth offset incorrect");
         static_assert(4 == offsetof(scalar_args, inHeight), "inHeight offset incorrect");
 
-        vulkan_utils::uniform_buffer scalarBuffer(kernel.getDevice().mDevice,
-                                                  kernel.getDevice().mMemoryProperties,
+        vulkan_utils::uniform_buffer scalarBuffer(kernel.getDevice().getDevice(),
+                                                  kernel.getDevice().getMemoryProperties(),
                                                   sizeof(scalar_args));
         auto scalars = scalarBuffer.map<scalar_args>();
         scalars->inWidth = extent.width;
@@ -114,11 +114,11 @@ namespace resample2dimage_kernel {
         const std::size_t buffer_size = buffer_length * sizeof(BufferPixelType);
 
         // allocate buffers and images
-        vulkan_utils::storage_buffer dst_buffer(device.mDevice,
-                                                device.mMemoryProperties,
+        vulkan_utils::storage_buffer dst_buffer(device.getDevice(),
+                                                device.getMemoryProperties(),
                                                 buffer_size);
-        vulkan_utils::image srcImage(device.mDevice,
-                                     device.mMemoryProperties,
+        vulkan_utils::image srcImage(device.getDevice(),
+                                     device.getMemoryProperties(),
                                      vk::Extent3D(image_width, image_height, 1),
                                      vk::Format(pixels::traits<ImagePixelType>::vk_pixel_type),
                                      vulkan_utils::image::kUsage_ReadOnly);
@@ -156,8 +156,8 @@ namespace resample2dimage_kernel {
         srcImageMap.reset();
 
         // complete setup of the image
-        vk::UniqueCommandBuffer setupCommand = vulkan_utils::allocate_command_buffer(device.mDevice,
-                                                                                     device.mCommandPool);
+        vk::UniqueCommandBuffer setupCommand = vulkan_utils::allocate_command_buffer(device.getDevice(),
+                                                                                     device.getCommandPool());
         setupCommand->begin(vk::CommandBufferBeginInfo());
         srcImageStaging.copyToImage(*setupCommand);
         setupCommand->end();
@@ -167,7 +167,7 @@ namespace resample2dimage_kernel {
         submitInfo.setCommandBufferCount(1)
                 .setPCommandBuffers(&rawCommand);
 
-        device.mComputeQueue.submit(submitInfo, nullptr);
+        device.getComputeQueue().submit(submitInfo, nullptr);
 
         invocationResult.mExecutionTime = invoke(kernel,
                                                  srcImage,

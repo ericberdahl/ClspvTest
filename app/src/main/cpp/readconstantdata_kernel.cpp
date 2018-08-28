@@ -16,8 +16,8 @@ namespace readconstantdata_kernel {
         };
         static_assert(0 == offsetof(scalar_args, inWidth), "inWidth offset incorrect");
 
-        vulkan_utils::uniform_buffer scalarBuffer(kernel.getDevice().mDevice,
-                                                  kernel.getDevice().mMemoryProperties,
+        vulkan_utils::uniform_buffer scalarBuffer(kernel.getDevice().getDevice(),
+                                                  kernel.getDevice().getMemoryProperties(),
                                                   sizeof(scalar_args));
         auto scalars = scalarBuffer.map<scalar_args>();
         scalars->inWidth = width;
@@ -52,7 +52,7 @@ namespace readconstantdata_kernel {
         const std::size_t constant_data_length = 10;
 
         // allocate buffers and images
-        vulkan_utils::storage_buffer  dstBuffer(device.mDevice, device.mMemoryProperties, buffer_size);
+        vulkan_utils::storage_buffer  dstBuffer(device.getDevice(), device.getMemoryProperties(), buffer_size);
 
         // initialize destination memory with random data
         auto dstBufferMap = dstBuffer.map<float>();

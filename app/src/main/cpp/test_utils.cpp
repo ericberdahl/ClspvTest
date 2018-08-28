@@ -95,14 +95,14 @@ namespace test_utils {
         return result;
     }
 
-    ModuleTest::result test_module(clspv_utils::device_t& device,
-                                   const ModuleTest&      moduleTest) {
+    ModuleTest::result test_module(clspv_utils::device& inDevice,
+                                   const ModuleTest&    moduleTest) {
         ModuleTest::result result;
         result.first = &moduleTest;
 
         try {
             clspv_utils::module_interface moduleInterface(moduleTest.mName);
-            clspv_utils::kernel_module module = moduleInterface.load(device);
+            clspv_utils::kernel_module module = moduleInterface.load(inDevice);
             result.second.mLoadedCorrectly = true;
 
             std::vector<std::string> entryPoints(module.getEntryPoints());

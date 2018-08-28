@@ -25,8 +25,8 @@ namespace test_manifest {
 
     manifest_t read(std::istream& in);
 
-    results run(const manifest_t&        manifest,
-                clspv_utils::device_t&   info);
+    results run(const manifest_t&       manifest,
+                clspv_utils::device&    info);
 }
 
 #endif //CLSPVTEST_TEST_MANIFEST_HPP

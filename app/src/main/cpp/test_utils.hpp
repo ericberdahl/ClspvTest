@@ -274,8 +274,8 @@ namespace test_utils {
     KernelTest::result test_kernel(clspv_utils::kernel_module&    module,
                                    const KernelTest&              kernelTest);
 
-    ModuleTest::result test_module(clspv_utils::device_t& device,
-                                   const ModuleTest&      moduleTest);
+    ModuleTest::result test_module(clspv_utils::device& inDevice,
+                                   const ModuleTest&    moduleTest);
 
     InvocationTest createNullInvocationTest();
     

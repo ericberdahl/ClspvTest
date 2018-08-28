@@ -37,7 +37,7 @@ namespace copybuffertoimage_kernel {
         test_utils::InvocationResult invocationResult;
         auto& device = kernel.getDevice();
 
-        if (vulkan_utils::image::supportsFormatUse(device.mPhysicalDevice,
+        if (vulkan_utils::image::supportsFormatUse(device.getPhysicalDevice(),
                                                    vk::Format(pixels::traits<ImagePixelType>::vk_pixel_type),
                                                    vulkan_utils::image::kUsage_ReadWrite))
         {
@@ -47,11 +47,11 @@ namespace copybuffertoimage_kernel {
             const std::size_t buffer_size = buffer_length * sizeof(BufferPixelType);
 
             // allocate buffers and images
-            vulkan_utils::storage_buffer srcBuffer(device.mDevice,
-                                                   device.mMemoryProperties,
+            vulkan_utils::storage_buffer srcBuffer(device.getDevice(),
+                                                   device.getMemoryProperties(),
                                                    buffer_size);
-            vulkan_utils::image dstImage(device.mDevice,
-                                         device.mMemoryProperties,
+            vulkan_utils::image dstImage(device.getDevice(),
+                                         device.getMemoryProperties(),
                                          bufferExtent,
                                          vk::Format(pixels::traits<ImagePixelType>::vk_pixel_type),
                                          vulkan_utils::image::kUsage_ReadWrite);
@@ -88,7 +88,7 @@ namespace copybuffertoimage_kernel {
 
             // readback the image data
             vk::UniqueCommandBuffer readbackCommand = vulkan_utils::allocate_command_buffer(
-                    device.mDevice, device.mCommandPool);
+                    device.getDevice(), device.getCommandPool());
             readbackCommand->begin(vk::CommandBufferBeginInfo());
             dstImageStaging.copyFromImage(*readbackCommand);
             readbackCommand->end();
@@ -98,8 +98,8 @@ namespace copybuffertoimage_kernel {
             submitInfo.setCommandBufferCount(1)
                     .setPCommandBuffers(&rawCommand);
 
-            device.mComputeQueue.submit(submitInfo, nullptr);
-            device.mComputeQueue.waitIdle();
+            device.getComputeQueue().submit(submitInfo, nullptr);
+            device.getComputeQueue().waitIdle();
 
             srcBufferMap = srcBuffer.map<BufferPixelType>();
             dstImageMap = dstImageStaging.map<ImagePixelType>();

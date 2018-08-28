@@ -57,7 +57,7 @@ namespace fill_kernel {
         // allocate image buffer
         const std::size_t buffer_length = bufferExtent.width * bufferExtent.height * bufferExtent.depth;
         const std::size_t buffer_size = buffer_length * sizeof(PixelType);
-        vulkan_utils::storage_buffer dst_buffer(device.mDevice, device.mMemoryProperties, buffer_size);
+        vulkan_utils::storage_buffer dst_buffer(device.getDevice(), device.getMemoryProperties(), buffer_size);
 
         const PixelType src_value = pixels::traits<PixelType>::translate((gpu_types::float4){ 0.0f, 0.0f, 0.0f, 0.0f });
         auto dstBufferMap = dst_buffer.map<PixelType>();

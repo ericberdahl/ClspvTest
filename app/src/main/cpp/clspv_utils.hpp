@@ -17,27 +17,18 @@
 
 namespace clspv_utils {
 
-    struct device_t {
-        typedef std::map<int,vk::UniqueSampler> sampler_cache_t;
+    class device;
+    class kernel;
+    class kernel_interface;
+    class kernel_invocation;
+    class kernel_module;
+    class module_interface;
 
-        device_t() {}
+    struct arg_spec_t;
+    struct execution_time_t;
+    struct kernel_layout_t;
+    struct sampler_spec_t;
 
-        device_t(vk::PhysicalDevice                  physicalDevice,
-                 vk::Device                          device,
-                 vk::PhysicalDeviceMemoryProperties  memoryProperties,
-                 vk::DescriptorPool                  descriptorPool,
-                 vk::CommandPool                     commandPool,
-                 vk::Queue                           computeQueue);
-
-        vk::PhysicalDevice                  mPhysicalDevice;
-        vk::Device                          mDevice;
-        vk::PhysicalDeviceMemoryProperties  mMemoryProperties;
-        vk::DescriptorPool                  mDescriptorPool;
-        vk::CommandPool                     mCommandPool;
-        vk::Queue                           mComputeQueue;
-
-        std::shared_ptr<sampler_cache_t>    mSamplerCache;
-    };
 
     struct sampler_spec_t {
         int opencl_flags    = 0;
@@ -65,6 +56,62 @@ namespace clspv_utils {
         int     spec_constant   = -1;
     };
 
+    class device {
+    public:
+        struct descriptor_group_t
+        {
+            vk::DescriptorSet       descriptor;
+            vk::DescriptorSetLayout layout;
+        };
+
+        typedef vk::ArrayProxy<const sampler_spec_t> sampler_list_proxy_t;
+
+        device() {}
+
+        device(vk::PhysicalDevice   physicalDevice,
+               vk::Device           device,
+               vk::DescriptorPool   descriptorPool,
+               vk::CommandPool      commandPool,
+               vk::Queue            computeQueue);
+
+        vk::PhysicalDevice  getPhysicalDevice() const { return mPhysicalDevice; }
+        vk::Device          getDevice() const { return mDevice; }
+        vk::DescriptorPool  getDescriptorPool() const { return mDescriptorPool; }
+        vk::CommandPool     getCommandPool() const { return mCommandPool; }
+        vk::Queue           getComputeQueue() const { return mComputeQueue; }
+
+        const vk::PhysicalDeviceMemoryProperties&   getMemoryProperties() const { return mMemoryProperties; }
+
+        vk::Sampler                     getCachedSampler(int opencl_flags);
+
+        vk::UniqueDescriptorSetLayout   createSamplerDescriptorLayout(const sampler_list_proxy_t& samplers) const;
+        vk::UniqueDescriptorSet         createSamplerDescriptor(const sampler_list_proxy_t& samplers,
+                                                                vk::DescriptorSetLayout layout);
+
+        descriptor_group_t              getCachedSamplerDescriptorGroup(const sampler_list_proxy_t& samplers);
+
+    private:
+        struct unique_descriptor_group_t
+        {
+            vk::UniqueDescriptorSet       descriptor;
+            vk::UniqueDescriptorSetLayout layout;
+        };
+
+        typedef std::map<std::size_t,unique_descriptor_group_t> descriptor_cache_t;
+        typedef std::map<int,vk::UniqueSampler> sampler_cache_t;
+
+    private:
+        vk::PhysicalDevice                  mPhysicalDevice;
+        vk::Device                          mDevice;
+        vk::PhysicalDeviceMemoryProperties  mMemoryProperties;
+        vk::DescriptorPool                  mDescriptorPool;
+        vk::CommandPool                     mCommandPool;
+        vk::Queue                           mComputeQueue;
+
+        std::shared_ptr<descriptor_cache_t> mSamplerDescriptorCache;
+        std::shared_ptr<sampler_cache_t>    mSamplerCache;
+    };
+
     class kernel_interface {
     public:
         typedef std::vector<arg_spec_t>                 arg_list_t;
@@ -78,7 +125,7 @@ namespace clspv_utils {
 
         int                         getArgDescriptorSet() const;
         const std::string&          getEntryPoint() const { return mName; }
-        vk::UniqueDescriptorSetLayout createArgDescriptorLayout(const device_t& device) const;
+        vk::UniqueDescriptorSetLayout createArgDescriptorLayout(const device& dev) const;
 
         const sampler_list_proxy_t& getLiteralSamplers() const { return mLiteralSamplers; }
         int                         getLiteralSamplersDescriptorSet() const;
@@ -92,8 +139,6 @@ namespace clspv_utils {
     public:
         arg_list_t              mArgSpecs;  // TODO: make mArgSpecs private
     };
-
-    class kernel_module;
 
     class module_interface {
     public:
@@ -110,9 +155,7 @@ namespace clspv_utils {
 
         int                             getLiteralSamplersDescriptorSet() const;
 
-        vk::UniqueDescriptorSetLayout   createLiteralSamplerDescriptorLayout(const device_t& device) const;
-
-        kernel_module                   load(device_t device) const;
+        kernel_module                   load(device dev) const;
 
     private:
         void    addLiteralSampler(sampler_spec_t sampler);
@@ -150,15 +193,13 @@ namespace clspv_utils {
 
     vk::UniqueSampler createCompatibleSampler(vk::Device device, int opencl_flags);
 
-    class kernel_invocation;
-
     class kernel {
     public:
         typedef vk::ArrayProxy<const arg_spec_t> arg_list_proxy_t;
 
                             kernel();
 
-                            kernel(device_t             device,
+                            kernel(device               dev,
                                    kernel_layout_t      layout,
                                    vk::ShaderModule     shaderModule,
                                    std::string          entryPoint,
@@ -177,14 +218,14 @@ namespace clspv_utils {
         std::string         getEntryPoint() const { return mEntryPoint; }
         vk::Extent3D        getWorkgroupSize() const { return mWorkgroupSizes; }
 
-        const device_t&     getDevice() { return mDevice; }
+        const device&       getDevice() { return mDevice; }
 
         void                updatePipeline(vk::ArrayProxy<int32_t> otherSpecConstants);
 
         void                swap(kernel& other);
 
     private:
-        device_t            mDevice;
+        device              mDevice;
         vk::ShaderModule    mShaderModule;
         std::string         mEntryPoint;
         vk::Extent3D        mWorkgroupSizes;
@@ -207,11 +248,11 @@ namespace clspv_utils {
 
                                     kernel_module(kernel_module&& other);
 
-                                    kernel_module(const std::string& moduleName,
-                                                  device_t device,
-                                                  vk::UniqueDescriptorSet literalSamplerDescriptor,
-                                                  vk::UniqueDescriptorSetLayout literalSamplerDescriptorLayout,
-                                                  kernel_list_proxy_t   kernelInterfaces);
+                                    kernel_module(const std::string&        moduleName,
+                                                  device                    dev,
+                                                  vk::DescriptorSet         literalSamplerDescriptor,
+                                                  vk::DescriptorSetLayout   literalSamplerDescriptorLayout,
+                                                  kernel_list_proxy_t       kernelInterfaces);
 
                                     ~kernel_module();
 
@@ -233,11 +274,11 @@ namespace clspv_utils {
 
     private:
         std::string                     mName;
-        device_t                        mDevice;
+        device                          mDevice;
         kernel_list_proxy_t             mKernelInterfaces;
 
-        vk::UniqueDescriptorSetLayout   mLiteralSamplerDescriptorLayout;
-        vk::UniqueDescriptorSet         mLiteralSamplerDescriptor;
+        vk::DescriptorSetLayout         mLiteralSamplerDescriptorLayout;
+        vk::DescriptorSet               mLiteralSamplerDescriptor;
         vk::UniqueShaderModule          mShaderModule;
     };
 
@@ -253,7 +294,7 @@ namespace clspv_utils {
                     kernel_invocation();
 
         explicit    kernel_invocation(kernel&           kernel,
-                                      device_t          device,
+                                      device            device,
                                       vk::DescriptorSet argumentDescSet,
                                       arg_list_proxy_t  argList);
 
@@ -298,7 +339,7 @@ namespace clspv_utils {
 
     private:
         kernel*                                 mKernel = nullptr;
-        device_t                                mDevice;
+        device                                  mDevice;
         arg_list_proxy_t                        mArgList;
         vk::UniqueCommandBuffer                 mCommand;
         vk::UniqueQueryPool                     mQueryPool;

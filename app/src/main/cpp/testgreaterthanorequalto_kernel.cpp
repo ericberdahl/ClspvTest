@@ -23,8 +23,8 @@ namespace testgreaterthanorequalto_kernel {
         static_assert(0 == offsetof(scalar_args, inWidth), "inWidth offset incorrect");
         static_assert(4 == offsetof(scalar_args, inHeight), "inHeight offset incorrect");
 
-        vulkan_utils::uniform_buffer scalarBuffer(kernel.getDevice().mDevice,
-                                                  kernel.getDevice().mMemoryProperties,
+        vulkan_utils::uniform_buffer scalarBuffer(kernel.getDevice().getDevice(),
+                                                  kernel.getDevice().getMemoryProperties(),
                                                   sizeof(scalar_args));
         auto scalars = scalarBuffer.map<scalar_args>();
         scalars->inWidth = extent.width;
@@ -57,7 +57,7 @@ namespace testgreaterthanorequalto_kernel {
         const std::size_t buffer_size = buffer_length * sizeof(float);
 
         // allocate buffers and images
-        vulkan_utils::storage_buffer  dstBuffer(device.mDevice, device.mMemoryProperties, buffer_size);
+        vulkan_utils::storage_buffer  dstBuffer(device.getDevice(), device.getMemoryProperties(), buffer_size);
 
         // initialize destination memory with unexpected value. the kernel should write either 0 or
         // 1. so, initialize thedestination with 2.

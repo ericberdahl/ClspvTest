@@ -59,8 +59,8 @@ namespace copybuffertoimage_kernel {
         static_assert(24 == offsetof(scalar_args, inWidth), "inWidth offset incorrect");
         static_assert(28 == offsetof(scalar_args, inHeight), "inHeight offset incorrect");
 
-        vulkan_utils::uniform_buffer scalarBuffer(kernel.getDevice().mDevice,
-                                                  kernel.getDevice().mMemoryProperties,
+        vulkan_utils::uniform_buffer scalarBuffer(kernel.getDevice().getDevice(),
+                                                  kernel.getDevice().getMemoryProperties(),
                                                   sizeof(scalar_args));
         auto scalars = scalarBuffer.map<scalar_args>();
         scalars->inSrcOffset = src_offset;

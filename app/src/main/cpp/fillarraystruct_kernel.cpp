@@ -46,7 +46,7 @@ namespace fillarraystruct_kernel {
         // allocate destination buffer
         const std::size_t buffer_size = buffer_width * sizeof(FloatArrayWrapper);
         const int num_floats_in_buffer = num_floats_in_struct * buffer_width;
-        vulkan_utils::storage_buffer dst_buffer(device.mDevice, device.mMemoryProperties, buffer_size);
+        vulkan_utils::storage_buffer dst_buffer(device.getDevice(), device.getMemoryProperties(), buffer_size);
 
         auto dstBufferMap = dst_buffer.map<float>();
         test_utils::fill_random_pixels<float>(dstBufferMap.get(), dstBufferMap.get() + num_floats_in_buffer);

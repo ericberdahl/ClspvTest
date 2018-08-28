@@ -324,8 +324,8 @@ namespace readlocalsize_kernel {
         static_assert(8 == offsetof(scalar_args, pitch), "pitch offset incorrect");
         static_assert(12 == offsetof(scalar_args, idtype), "idtype offset incorrect");
 
-        vulkan_utils::uniform_buffer scalarBuffer(kernel.getDevice().mDevice,
-                                                  kernel.getDevice().mMemoryProperties,
+        vulkan_utils::uniform_buffer scalarBuffer(kernel.getDevice().getDevice(),
+                                                  kernel.getDevice().getMemoryProperties(),
                                                   sizeof(scalar_args));
         auto scalars = scalarBuffer.map<scalar_args>();
         scalars->width = inWidth;
@@ -363,7 +363,7 @@ namespace readlocalsize_kernel {
         // allocate data buffer
         auto num_elements = bufferExtent.width * bufferExtent.height * bufferExtent.depth;
         const std::size_t buffer_size = num_elements * sizeof(std::int32_t);
-        vulkan_utils::storage_buffer dst_buffer(device.mDevice, device.mMemoryProperties, buffer_size);
+        vulkan_utils::storage_buffer dst_buffer(device.getDevice(), device.getMemoryProperties(), buffer_size);
 
         auto dstBufferMap = dst_buffer.map<std::int32_t>();
         test_utils::fill_random_pixels<std::int32_t>(dstBufferMap.get(), dstBufferMap.get() + num_elements);

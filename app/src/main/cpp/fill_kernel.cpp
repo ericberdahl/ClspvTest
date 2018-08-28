@@ -34,8 +34,8 @@ namespace fill_kernel {
         static_assert(20 == offsetof(scalar_args, inHeight), "inHeight offset incorrect");
         static_assert(32 == offsetof(scalar_args, inColor), "inColor offset incorrect");
 
-        vulkan_utils::uniform_buffer scalarBuffer(kernel.getDevice().mDevice,
-                                                  kernel.getDevice().mMemoryProperties,
+        vulkan_utils::uniform_buffer scalarBuffer(kernel.getDevice().getDevice(),
+                                                  kernel.getDevice().getMemoryProperties(),
                                                   sizeof(scalar_args));
         auto scalars = scalarBuffer.map<scalar_args>();
         scalars->inPitch = pitch;

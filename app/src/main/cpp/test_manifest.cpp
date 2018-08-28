@@ -239,14 +239,14 @@ namespace
 namespace test_manifest
 {
 
-    test_manifest::results run(const manifest_t &manifest,
-                               clspv_utils::device_t &device)
+    test_manifest::results run(const manifest_t&    manifest,
+                               clspv_utils::device& inDevice)
     {
         test_manifest::results results;
 
         for (auto& m : manifest.tests)
         {
-            results.push_back(test_utils::test_module(device, m));
+            results.push_back(test_utils::test_module(inDevice, m));
         }
 
         return results;
