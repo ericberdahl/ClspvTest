@@ -516,6 +516,13 @@ namespace clspv_utils {
             }
         }
 
+        // Ensure that the literal samplers are sorted by increasing binding number. This will be
+        // important if the sequence is later used to determine whether a cached sampler descriptor
+        // set can be re-used for this module.
+        std::sort(mSamplers.begin(), mSamplers.end(), [](const sampler_spec_t& lhs, const sampler_spec_t& rhs) {
+            return lhs.binding < rhs.binding;
+        });
+
         for (auto& k : kernel_args) {
             mKernels.push_back(kernel_interface(k.first, mSamplers, k.second));
         }
