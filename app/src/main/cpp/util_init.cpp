@@ -128,7 +128,6 @@ void init_enumerate_device(struct sample_info &info) {
     info.gpu = *found_gpu;
 
     /* This is as good a place as any to do this */
-    info.memory_properties = info.gpu.getMemoryProperties();
     info.physical_device_properties = info.gpu.getProperties();
 }
 
