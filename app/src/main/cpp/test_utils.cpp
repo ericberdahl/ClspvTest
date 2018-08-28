@@ -101,8 +101,8 @@ namespace test_utils {
         result.first = &moduleTest;
 
         try {
-            clspv_utils::kernel_module module(moduleTest.mName);
-            module.load(device);
+            clspv_utils::module_interface moduleInterface(moduleTest.mName);
+            clspv_utils::kernel_module module = moduleInterface.load(device);
             result.second.mLoadedCorrectly = true;
 
             std::vector<std::string> entryPoints(module.getEntryPoints());

@@ -214,9 +214,9 @@ namespace
 
     void ensure_all_entries_tested(test_utils::ModuleTest& moduleTest)
     {
-        clspv_utils::kernel_module module(moduleTest.mName);
+        clspv_utils::module_interface moduleInterface(moduleTest.mName);
 
-        for (auto& entryPoint : module.getEntryPoints())
+        for (auto& entryPoint : moduleInterface.getEntryPoints())
         {
             auto found = std::find_if(moduleTest.mKernelTests.begin(), moduleTest.mKernelTests.end(),
                          [&entryPoint](const test_utils::KernelTest& kt) {

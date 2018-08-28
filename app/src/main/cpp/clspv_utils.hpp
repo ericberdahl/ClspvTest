@@ -93,16 +93,18 @@ namespace clspv_utils {
         arg_list_t              mArgSpecs;  // TODO: make mArgSpecs private
     };
 
-    class spv_map {
+    class kernel_module;
+
+    class module_interface {
     public:
         typedef std::vector<sampler_spec_t>     sampler_list_t;
         typedef std::vector<kernel_interface>   kernel_list_t;
 
-                                        spv_map();
+                                        module_interface();
 
-        explicit                        spv_map(const std::string& moduleName);
+        explicit                        module_interface(const std::string& moduleName);
 
-        const kernel_interface*         findKernel(const std::string& entryPoint) const;
+        const kernel_interface*         findKernelInterface(const std::string& entryPoint) const;
 
         std::vector<std::string>        getEntryPoints() const;
 
@@ -110,12 +112,15 @@ namespace clspv_utils {
 
         vk::UniqueDescriptorSetLayout   createLiteralSamplerDescriptorLayout(const device_t& device) const;
 
+        kernel_module                   load(device_t device) const;
+
     private:
         void    addLiteralSampler(sampler_spec_t sampler);
 
-    public:
-        sampler_list_t  samplers;
-        kernel_list_t   kernels;
+    private:
+        std::string     mName;
+        sampler_list_t  mSamplers;
+        kernel_list_t   mKernels;
     };
 
     struct execution_time_t {
@@ -196,18 +201,31 @@ namespace clspv_utils {
     // TODO: Refactor kernel_module into two classes, module_interface and kernel_module. module_interface is more about which entries exist and kernel_module is more about a loaded module.
     class kernel_module {
     public:
-        explicit                    kernel_module(const std::string& moduleName);
+        typedef vk::ArrayProxy<const kernel_interface>  kernel_list_proxy_t;
+
+                                    kernel_module();
+
+                                    kernel_module(kernel_module&& other);
+
+                                    kernel_module(const std::string& moduleName,
+                                                  device_t device,
+                                                  vk::UniqueDescriptorSet literalSamplerDescriptor,
+                                                  vk::UniqueDescriptorSetLayout literalSamplerDescriptorLayout,
+                                                  kernel_list_proxy_t   kernelInterfaces);
 
                                     ~kernel_module();
+
+        kernel_module&              operator=(kernel_module&& other);
+
+        void                        swap(kernel_module& other);
 
         kernel                      createKernel(const std::string&     entryPoint,
                                                  const vk::Extent3D&    workgroup_sizes);
 
-        void                        load(device_t device);
         bool                        isLoaded() const { return (bool)getShaderModule(); }
 
         std::string                 getName() const { return mName; }
-        std::vector<std::string>    getEntryPoints() const { return mSpvMap.getEntryPoints(); }
+        std::vector<std::string>    getEntryPoints() const;
         vk::ShaderModule            getShaderModule() const { return *mShaderModule; }
 
     private:
@@ -215,13 +233,18 @@ namespace clspv_utils {
 
     private:
         std::string                     mName;
-        spv_map                         mSpvMap;
         device_t                        mDevice;
-        vk::UniqueShaderModule          mShaderModule;
+        kernel_list_proxy_t             mKernelInterfaces;
 
         vk::UniqueDescriptorSetLayout   mLiteralSamplerDescriptorLayout;
         vk::UniqueDescriptorSet         mLiteralSamplerDescriptor;
+        vk::UniqueShaderModule          mShaderModule;
     };
+
+    inline void swap(kernel_module& lhs, kernel_module& rhs)
+    {
+        lhs.swap(rhs);
+    }
 
     class kernel_invocation {
     public:
