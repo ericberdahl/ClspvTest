@@ -193,53 +193,6 @@ namespace clspv_utils {
 
     vk::UniqueSampler createCompatibleSampler(vk::Device device, int opencl_flags);
 
-    class kernel {
-    public:
-        typedef vk::ArrayProxy<const arg_spec_t> arg_list_proxy_t;
-
-                            kernel();
-
-                            kernel(device               dev,
-                                   kernel_layout_t      layout,
-                                   vk::ShaderModule     shaderModule,
-                                   std::string          entryPoint,
-                                   const vk::Extent3D&  workgroup_sizes,
-                                   arg_list_proxy_t     args);
-
-                            kernel(kernel&& other);
-
-                            ~kernel();
-
-        kernel&             operator=(kernel&& other);
-
-        kernel_invocation   createInvocation();
-        void                bindCommand(vk::CommandBuffer command) const;
-
-        std::string         getEntryPoint() const { return mEntryPoint; }
-        vk::Extent3D        getWorkgroupSize() const { return mWorkgroupSizes; }
-
-        const device&       getDevice() { return mDevice; }
-
-        void                updatePipeline(vk::ArrayProxy<int32_t> otherSpecConstants);
-
-        void                swap(kernel& other);
-
-    private:
-        device              mDevice;
-        vk::ShaderModule    mShaderModule;
-        std::string         mEntryPoint;
-        vk::Extent3D        mWorkgroupSizes;
-        kernel_layout_t     mLayout;
-        vk::UniquePipeline  mPipeline;
-        arg_list_proxy_t    mArgList;
-    };
-
-    inline void swap(kernel& lhs, kernel& rhs)
-    {
-        lhs.swap(rhs);
-    }
-
-    // TODO: Refactor kernel_module into two classes, module_interface and kernel_module. module_interface is more about which entries exist and kernel_module is more about a loaded module.
     class kernel_module {
     public:
         typedef vk::ArrayProxy<const kernel_interface>  kernel_list_proxy_t;
@@ -280,9 +233,58 @@ namespace clspv_utils {
         vk::DescriptorSetLayout         mLiteralSamplerDescriptorLayout;
         vk::DescriptorSet               mLiteralSamplerDescriptor;
         vk::UniqueShaderModule          mShaderModule;
+        vk::UniquePipelineCache         mPipelineCache;
     };
 
     inline void swap(kernel_module& lhs, kernel_module& rhs)
+    {
+        lhs.swap(rhs);
+    }
+
+    class kernel {
+    public:
+        typedef vk::ArrayProxy<const arg_spec_t> arg_list_proxy_t;
+
+        kernel();
+
+        kernel(device               dev,
+               kernel_layout_t      layout,
+               vk::ShaderModule     shaderModule,
+               vk::PipelineCache    pipelineCache,
+               std::string          entryPoint,
+               const vk::Extent3D&  workgroup_sizes,
+               arg_list_proxy_t     args);
+
+        kernel(kernel&& other);
+
+        ~kernel();
+
+        kernel&             operator=(kernel&& other);
+
+        kernel_invocation   createInvocation();
+        void                bindCommand(vk::CommandBuffer command) const;
+
+        std::string         getEntryPoint() const { return mEntryPoint; }
+        vk::Extent3D        getWorkgroupSize() const { return mWorkgroupSizes; }
+
+        const device&       getDevice() { return mDevice; }
+
+        void                updatePipeline(vk::ArrayProxy<int32_t> otherSpecConstants);
+
+        void                swap(kernel& other);
+
+    private:
+        device              mDevice;
+        vk::ShaderModule    mShaderModule;
+        std::string         mEntryPoint;
+        vk::Extent3D        mWorkgroupSizes;
+        kernel_layout_t     mLayout;
+        vk::PipelineCache   mPipelineCache;
+        vk::UniquePipeline  mPipeline;
+        arg_list_proxy_t    mArgList;
+    };
+
+    inline void swap(kernel& lhs, kernel& rhs)
     {
         lhs.swap(rhs);
     }

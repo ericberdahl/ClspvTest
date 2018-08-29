@@ -560,7 +560,6 @@ namespace clspv_utils {
 
         const auto literalSamplerDescriptorGroup = inDevice.getCachedSamplerDescriptorGroup(mSamplers);
 
-        // TODO: create a real kernel_module
         return kernel_module(mName,
                              inDevice,
                              literalSamplerDescriptorGroup.descriptor,
@@ -741,6 +740,7 @@ namespace clspv_utils {
     {
         const std::string spvFilename = mName + ".spv";
         mShaderModule = create_shader(mDevice.getDevice(), spvFilename.c_str());
+        mPipelineCache = mDevice.getDevice().createPipelineCacheUnique(vk::PipelineCacheCreateInfo());
     }
 
     kernel_module::~kernel_module()
@@ -763,6 +763,7 @@ namespace clspv_utils {
         swap(mLiteralSamplerDescriptorLayout, other.mLiteralSamplerDescriptorLayout);
         swap(mLiteralSamplerDescriptor, other.mLiteralSamplerDescriptor);
         swap(mShaderModule, other.mShaderModule);
+        swap(mPipelineCache, other.mPipelineCache);
     }
 
     std::vector<std::string> kernel_module::getEntryPoints() const
@@ -805,6 +806,7 @@ namespace clspv_utils {
         return kernel(mDevice,
                       createKernelLayout(entryPoint),
                       *mShaderModule,
+                      *mPipelineCache,
                       entryPoint,
                       workgroup_sizes,
                       find_kernel_interface(entryPoint, mKernelInterfaces)->mArgSpecs);
@@ -818,6 +820,7 @@ namespace clspv_utils {
     kernel::kernel(device               inDevice,
                    kernel_layout_t      layout,
                    vk::ShaderModule     shaderModule,
+                   vk::PipelineCache    pipelineCache,
                    std::string          entryPoint,
                    const vk::Extent3D&  workgroup_sizes,
                    arg_list_proxy_t     args) :
@@ -826,6 +829,7 @@ namespace clspv_utils {
             mEntryPoint(entryPoint),
             mWorkgroupSizes(workgroup_sizes),
             mLayout(std::move(layout)),
+            mPipelineCache(pipelineCache),
             mPipeline(),
             mArgList(args)
     {
@@ -856,6 +860,7 @@ namespace clspv_utils {
         swap(mEntryPoint, other.mEntryPoint);
         swap(mWorkgroupSizes, other.mWorkgroupSizes);
         swap(mLayout, other.mLayout);
+        swap(mPipelineCache, other.mPipelineCache);
         swap(mPipeline, other.mPipeline);
         swap(mArgList, other.mArgList);
     }
@@ -899,8 +904,7 @@ namespace clspv_utils {
                 .setPName(mEntryPoint.c_str())
                 .setPSpecializationInfo(&specializationInfo);
 
-        // TODO: Implement a pipeline caching mechanism
-        mPipeline = mDevice.getDevice().createComputePipelineUnique(vk::PipelineCache(), createInfo);
+        mPipeline = mDevice.getDevice().createComputePipelineUnique(mPipelineCache, createInfo);
     }
 
     void kernel::bindCommand(vk::CommandBuffer command) const {
