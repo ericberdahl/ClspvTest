@@ -5,7 +5,7 @@
 #ifndef CLSPVTEST_TEST_UTILS_HPP
 #define CLSPVTEST_TEST_UTILS_HPP
 
-#include "clspv_utils.hpp"
+#include "clspv_utils/clspv_utils.hpp"
 #include "fp_utils.hpp"
 #include "gpu_types.hpp"
 #include "pixels.hpp"

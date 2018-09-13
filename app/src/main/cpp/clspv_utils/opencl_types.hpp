@@ -2,8 +2,8 @@
 // Created by Eric Berdahl on 10/31/17.
 //
 
-#ifndef CLSPVTEST_OPENCL_TYPES_HPP
-#define CLSPVTEST_OPENCL_TYPES_HPP
+#ifndef CLSPVUTILS_OPENCL_TYPES_HPP
+#define CLSPVUTILS_OPENCL_TYPES_HPP
 
 enum cl_channel_order {
     CL_R = 0x10B0,
@@ -59,4 +59,4 @@ enum {
     CLK_FILTER_MASK = 0x0030
 };
 
-#endif //CLSPVTEST_OPENCL_TYPES_HPP
+#endif //CLSPVUTILS_OPENCL_TYPES_HPP

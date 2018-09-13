@@ -17,12 +17,12 @@
  * limitations under the License.
  */
 
-#include "clspv_utils.hpp"
+#include "clspv_utils/clspv_utils.hpp"
 #include "test_manifest.hpp"
 #include "test_result_logging.hpp"
 #include "test_utils.hpp"
 #include "util_init.hpp"
-#include "vulkan_utils.hpp"
+#include "vulkan_utils/vulkan_utils.hpp"
 
 #include <vulkan/vulkan.hpp>
 

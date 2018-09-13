@@ -5,7 +5,7 @@
 #ifndef CLSPVTEST_TEST_MANIFEST_HPP
 #define CLSPVTEST_TEST_MANIFEST_HPP
 
-#include "clspv_utils.hpp"
+#include "clspv_utils/clspv_utils.hpp"
 #include "test_utils.hpp"
 
 #include <iostream>

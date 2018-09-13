@@ -5,7 +5,7 @@
 #ifndef CLSPVTEST_READLOCALSIZE_KERNEL_HPP
 #define CLSPVTEST_READLOCALSIZE_KERNEL_HPP
 
-#include "clspv_utils.hpp"
+#include "clspv_utils/clspv_utils.hpp"
 #include "test_utils.hpp"
 
 #include <vulkan/vulkan.hpp>

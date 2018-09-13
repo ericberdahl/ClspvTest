@@ -2,8 +2,8 @@
 // Created by Eric Berdahl on 10/22/17.
 //
 
-#ifndef CLSPV_UTILS_HPP
-#define CLSPV_UTILS_HPP
+#ifndef CLSPVUTILS_CLSPV_UTILS_HPP
+#define CLSPVUTILS_CLSPV_UTILS_HPP
 
 #include <chrono>
 #include <map>
@@ -13,7 +13,7 @@
 
 #include <vulkan/vulkan.hpp>
 
-#include "vulkan_utils.hpp"
+#include "vulkan_utils/vulkan_utils.hpp"
 
 namespace clspv_utils {
 
@@ -364,4 +364,4 @@ namespace clspv_utils {
     }
 }
 
-#endif //CLSPV_UTILS_HPP
+#endif //CLSPVUTILS_CLSPV_UTILS_HPP

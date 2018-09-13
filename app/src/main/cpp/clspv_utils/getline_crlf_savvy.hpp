@@ -2,8 +2,8 @@
 // Created by Eric Berdahl on 4/26/18.
 //
 
-#ifndef GETLINE_CRLF_SAVVY_HPP
-#define GETLINE_CRLF_SAVVY_HPP
+#ifndef CLSPVUTILS_GETLINE_CRLF_SAVVY_HPP
+#define CLSPVUTILS_GETLINE_CRLF_SAVVY_HPP
 
 #include <ios>
 #include <string>
@@ -17,4 +17,4 @@ namespace crlf_savvy {
 
 }
 
-#endif //GETLINE_CRLF_SAVVY_HPP
+#endif //CLSPVUTILS_GETLINE_CRLF_SAVVY_HPP

@@ -6,7 +6,7 @@
 #define CLSPVTEST_PIXELS_HPP
 
 #include "gpu_types.hpp"
-#include "opencl_types.hpp"
+#include "clspv_utils/opencl_types.hpp"
 
 #include <vulkan/vulkan.h>
 

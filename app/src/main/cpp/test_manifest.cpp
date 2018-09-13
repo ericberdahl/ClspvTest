@@ -4,16 +4,16 @@
 
 #include "test_manifest.hpp"
 
-#include "copybuffertoimage_kernel.hpp"
-#include "copyimagetobuffer_kernel.hpp"
-#include "fillarraystruct_kernel.hpp"
-#include "fill_kernel.hpp"
-#include "readconstantdata_kernel.hpp"
-#include "readlocalsize_kernel.hpp"
-#include "resample2dimage_kernel.hpp"
-#include "resample3dimage_kernel.hpp"
-#include "strangeshuffle_kernel.hpp"
-#include "testgreaterthanorequalto_kernel.hpp"
+#include "kernel_tests/copybuffertoimage_kernel.hpp"
+#include "kernel_tests/copyimagetobuffer_kernel.hpp"
+#include "kernel_tests/fillarraystruct_kernel.hpp"
+#include "kernel_tests/fill_kernel.hpp"
+#include "kernel_tests/readconstantdata_kernel.hpp"
+#include "kernel_tests/readlocalsize_kernel.hpp"
+#include "kernel_tests/resample2dimage_kernel.hpp"
+#include "kernel_tests/resample3dimage_kernel.hpp"
+#include "kernel_tests/strangeshuffle_kernel.hpp"
+#include "kernel_tests/testgreaterthanorequalto_kernel.hpp"
 
 #include "util.hpp" // for LOGxx macros
 

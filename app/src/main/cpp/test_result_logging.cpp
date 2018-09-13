@@ -6,7 +6,7 @@
 
 #include "test_utils.hpp"
 #include "util.hpp"
-#include "vulkan_utils.hpp"
+#include "vulkan_utils/vulkan_utils.hpp"
 
 #include <vulkan/vulkan.hpp>
 

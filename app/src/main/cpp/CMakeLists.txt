@@ -39,30 +39,30 @@ set(CMAKE_SHARED_LINKER_FLAGS
     "${CMAKE_SHARED_LINKER_FLAGS} -u ANativeActivity_onCreate")
 
 add_library(native-activity SHARED
-        copyimagetobuffer_kernel.cpp
-        copybuffertoimage_kernel.cpp
-        fillarraystruct_kernel.cpp
-        fill_kernel.cpp
-        readconstantdata_kernel.cpp
-        readlocalsize_kernel.cpp
-        resample2dimage_kernel.cpp
-        resample3dimage_kernel.cpp
-        strangeshuffle_kernel.cpp
-        testgreaterthanorequalto_kernel.cpp
         clspv_test.cpp
-        clspv_utils.cpp
-        getline_crlf_savvy.cpp
         gpu_types.cpp
         test_manifest.cpp
         test_result_logging.cpp
         test_utils.cpp
-        vulkan_utils.cpp
         util.cpp
         util_init.cpp
+        clspv_utils/clspv_utils.cpp
+        clspv_utils/getline_crlf_savvy.cpp
+        kernel_tests/copyimagetobuffer_kernel.cpp
+        kernel_tests/copybuffertoimage_kernel.cpp
+        kernel_tests/fillarraystruct_kernel.cpp
+        kernel_tests/fill_kernel.cpp
+        kernel_tests/readconstantdata_kernel.cpp
+        kernel_tests/readlocalsize_kernel.cpp
+        kernel_tests/resample2dimage_kernel.cpp
+        kernel_tests/resample3dimage_kernel.cpp
+        kernel_tests/strangeshuffle_kernel.cpp
+        kernel_tests/testgreaterthanorequalto_kernel.cpp
+        vulkan_utils/vulkan_utils.cpp
         )
 
 target_include_directories(native-activity PRIVATE
-    ${PROJECT_SOURCE_DIR}
+    ${PROJECT_SOURCE_DIR}/cpp
     ${ANDROID_NDK}/sources/android/native_app_glue)
 
 # add lib dependencies
