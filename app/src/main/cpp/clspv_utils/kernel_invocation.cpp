@@ -30,7 +30,7 @@ namespace {
                                       return argKind == p.first;
                                   });
         if (found == std::end(kArgKind_DescriptorType_Map)) {
-            throw std::runtime_error("unknown argKind encountered");
+            fail_runtime_error("unknown argKind encountered");
         }
         return found->second;
     }
@@ -108,17 +108,13 @@ namespace clspv_utils {
     std::uint32_t kernel_invocation::validateArgType(std::size_t        ordinal,
                                                      vk::DescriptorType kind) const
     {
-        const auto fail = [](const char* message) {
-            throw std::runtime_error(message);
-        };
-
         if (ordinal >= mArgList.size()) {
-            fail("adding too many arguments to kernel invocation");
+            fail_runtime_error("adding too many arguments to kernel invocation");
         }
 
         auto& ka = mArgList.data()[ordinal];
         if (find_descriptor_type(ka.kind) != kind) {
-            fail("adding incompatible argument to kernel invocation");
+            fail_runtime_error("adding incompatible argument to kernel invocation");
         }
 
         return ka.binding;
@@ -127,17 +123,13 @@ namespace clspv_utils {
     std::uint32_t kernel_invocation::validateArgType(std::size_t        ordinal,
                                                      arg_spec_t::kind_t kind) const
     {
-        const auto fail = [](const char* message) {
-            throw std::runtime_error(message);
-        };
-
         if (ordinal >= mArgList.size()) {
-            fail("adding too many arguments to kernel invocation");
+            fail_runtime_error("adding too many arguments to kernel invocation");
         }
 
         auto& ka = mArgList.data()[ordinal];
         if (ka.kind != kind) {
-            fail("adding incompatible argument to kernel invocation");
+            fail_runtime_error("adding incompatible argument to kernel invocation");
         }
 
         return ka.binding;
@@ -217,7 +209,7 @@ namespace clspv_utils {
         // picking up image and buffer infos in order.
         //
 
-        std::vector<vk::WriteDescriptorSet> writeSets;
+        vector<vk::WriteDescriptorSet> writeSets;
 
         auto nextImage = mImageArgumentInfo.begin();
         auto nextBuffer = mBufferArgumentInfo.begin();

@@ -5,6 +5,7 @@
 #include "module_interface.hpp"
 
 #include "arg_spec.hpp"
+#include "clspv_utils_interop.hpp"
 #include "device.hpp"
 #include "file_utils.hpp"
 #include "getline_crlf_savvy.hpp"
@@ -23,13 +24,11 @@
 #include <iostream>
 #include <limits>
 #include <memory>
-#include <map>
-
 
 namespace {
     using namespace clspv_utils;
 
-    typedef std::pair<std::string,std::string> key_value_t;
+    typedef std::pair<string, string> key_value_t;
 
     const auto kSpvMapArgType_ArgKind_Map = {
             std::make_pair("pod", arg_spec_t::kind_pod),
@@ -41,20 +40,20 @@ namespace {
             std::make_pair("local", arg_spec_t::kind_local)
     };
 
-    arg_spec_t::kind_t find_arg_kind(const std::string &argType) {
+    arg_spec_t::kind_t find_arg_kind(const string &argType) {
         auto found = std::find_if(std::begin(kSpvMapArgType_ArgKind_Map),
                                   std::end(kSpvMapArgType_ArgKind_Map),
                                   [&argType](decltype(kSpvMapArgType_ArgKind_Map)::const_reference p) {
                                       return argType == p.first;
                                   });
         if (found == std::end(kSpvMapArgType_ArgKind_Map)) {
-            throw std::runtime_error("unknown argType encountered");
+            fail_runtime_error("unknown argType encountered");
         }
         return found->second;
     }
 
-    std::string read_csv_field(std::istream& in) {
-        std::string result;
+    string read_csv_field(std::istream& in) {
+        string result;
 
         if (in.good()) {
             const bool is_quoted = (in.peek() == '"');
@@ -130,17 +129,17 @@ namespace clspv_utils {
     {
     }
 
-    module_interface::module_interface(const std::string& moduleName)
+    module_interface::module_interface(const string& moduleName)
             : module_interface()
     {
         mName = moduleName;
 
-        std::string buffer;
+        string buffer;
         file_utils::read_file_contents(moduleName + ".spvmap", buffer);
 
-        std::map<std::string, kernel_interface::arg_list_t> kernel_args;
+        map<string, kernel_interface::arg_list_t> kernel_args;
 
-        std::string line;
+        string line;
         std::istringstream in(buffer);
         while (!in.eof()) {
             // spvmap files may have been generated on a system which uses different line ending
@@ -174,7 +173,7 @@ namespace clspv_utils {
         mSamplers.push_back(sampler);
     }
 
-    const kernel_interface* module_interface::findKernelInterface(const std::string& name) const {
+    const kernel_interface* module_interface::findKernelInterface(const string& name) const {
         auto kernel = std::find_if(mKernels.begin(), mKernels.end(),
                                    [&name](const kernel_interface &iter) {
                                        return iter.getEntryPoint() == name;
@@ -190,9 +189,9 @@ namespace clspv_utils {
         return (found == mSamplers.end() ? -1 : found->descriptor_set);
     }
 
-    std::vector<std::string> module_interface::getEntryPoints() const
+    vector<string> module_interface::getEntryPoints() const
     {
-        std::vector<std::string> result;
+        vector<string> result;
 
         std::transform(mKernels.begin(), mKernels.end(),
                        std::back_inserter(result),

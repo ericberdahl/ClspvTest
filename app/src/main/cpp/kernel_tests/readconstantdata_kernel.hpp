@@ -20,7 +20,7 @@ namespace readconstantdata_kernel {
            int                              width);
 
     test_utils::InvocationResult test(clspv_utils::kernel&              kernel,
-                                      const std::vector<std::string>&   args,
+                                      const std::vector< std::string>&   args,
                                       bool                              verbose);
 
 

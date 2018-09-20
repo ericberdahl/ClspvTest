@@ -7,33 +7,32 @@
 
 #include "clspv_utils_fwd.hpp"
 
-#include <string>
-#include <vector>
+#include "clspv_utils_interop.hpp"
 
 namespace clspv_utils {
 
     class module_interface {
     public:
-        typedef std::vector<sampler_spec_t>     sampler_list_t;
-        typedef std::vector<kernel_interface>   kernel_list_t;
+        typedef vector<sampler_spec_t>     sampler_list_t;
+        typedef vector<kernel_interface>   kernel_list_t;
 
-                                        module_interface();
+                                module_interface();
 
-        explicit                        module_interface(const std::string& moduleName);
+        explicit                module_interface(const string& moduleName);
 
-        const kernel_interface*         findKernelInterface(const std::string& entryPoint) const;
+        const kernel_interface* findKernelInterface(const string& entryPoint) const;
 
-        std::vector<std::string>        getEntryPoints() const;
+        vector<string>          getEntryPoints() const;
 
-        int                             getLiteralSamplersDescriptorSet() const;
+        int                     getLiteralSamplersDescriptorSet() const;
 
-        kernel_module                   load(device dev) const;
+        kernel_module           load(device dev) const;
 
     private:
         void    addLiteralSampler(sampler_spec_t sampler);
 
     private:
-        std::string     mName;
+        string          mName;
         sampler_list_t  mSamplers;
         kernel_list_t   mKernels;
     };

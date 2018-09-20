@@ -7,10 +7,8 @@
 
 #include "clspv_utils_fwd.hpp"
 
+#include "clspv_utils_interop.hpp"
 #include "device.hpp"
-
-#include <string>
-#include <vector>
 
 #include <vulkan/vulkan.hpp>
 
@@ -20,43 +18,43 @@ namespace clspv_utils {
     public:
         typedef vk::ArrayProxy<const kernel_interface>  kernel_list_proxy_t;
 
-                                    kernel_module();
+                            kernel_module();
 
-                                    kernel_module(kernel_module&& other);
+                            kernel_module(kernel_module&& other);
 
-                                    kernel_module(const std::string&        moduleName,
-                                                  device                    dev,
-                                                  vk::DescriptorSet         literalSamplerDescriptor,
-                                                  vk::DescriptorSetLayout   literalSamplerDescriptorLayout,
-                                                  kernel_list_proxy_t       kernelInterfaces);
+                            kernel_module(const string&             moduleName,
+                                          device                    dev,
+                                          vk::DescriptorSet         literalSamplerDescriptor,
+                                          vk::DescriptorSetLayout   literalSamplerDescriptorLayout,
+                                          kernel_list_proxy_t       kernelInterfaces);
 
-                                    ~kernel_module();
+                            ~kernel_module();
 
-        kernel_module&              operator=(kernel_module&& other);
+        kernel_module&      operator=(kernel_module&& other);
 
-        void                        swap(kernel_module& other);
+        void                swap(kernel_module& other);
 
-        kernel                      createKernel(const std::string&     entryPoint,
-                                                 const vk::Extent3D&    workgroup_sizes);
+        kernel              createKernel(const string&          entryPoint,
+                                         const vk::Extent3D&    workgroup_sizes);
 
-        bool                        isLoaded() const { return (bool)getShaderModule(); }
+        bool                isLoaded() const { return (bool)getShaderModule(); }
 
-        std::string                 getName() const { return mName; }
-        std::vector<std::string>    getEntryPoints() const;
-        vk::ShaderModule            getShaderModule() const { return *mShaderModule; }
-
-    private:
-        kernel_layout_t             createKernelLayout(const std::string& entryPoint) const;
+        string              getName() const { return mName; }
+        vector<string>      getEntryPoints() const;
+        vk::ShaderModule    getShaderModule() const { return *mShaderModule; }
 
     private:
-        std::string                     mName;
-        device                          mDevice;
-        kernel_list_proxy_t             mKernelInterfaces;
+        kernel_layout_t     createKernelLayout(const string& entryPoint) const;
 
-        vk::DescriptorSetLayout         mLiteralSamplerDescriptorLayout;
-        vk::DescriptorSet               mLiteralSamplerDescriptor;
-        vk::UniqueShaderModule          mShaderModule;
-        vk::UniquePipelineCache         mPipelineCache;
+    private:
+        string                  mName;
+        device                  mDevice;
+        kernel_list_proxy_t     mKernelInterfaces;
+
+        vk::DescriptorSetLayout mLiteralSamplerDescriptorLayout;
+        vk::DescriptorSet       mLiteralSamplerDescriptor;
+        vk::UniqueShaderModule  mShaderModule;
+        vk::UniquePipelineCache mPipelineCache;
     };
 
     inline void swap(kernel_module& lhs, kernel_module& rhs)

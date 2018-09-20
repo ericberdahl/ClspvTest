@@ -120,7 +120,7 @@ namespace clspv_utils {
 
         if (!samplers.empty()) {
 
-            std::vector<vk::DescriptorSetLayoutBinding> bindingSet;
+            vector<vk::DescriptorSetLayoutBinding> bindingSet;
 
             vk::DescriptorSetLayoutBinding binding;
             binding.setStageFlags(vk::ShaderStageFlagBits::eCompute)
@@ -150,8 +150,8 @@ namespace clspv_utils {
         if (layout) {
             samplerDescriptor = allocate_descriptor_set(*this, layout);
 
-            std::vector<vk::DescriptorImageInfo> literalSamplerInfo;
-            std::vector<vk::WriteDescriptorSet> literalSamplerDescriptorWrites;
+            vector<vk::DescriptorImageInfo> literalSamplerInfo;
+            vector<vk::WriteDescriptorSet> literalSamplerDescriptorWrites;
 
             literalSamplerInfo.reserve(samplers.size());
             literalSamplerDescriptorWrites.reserve(samplers.size());

@@ -7,16 +7,17 @@
 
 #include "clspv_utils_fwd.hpp"
 
+#include "arg_spec.hpp"
+#include "clspv_utils_interop.hpp"
+#include "device.hpp"
+
 #include <chrono>
 #include <memory>
-#include <vector>
 
 #include <vulkan/vulkan.hpp>
 
 #include "vulkan_utils/vulkan_utils.hpp"
 
-#include "arg_spec.hpp"
-#include "device.hpp"
 
 namespace clspv_utils {
 
@@ -85,22 +86,22 @@ namespace clspv_utils {
         };
 
     private:
-        kernel*                                 mKernel = nullptr;
-        device                                  mDevice;
-        arg_list_proxy_t                        mArgList;
-        vk::UniqueCommandBuffer                 mCommand;
-        vk::UniqueQueryPool                     mQueryPool;
+        kernel*                            mKernel = nullptr;
+        device                             mDevice;
+        arg_list_proxy_t                   mArgList;
+        vk::UniqueCommandBuffer            mCommand;
+        vk::UniqueQueryPool                mQueryPool;
 
-        vk::DescriptorSet                       mArgumentDescriptorSet;
+        vk::DescriptorSet                  mArgumentDescriptorSet;
 
-        std::vector<vk::BufferMemoryBarrier>    mBufferMemoryBarriers;
-        std::vector<vk::ImageMemoryBarrier>     mImageMemoryBarriers;
+        vector<vk::BufferMemoryBarrier>    mBufferMemoryBarriers;
+        vector<vk::ImageMemoryBarrier>     mImageMemoryBarriers;
 
-        std::vector<vk::DescriptorImageInfo>    mImageArgumentInfo;
-        std::vector<vk::DescriptorBufferInfo>   mBufferArgumentInfo;
+        vector<vk::DescriptorImageInfo>    mImageArgumentInfo;
+        vector<vk::DescriptorBufferInfo>   mBufferArgumentInfo;
 
-        std::vector<vk::WriteDescriptorSet>     mArgumentDescriptorWrites;
-        std::vector<int32_t>                    mSpecConstantArguments;
+        vector<vk::WriteDescriptorSet>     mArgumentDescriptorWrites;
+        vector<int32_t>                    mSpecConstantArguments;
     };
 
     inline void swap(kernel_invocation & lhs, kernel_invocation & rhs)

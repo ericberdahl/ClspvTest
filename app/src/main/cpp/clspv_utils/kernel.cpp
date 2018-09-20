@@ -17,7 +17,7 @@ namespace clspv_utils {
                    kernel_layout_t      layout,
                    vk::ShaderModule     shaderModule,
                    vk::PipelineCache    pipelineCache,
-                   std::string          entryPoint,
+                   string               entryPoint,
                    const vk::Extent3D&  workgroup_sizes,
                    arg_list_proxy_t     args) :
             mDevice(inDevice),
@@ -71,7 +71,7 @@ namespace clspv_utils {
 
     void kernel::updatePipeline(vk::ArrayProxy<int32_t> otherSpecConstants) {
         // TODO: refactor pipelines so invocations that use spec constants don't create them twice, and are still efficient
-        std::vector<std::uint32_t> specConstants = {
+        vector<std::uint32_t> specConstants = {
                 mWorkgroupSizes.width,
                 mWorkgroupSizes.height,
                 mWorkgroupSizes.depth
@@ -79,7 +79,7 @@ namespace clspv_utils {
         typedef decltype(specConstants)::value_type spec_constant_t;
         std::copy(otherSpecConstants.begin(), otherSpecConstants.end(), std::back_inserter(specConstants));
 
-        std::vector<vk::SpecializationMapEntry> specializationEntries;
+        vector<vk::SpecializationMapEntry> specializationEntries;
         uint32_t index = 0;
         std::generate_n(std::back_inserter(specializationEntries),
                         specConstants.size(),

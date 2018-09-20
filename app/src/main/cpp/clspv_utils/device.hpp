@@ -6,13 +6,13 @@
 #define CLSPVUTILS_DEVICE_HPP
 
 #include "clspv_utils_fwd.hpp"
+
+#include "clspv_utils_interop.hpp"
 #include "sampler_spec.hpp"
 
 #include <vulkan/vulkan.hpp>
 
-#include <map>
 #include <memory>
-#include <vector>
 
 namespace clspv_utils {
 
@@ -45,6 +45,7 @@ namespace clspv_utils {
         vk::Sampler                     getCachedSampler(int opencl_flags);
 
         vk::UniqueDescriptorSetLayout   createSamplerDescriptorLayout(const sampler_list_proxy_t& samplers) const;
+
         vk::UniqueDescriptorSet         createSamplerDescriptor(const sampler_list_proxy_t& samplers,
                                                                 vk::DescriptorSetLayout layout);
 
@@ -57,8 +58,8 @@ namespace clspv_utils {
             vk::UniqueDescriptorSetLayout layout;
         };
 
-        typedef std::map<std::size_t,unique_descriptor_group_t> descriptor_cache_t;
-        typedef std::map<int,vk::UniqueSampler> sampler_cache_t;
+        typedef map<std::size_t,unique_descriptor_group_t> descriptor_cache_t;
+        typedef map<int,vk::UniqueSampler> sampler_cache_t;
 
     private:
         vk::PhysicalDevice                  mPhysicalDevice;
@@ -68,8 +69,8 @@ namespace clspv_utils {
         vk::CommandPool                     mCommandPool;
         vk::Queue                           mComputeQueue;
 
-        std::shared_ptr<descriptor_cache_t> mSamplerDescriptorCache;
-        std::shared_ptr<sampler_cache_t>    mSamplerCache;
+        shared_ptr<descriptor_cache_t>      mSamplerDescriptorCache;
+        shared_ptr<sampler_cache_t>         mSamplerCache;
     };
 }
 

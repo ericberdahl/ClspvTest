@@ -4,12 +4,12 @@
 
 #include "sampler_spec.hpp"
 
+#include "clspv_utils_interop.hpp"
 #include "opencl_types.hpp"
 
 #include <algorithm>
 #include <functional>
 #include <memory>
-
 
 namespace {
     using namespace clspv_utils;
@@ -49,27 +49,23 @@ namespace {
 namespace clspv_utils {
 
     void sampler_spec_t::validate() const {
-        const auto fail = [](const char* message) {
-            throw std::runtime_error(message);
-        };
-
         if (opencl_flags == 0) {
-            fail("sampler missing OpenCL flags");
+            fail_runtime_error("sampler missing OpenCL flags");
         }
         if (descriptor_set < 0) {
-            fail("sampler missing descriptorSet");
+            fail_runtime_error("sampler missing descriptorSet");
         }
         if (binding < 0) {
-            fail("sampler missing binding");
+            fail_runtime_error("sampler missing binding");
         }
 
         // all samplers, are documented to share descriptor set 0
         if (descriptor_set != 0) {
-            fail("all clspv literal samplers must use descriptor set 0");
+            fail_runtime_error("all clspv literal samplers must use descriptor set 0");
         }
 
         if (!isSamplerSupported(opencl_flags)) {
-            fail("sampler is not representable in Vulkan");
+            fail_runtime_error("sampler is not representable in Vulkan");
         }
     }
 
@@ -83,7 +79,7 @@ namespace clspv_utils {
 
     vk::UniqueSampler createCompatibleSampler(vk::Device device, int opencl_flags) {
         if (!isSamplerSupported(opencl_flags)) {
-            throw std::runtime_error("This OpenCL sampler cannot be represented in Vulkan");
+            fail_runtime_error("This OpenCL sampler cannot be represented in Vulkan");
         }
 
         const vk::Filter filter                     = get_vk_filter(opencl_flags);

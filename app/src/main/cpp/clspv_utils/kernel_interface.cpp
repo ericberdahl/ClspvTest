@@ -2,9 +2,11 @@
 // Created by Eric Berdahl on 10/22/17.
 //
 
+#include "kernel_interface.hpp"
+
+#include "clspv_utils_interop.hpp"
 #include "device.hpp"
 #include "kernel.hpp"
-#include "kernel_interface.hpp"
 #include "kernel_invocation.hpp"
 #include "kernel_module.hpp"
 
@@ -39,37 +41,33 @@ namespace {
                                       return argKind == p.first;
                                   });
         if (found == std::end(kArgKind_DescriptorType_Map)) {
-            throw std::runtime_error("unknown argKind encountered");
+            fail_runtime_error("unknown argKind encountered");
         }
         return found->second;
     }
 
     void validate_kernel_arg(const arg_spec_t& arg) {
-        const auto fail = [](const char* message) {
-            throw std::runtime_error(message);
-        };
-
         if (arg.kind == arg_spec_t::kind_unknown) {
-            fail("kernel argument kind unknown");
+            fail_runtime_error("kernel argument kind unknown");
         }
         if (arg.ordinal < 0) {
-            fail("kernel argument missing ordinal");
+            fail_runtime_error("kernel argument missing ordinal");
         }
 
         if (arg.kind == arg_spec_t::kind_local) {
             if (arg.spec_constant < 0) {
-                fail("local kernel argument missing spec constant");
+                fail_runtime_error("local kernel argument missing spec constant");
             }
         }
         else {
             if (arg.descriptor_set < 0) {
-                fail("kernel argument missing descriptorSet");
+                fail_runtime_error("kernel argument missing descriptorSet");
             }
             if (arg.binding < 0) {
-                fail("kernel argument missing binding");
+                fail_runtime_error("kernel argument missing binding");
             }
             if (arg.offset < 0) {
-                fail("kernel argument missing offset");
+                fail_runtime_error("kernel argument missing offset");
             }
         }
     }
@@ -83,9 +81,9 @@ namespace clspv_utils {
     {
     }
 
-    kernel_interface::kernel_interface(std::string            entryPoint,
-                                       sampler_list_proxy_t   samplers,
-                                       arg_list_t             arguments)
+    kernel_interface::kernel_interface(string               entryPoint,
+                                       sampler_list_proxy_t samplers,
+                                       arg_list_t           arguments)
             : kernel_interface()
     {
         mName = entryPoint;
@@ -110,12 +108,8 @@ namespace clspv_utils {
 
     void kernel_interface::validate() const
     {
-        const auto fail = [](const char* message) {
-            throw std::runtime_error(message);
-        };
-
         if (mName.empty()) {
-            fail("kernel has no name");
+            fail_runtime_error("kernel has no name");
         }
 
         const int arg_ds = getArgDescriptorSet();
@@ -123,7 +117,7 @@ namespace clspv_utils {
             // All arguments for a given kernel that are passed in a descriptor set need to be in
             // the same descriptor set
             if (ka.kind != arg_spec_t::kind_local && ka.descriptor_set != arg_ds) {
-                fail("kernel arg descriptor_sets don't match");
+                fail_runtime_error("kernel arg descriptor_sets don't match");
             }
 
             validate_kernel_arg(ka);
@@ -133,7 +127,7 @@ namespace clspv_utils {
         for (auto& ls : mLiteralSamplers) {
             // All literal samplers for a given kernel need to be in the same descriptor set
             if (ls.descriptor_set != sampler_ds) {
-                fail("literal sampler descriptor_sets don't match");
+                fail_runtime_error("literal sampler descriptor_sets don't match");
             }
 
             ls.validate();
@@ -162,7 +156,7 @@ namespace clspv_utils {
     {
         assert(getArgDescriptorSet() == (getLiteralSamplers().empty() ? 0 : 1));
 
-        std::vector<vk::DescriptorSetLayoutBinding> bindingSet;
+        vector<vk::DescriptorSetLayoutBinding> bindingSet;
 
         vk::DescriptorSetLayoutBinding binding;
         binding.setStageFlags(vk::ShaderStageFlagBits::eCompute)

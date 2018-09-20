@@ -110,7 +110,7 @@ namespace test_utils {
             clspv_utils::kernel_module module = moduleInterface.load(inDevice);
             result.second.mLoadedCorrectly = true;
 
-            std::vector<std::string> entryPoints(module.getEntryPoints());
+            auto entryPoints = module.getEntryPoints();
             for (const auto& ep : entryPoints) {
                 std::vector<const KernelTest*> entryTests;
                 for (auto& kt : moduleTest.mKernelTests) {

@@ -8,10 +8,9 @@
 #include "clspv_utils_fwd.hpp"
 
 #include "arg_spec.hpp"
+#include "clspv_utils_interop.hpp"
 #include "device.hpp"
 #include "kernel_layout.hpp"
-
-#include <string>
 
 #include <vulkan/vulkan.hpp>
 
@@ -27,7 +26,7 @@ namespace clspv_utils {
                kernel_layout_t      layout,
                vk::ShaderModule     shaderModule,
                vk::PipelineCache    pipelineCache,
-               std::string          entryPoint,
+               string               entryPoint,
                const vk::Extent3D&  workgroup_sizes,
                arg_list_proxy_t     args);
 
@@ -40,7 +39,7 @@ namespace clspv_utils {
         kernel_invocation   createInvocation();
         void                bindCommand(vk::CommandBuffer command) const;
 
-        std::string         getEntryPoint() const { return mEntryPoint; }
+        string              getEntryPoint() const { return mEntryPoint; }
         vk::Extent3D        getWorkgroupSize() const { return mWorkgroupSizes; }
 
         const device&       getDevice() { return mDevice; }
@@ -52,7 +51,7 @@ namespace clspv_utils {
     private:
         device              mDevice;
         vk::ShaderModule    mShaderModule;
-        std::string         mEntryPoint;
+        string              mEntryPoint;
         vk::Extent3D        mWorkgroupSizes;
         kernel_layout_t     mLayout;
         vk::PipelineCache   mPipelineCache;
