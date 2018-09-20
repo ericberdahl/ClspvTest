@@ -4,6 +4,8 @@
 
 #include "fillarraystruct_kernel.hpp"
 
+#include "clspv_utils/kernel.hpp"
+
 namespace {
 
     const unsigned int kWrapperArraySize = 18;

@@ -5,7 +5,7 @@
 #ifndef CLSPVTEST_TESTGREATERTHANOREQUALTO_KERNEL_HPP
 #define CLSPVTEST_TESTGREATERTHANOREQUALTO_KERNEL_HPP
 
-#include "clspv_utils/clspv_utils.hpp"
+#include "clspv_utils/clspv_utils_fwd.hpp"
 #include "gpu_types.hpp"
 #include "test_utils.hpp"
 #include "vulkan_utils/vulkan_utils.hpp"

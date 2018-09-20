@@ -46,8 +46,15 @@ add_library(native-activity SHARED
         test_utils.cpp
         util.cpp
         util_init.cpp
-        clspv_utils/clspv_utils.cpp
+        clspv_utils/device.cpp
+        clspv_utils/file_utils.cpp
         clspv_utils/getline_crlf_savvy.cpp
+        clspv_utils/kernel.cpp
+        clspv_utils/kernel_interface.cpp
+        clspv_utils/kernel_invocation.cpp
+        clspv_utils/kernel_module.cpp
+        clspv_utils/module_interface.cpp
+        clspv_utils/sampler_spec.cpp
         kernel_tests/copyimagetobuffer_kernel.cpp
         kernel_tests/copybuffertoimage_kernel.cpp
         kernel_tests/fillarraystruct_kernel.cpp

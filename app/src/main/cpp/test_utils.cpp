@@ -4,6 +4,11 @@
 
 #include "test_utils.hpp"
 
+#include "clspv_utils/kernel.hpp"
+#include "clspv_utils/kernel_interface.hpp"
+#include "clspv_utils/kernel_module.hpp"
+#include "clspv_utils/module_interface.hpp"
+
 namespace {
     using namespace test_utils;
 

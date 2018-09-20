@@ -5,10 +5,12 @@
 #ifndef CLSPVTEST_TEST_UTILS_HPP
 #define CLSPVTEST_TEST_UTILS_HPP
 
-#include "clspv_utils/clspv_utils.hpp"
+#include "clspv_utils/kernel_invocation.hpp"
 #include "fp_utils.hpp"
 #include "gpu_types.hpp"
 #include "pixels.hpp"
+
+#include <vulkan/vulkan.hpp>
 
 #include <cmath>
 #include <functional>

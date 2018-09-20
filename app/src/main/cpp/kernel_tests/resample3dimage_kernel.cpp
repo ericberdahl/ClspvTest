@@ -4,6 +4,7 @@
 
 #include "resample3dimage_kernel.hpp"
 
+#include "clspv_utils/kernel.hpp"
 #include "gpu_types.hpp"
 
 #include <vulkan/vulkan.hpp>

@@ -4,6 +4,9 @@
 
 #include "test_manifest.hpp"
 
+#include "clspv_utils/kernel_interface.hpp"
+#include "clspv_utils/module_interface.hpp"
+
 #include "kernel_tests/copybuffertoimage_kernel.hpp"
 #include "kernel_tests/copyimagetobuffer_kernel.hpp"
 #include "kernel_tests/fillarraystruct_kernel.hpp"

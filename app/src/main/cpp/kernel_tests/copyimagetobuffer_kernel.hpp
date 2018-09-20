@@ -5,7 +5,8 @@
 #ifndef CLSPVTEST_COPYIMAGETOBUFFER_KERNEL_HPP
 #define CLSPVTEST_COPYIMAGETOBUFFER_KERNEL_HPP
 
-#include "clspv_utils/clspv_utils.hpp"
+#include "clspv_utils/clspv_utils_fwd.hpp"
+#include "clspv_utils/kernel.hpp"
 #include "gpu_types.hpp"
 #include "test_utils.hpp"
 #include "vulkan_utils/vulkan_utils.hpp"

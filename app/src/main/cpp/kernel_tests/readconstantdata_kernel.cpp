@@ -4,6 +4,8 @@
 
 #include "readconstantdata_kernel.hpp"
 
+#include "clspv_utils/kernel.hpp"
+
 namespace readconstantdata_kernel {
 
     clspv_utils::execution_time_t

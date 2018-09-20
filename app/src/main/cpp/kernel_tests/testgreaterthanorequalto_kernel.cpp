@@ -4,6 +4,8 @@
 
 #include "testgreaterthanorequalto_kernel.hpp"
 
+#include "clspv_utils/kernel.hpp"
+
 namespace testgreaterthanorequalto_kernel {
 
     clspv_utils::execution_time_t

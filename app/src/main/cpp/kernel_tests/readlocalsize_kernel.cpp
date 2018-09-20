@@ -4,6 +4,8 @@
 
 #include "readlocalsize_kernel.hpp"
 
+#include "clspv_utils/kernel.hpp"
+
 namespace {
     using namespace readlocalsize_kernel;
 
