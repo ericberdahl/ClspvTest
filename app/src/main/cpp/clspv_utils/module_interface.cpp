@@ -7,12 +7,13 @@
 #include "arg_spec.hpp"
 #include "clspv_utils_interop.hpp"
 #include "device.hpp"
-#include "file_utils.hpp"
-#include "getline_crlf_savvy.hpp"
 #include "kernel_interface.hpp"
 #include "kernel_module.hpp"
 #include "opencl_types.hpp"
 #include "sampler_spec.hpp"
+
+#include "file_utils.hpp"
+#include "getline_crlf_savvy.hpp"
 #include "util.hpp" // AndroidFopen
 
 #include <algorithm>

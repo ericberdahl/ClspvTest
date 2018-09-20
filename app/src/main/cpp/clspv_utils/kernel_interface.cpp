@@ -9,10 +9,9 @@
 #include "kernel.hpp"
 #include "kernel_invocation.hpp"
 #include "kernel_module.hpp"
+#include "sampler_spec.hpp"
 
 #include "file_utils.hpp"
-#include "kernel_interface.hpp"
-#include "sampler_spec.hpp"
 
 #include <algorithm>
 #include <cassert>
