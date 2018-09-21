@@ -91,6 +91,10 @@ namespace file_utils {
         const std::size_t wordSize = sizeof(typename Container::value_type);
 
         AndroidAssetStream in(filename.c_str());
+        if (!in.good())
+        {
+            throw std::runtime_error("can't open file: " + filename);
+        }
 
         in.seekg(0, std::ios_base::end);
 
