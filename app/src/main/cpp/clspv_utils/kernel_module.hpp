@@ -9,8 +9,11 @@
 
 #include "clspv_utils_interop.hpp"
 #include "device.hpp"
+#include "module_proxy.hpp"
 
 #include <vulkan/vulkan.hpp>
+
+#include <iosfwd>
 
 namespace clspv_utils {
 
@@ -22,11 +25,10 @@ namespace clspv_utils {
 
                             kernel_module(kernel_module&& other);
 
-                            kernel_module(const string&             moduleName,
-                                          device                    dev,
-                                          vk::DescriptorSet         literalSamplerDescriptor,
-                                          vk::DescriptorSetLayout   literalSamplerDescriptorLayout,
-                                          kernel_list_proxy_t       kernelInterfaces);
+                            kernel_module(const string&         moduleName,
+                                          std::istream&         spvModuleStream,
+                                          device                dev,
+                                          const module_proxy_t& proxy);
 
                             ~kernel_module();
 

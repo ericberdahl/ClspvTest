@@ -9,6 +9,8 @@
 
 #include "clspv_utils_interop.hpp"
 
+#include <iosfwd>
+
 namespace clspv_utils {
 
     class module_interface {
@@ -18,7 +20,8 @@ namespace clspv_utils {
 
                                 module_interface();
 
-        explicit                module_interface(const string& moduleName);
+                                module_interface(const string& moduleName,
+                                                 std::istream& spvmapStream);
 
         const kernel_interface* findKernelInterface(const string& entryPoint) const;
 
@@ -26,7 +29,7 @@ namespace clspv_utils {
 
         int                     getLiteralSamplersDescriptorSet() const;
 
-        kernel_module           load(device dev) const;
+        module_proxy_t          createModuleProxy() const;
 
     private:
         void    addLiteralSampler(sampler_spec_t sampler);

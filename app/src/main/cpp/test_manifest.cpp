@@ -18,6 +18,7 @@
 #include "kernel_tests/strangeshuffle_kernel.hpp"
 #include "kernel_tests/testgreaterthanorequalto_kernel.hpp"
 
+#include "file_utils.hpp"
 #include "util.hpp" // for LOGxx macros
 
 namespace
@@ -217,7 +218,14 @@ namespace
 
     void ensure_all_entries_tested(test_utils::ModuleTest& moduleTest)
     {
-        clspv_utils::module_interface moduleInterface(moduleTest.mName);
+        file_utils::AndroidAssetStream in(moduleTest.mName + ".spvmap");
+        if (!in.good())
+        {
+            throw std::runtime_error("cannot open module interface for " + moduleTest.mName);
+        }
+
+        clspv_utils::module_interface moduleInterface(moduleTest.mName, in);
+        in.close();
 
         for (auto& entryPoint : moduleInterface.getEntryPoints())
         {

@@ -7,24 +7,22 @@
 #include "arg_spec.hpp"
 #include "clspv_utils_interop.hpp"
 #include "device.hpp"
-#include "kernel_interface.hpp"
-#include "kernel_module.hpp"
+#include "kernel_interface.hpp" // TODO: break dependency?
+#include "module_proxy.hpp"
 #include "opencl_types.hpp"
 #include "sampler_spec.hpp"
 
-#include "file_utils.hpp"
 #include "getline_crlf_savvy.hpp"
-#include "util.hpp" // AndroidFopen
 
 #include <algorithm>
 #include <cassert>
-#include <cstdio>
 #include <cstring>
-#include <fstream>
 #include <functional>
-#include <iostream>
+#include <istream>
 #include <limits>
 #include <memory>
+
+#include <sstream> // std::istringstream
 
 namespace {
     using namespace clspv_utils;
@@ -130,16 +128,16 @@ namespace clspv_utils {
     {
     }
 
-    module_interface::module_interface(const string& moduleName)
+    module_interface::module_interface(const string& moduleName, std::istream& in)
             : module_interface()
     {
         mName = moduleName;
 
-        file_utils::AndroidAssetStream in(moduleName + ".spvmap");
-        if (!in.good())
-        {
-            fail_runtime_error("cannot open module interface");
-        }
+        /*
+         * TODO Change file reading.
+         * Do CRLF conversion via a streambuf filter. This allows the "main" loop to work on
+         * generic istream and getline functionality.
+         */
 
         map<string, kernel_interface::arg_list_t> kernel_args;
 
@@ -203,22 +201,12 @@ namespace clspv_utils {
         return result;
     }
 
-    kernel_module module_interface::load(device inDevice) const
-    {
-        const int ds = getLiteralSamplersDescriptorSet();
-        assert( (mSamplers.empty() && -1 == ds) || (!mSamplers.empty() && 0 == ds) );
+    module_proxy_t module_interface::createModuleProxy() const {
+        module_proxy_t result = {};
+        result.mSamplers = mSamplers;
+        result.mKernels = mKernels;
 
-        //
-        // Create literal sampler descriptor set
-        //
-
-        const auto literalSamplerDescriptorGroup = inDevice.getCachedSamplerDescriptorGroup(mSamplers);
-
-        return kernel_module(mName,
-                             inDevice,
-                             literalSamplerDescriptorGroup.descriptor,
-                             literalSamplerDescriptorGroup.layout,
-                             mKernels);
+        return result;
     }
 
 } // namespace clspv_utils

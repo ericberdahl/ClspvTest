@@ -7,25 +7,18 @@
 #include "kernel.hpp"
 #include "kernel_interface.hpp"
 #include "kernel_layout.hpp"
+#include "module_proxy.hpp"
 
-#include "file_utils.hpp"
-
+#include <istream>
 #include <functional>
 #include <memory>
-
 
 namespace {
     using namespace clspv_utils;
 
     vk::UniqueShaderModule create_shader(vk::Device     device,
-                                         const string&  spvFilename)
+                                         std::istream&  in)
     {
-        file_utils::AndroidAssetStream in(spvFilename);
-        if (!in.good())
-        {
-            fail_runtime_error("cannot open spv module for loading");
-        }
-
         const auto savePos = in.tellg();
         in.seekg(0, std::ios_base::end);
         const auto num_bytes = in.tellg();
@@ -39,7 +32,6 @@ namespace {
         }
 
         in.read(reinterpret_cast<char*>(spvModule.data()), num_bytes);
-        in.close();
 
         vk::ShaderModuleCreateInfo shaderModuleCreateInfo;
         shaderModuleCreateInfo.setCodeSize(spvModule.size() * sizeof(decltype(spvModule)::value_type))
@@ -107,19 +99,21 @@ namespace clspv_utils {
         swap(other);
     }
 
-    kernel_module::kernel_module(const string&              moduleName,
-                                 device                     inDevice,
-                                 vk::DescriptorSet          literalSamplerDescriptor,
-                                 vk::DescriptorSetLayout    literalSamplerDescriptorLayout,
-                                 kernel_list_proxy_t        kernelInterfaces)
+    kernel_module::kernel_module(const string&          moduleName,
+                                 std::istream&          spvmoduleStream,
+                                 device                 inDevice,
+                                 const module_proxy_t&  proxy)
             : mName(moduleName),
               mDevice(inDevice),
-              mKernelInterfaces(kernelInterfaces),
-              mLiteralSamplerDescriptor(literalSamplerDescriptor),
-              mLiteralSamplerDescriptorLayout(literalSamplerDescriptorLayout)
+              mKernelInterfaces(proxy.mKernels),
+              mLiteralSamplerDescriptor(),
+              mLiteralSamplerDescriptorLayout()
     {
-        const string spvFilename = mName + ".spv";
-        mShaderModule = create_shader(mDevice.getDevice(), spvFilename.c_str());
+        const auto literalSamplerDescriptorGroup = inDevice.getCachedSamplerDescriptorGroup(proxy.mSamplers);
+        mLiteralSamplerDescriptor = literalSamplerDescriptorGroup.descriptor;
+        mLiteralSamplerDescriptorLayout = literalSamplerDescriptorGroup.layout;
+
+        mShaderModule = create_shader(mDevice.getDevice(), spvmoduleStream);
         mPipelineCache = mDevice.getDevice().createPipelineCacheUnique(vk::PipelineCacheCreateInfo());
     }
 

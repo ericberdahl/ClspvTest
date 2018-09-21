@@ -9,6 +9,8 @@
 #include "clspv_utils/kernel_module.hpp"
 #include "clspv_utils/module_interface.hpp"
 
+#include "file_utils.hpp"
+
 namespace {
     using namespace test_utils;
 
@@ -106,9 +108,27 @@ namespace test_utils {
         result.first = &moduleTest;
 
         try {
-            clspv_utils::module_interface moduleInterface(moduleTest.mName);
-            clspv_utils::kernel_module module = moduleInterface.load(inDevice);
+            file_utils::AndroidAssetStream spvmapStream(moduleTest.mName + ".spvmap");
+            if (!spvmapStream.good())
+            {
+                throw std::runtime_error("cannot open spvmap for " + moduleTest.mName);
+            }
+
+            clspv_utils::module_interface moduleInterface(moduleTest.mName, spvmapStream);
+            spvmapStream.close();
+
+            file_utils::AndroidAssetStream spvStream(moduleTest.mName + ".spv");
+            if (!spvStream.good())
+            {
+                throw std::runtime_error("cannot open spv for " + moduleTest.mName);
+            }
+
+            clspv_utils::kernel_module module(moduleTest.mName,
+                                              spvStream,
+                                              inDevice,
+                                              moduleInterface.createModuleProxy());
             result.second.mLoadedCorrectly = true;
+            spvStream.close();
 
             auto entryPoints = module.getEntryPoints();
             for (const auto& ep : entryPoints) {
