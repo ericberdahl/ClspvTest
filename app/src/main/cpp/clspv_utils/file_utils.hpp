@@ -5,12 +5,13 @@
 #ifndef CLSPVTEST_FILE_UTILS_HPP
 #define CLSPVTEST_FILE_UTILS_HPP
 
-#include "file_utils.hpp"
-
 #include <cassert>
 #include <cstdio>
+#include <cstdlib>
 #include <iostream>
 #include <memory>
+#include <streambuf>
+#include <vector>
 
 namespace file_utils {
 
@@ -28,29 +29,83 @@ namespace file_utils {
     template<>
     void *get_data_hack(std::string &c);
 
+    class FILE_buffer : public std::streambuf
+    {
+    public:
+                        FILE_buffer();
+
+        explicit        FILE_buffer(FILE* fptr, std::size_t buff_sz = 256, std::size_t put_back = 8);
+
+                        FILE_buffer(const FILE_buffer &) = delete;
+
+                        FILE_buffer(FILE_buffer &&);
+
+        FILE_buffer&    operator= (const FILE_buffer &) = delete;
+
+        FILE_buffer&    operator= (FILE_buffer &&);
+
+        void            swap(FILE_buffer& other);
+
+    private:
+        virtual int_type underflow();
+
+    protected:
+        virtual pos_type seekoff( off_type off, std::ios_base::seekdir dir,
+                                  std::ios_base::openmode which = std::ios_base::in | std::ios_base::out );
+
+    private:
+        FILE*               mFile;
+        std::size_t         mPutBack;
+        std::vector<char>   mBuffer;
+    };
+
+    class AndroidAssetStream : public std::istream {
+    public:
+                            AndroidAssetStream();
+
+        explicit            AndroidAssetStream(const char* filename);
+
+                            AndroidAssetStream(const AndroidAssetStream &) = delete;
+
+                            AndroidAssetStream(AndroidAssetStream &&);
+
+        AndroidAssetStream& operator= (const AndroidAssetStream &) = delete;
+
+        AndroidAssetStream& operator= (AndroidAssetStream &&);
+
+        bool                is_open() const;
+
+        void                open(const char* filename);
+
+        void                close();
+
+        void                swap(AndroidAssetStream& other);
+
+    private:
+        UniqueFILE  mAssetFile;
+        FILE_buffer mStreamBuf;
+    };
+
     template<typename Container>
     void read_file_contents(const std::string &filename, Container &fileContents) {
         const std::size_t wordSize = sizeof(typename Container::value_type);
 
-        UniqueFILE pFile = fopen_unique(filename.c_str(), "rb");
-        if (!pFile) {
-            throw std::runtime_error("can't open file: " + filename);
-        }
+        AndroidAssetStream in(filename.c_str());
 
-        std::fseek(pFile.get(), 0, SEEK_END);
+        in.seekg(0, std::ios_base::end);
 
-        const auto num_bytes = std::ftell(pFile.get());
+        const auto num_bytes = in.tellg();
         if (0 != (num_bytes % wordSize)) {
             throw std::runtime_error(
                     "file size of " + filename + " inappropriate for requested type");
         }
 
-        const auto num_words = (num_bytes + wordSize - 1) / wordSize;
+        const auto num_words = (num_bytes + std::streamoff(wordSize - 1)) / wordSize;
         fileContents.resize(num_words);
         assert(num_bytes == (fileContents.size() * wordSize));
 
-        std::fseek(pFile.get(), 0, SEEK_SET);
-        std::fread(get_data_hack(fileContents), 1, num_bytes, pFile.get());
+        in.seekg(0, std::ios_base::beg);
+        in.read(static_cast<char*>(get_data_hack(fileContents)), num_bytes);
     }
 
 }   // namespace file_utils
