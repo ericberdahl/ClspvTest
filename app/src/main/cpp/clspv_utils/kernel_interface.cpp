@@ -6,9 +6,6 @@
 
 #include "clspv_utils_interop.hpp"
 #include "device.hpp"
-#include "kernel.hpp"
-#include "kernel_invocation.hpp"
-#include "kernel_module.hpp"
 #include "sampler_spec.hpp"
 
 #include <algorithm>
@@ -84,12 +81,12 @@ namespace clspv_utils {
             : kernel_interface()
     {
         mName = entryPoint;
-        mArgSpecs = std::move(arguments);
+        mArguments = std::move(arguments);
         mLiteralSamplers = samplers;
 
         // Sort the args such that pods are grouped together at the end of the sequence, and that
         // the non-pod and pod groups are each individually sorted by increasing ordinal
-        std::sort(mArgSpecs.begin(), mArgSpecs.end(), [](const arg_spec_t& lhs, const arg_spec_t& rhs) {
+        std::sort(mArguments.begin(), mArguments.end(), [](const arg_spec_t& lhs, const arg_spec_t& rhs) {
             auto isPod = [](arg_spec_t::kind_t kind) {
                 return (kind == arg_spec_t::kind_pod || kind == arg_spec_t::kind_pod_ubo);
             };
@@ -110,7 +107,7 @@ namespace clspv_utils {
         }
 
         const int arg_ds = getArgDescriptorSet();
-        for (auto& ka : mArgSpecs) {
+        for (auto& ka : mArguments) {
             // All arguments for a given kernel that are passed in a descriptor set need to be in
             // the same descriptor set
             if (ka.kind != arg_spec_t::kind_local && ka.descriptor_set != arg_ds) {
@@ -136,10 +133,10 @@ namespace clspv_utils {
     }
 
     int kernel_interface::getArgDescriptorSet() const {
-        auto found = std::find_if(mArgSpecs.begin(), mArgSpecs.end(), [](const arg_spec_t& as) {
+        auto found = std::find_if(mArguments.begin(), mArguments.end(), [](const arg_spec_t& as) {
             return (-1 != as.descriptor_set);
         });
-        return (found == mArgSpecs.end() ? -1 : found->descriptor_set);
+        return (found == mArguments.end() ? -1 : found->descriptor_set);
     }
 
     int kernel_interface::getLiteralSamplersDescriptorSet() const {
@@ -159,7 +156,7 @@ namespace clspv_utils {
         binding.setStageFlags(vk::ShaderStageFlagBits::eCompute)
                 .setDescriptorCount(1);
 
-        for (auto &ka : mArgSpecs) {
+        for (auto &ka : mArguments) {
             // ignore any argument not in offset 0
             if (0 != ka.offset) continue;
 

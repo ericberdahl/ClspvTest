@@ -183,7 +183,7 @@ namespace clspv_utils {
                       *mPipelineCache,
                       entryPoint,
                       workgroup_sizes,
-                      find_kernel_interface(entryPoint, mKernelInterfaces)->mArgSpecs);
+                      find_kernel_interface(entryPoint, mKernelInterfaces)->getArguments());
     }
 
 } // namespace clspv_utils

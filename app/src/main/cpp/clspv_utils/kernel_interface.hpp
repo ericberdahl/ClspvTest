@@ -18,6 +18,7 @@ namespace clspv_utils {
     class kernel_interface {
     public:
         typedef vector<arg_spec_t>                      arg_list_t;
+        typedef vk::ArrayProxy<const arg_spec_t>        arg_list_proxy_t;
         typedef vk::ArrayProxy<const sampler_spec_t>    sampler_list_proxy_t;
 
         kernel_interface();
@@ -30,8 +31,10 @@ namespace clspv_utils {
         const string&                   getEntryPoint() const { return mName; }
         vk::UniqueDescriptorSetLayout   createArgDescriptorLayout(const device& dev) const;
 
-        const sampler_list_proxy_t&     getLiteralSamplers() const { return mLiteralSamplers; }
+        sampler_list_proxy_t            getLiteralSamplers() const { return mLiteralSamplers; }
         int                             getLiteralSamplersDescriptorSet() const;
+
+        arg_list_proxy_t                getArguments() const { return mArguments; }
 
     private:
         void        validate() const;
@@ -39,8 +42,7 @@ namespace clspv_utils {
     private:
         string                  mName;
         sampler_list_proxy_t    mLiteralSamplers;
-    public:
-        arg_list_t              mArgSpecs;  // TODO: make mArgSpecs private
+        arg_list_t              mArguments;
     };
 }
 
