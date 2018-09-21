@@ -27,8 +27,6 @@ namespace clspv_utils {
 
         vector<string>          getEntryPoints() const;
 
-        int                     getLiteralSamplersDescriptorSet() const;
-
         module_proxy_t          createModuleProxy() const;
 
     private:

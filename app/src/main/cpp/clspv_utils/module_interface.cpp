@@ -183,13 +183,6 @@ namespace clspv_utils {
         return (kernel == mKernels.end() ? nullptr : &(*kernel));
     }
 
-    int module_interface::getLiteralSamplersDescriptorSet() const {
-        auto found = std::find_if(mSamplers.begin(), mSamplers.end(), [](const sampler_spec_t& ss) {
-            return (-1 != ss.descriptor_set);
-        });
-        return (found == mSamplers.end() ? -1 : found->descriptor_set);
-    }
-
     vector<string> module_interface::getEntryPoints() const
     {
         vector<string> result;
