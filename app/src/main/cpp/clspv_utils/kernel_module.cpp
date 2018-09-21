@@ -158,7 +158,7 @@ namespace clspv_utils {
         }
 
         if (-1 != kernelInterface->getArgDescriptorSet()) {
-            result.mArgumentDescriptorLayout = kernelInterface->createArgDescriptorLayout(mDevice);
+            result.mArgumentDescriptorLayout = createArgumentDescriptorLayout(*kernelInterface, mDevice);
 
             result.mArgumentsDescriptor = allocate_descriptor_set(mDevice,
                                                                   *result.mArgumentDescriptorLayout);

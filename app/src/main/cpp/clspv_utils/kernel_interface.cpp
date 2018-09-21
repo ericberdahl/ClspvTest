@@ -146,9 +146,9 @@ namespace clspv_utils {
         return (found == mLiteralSamplers.end() ? -1 : found->descriptor_set);
     }
 
-    vk::UniqueDescriptorSetLayout kernel_interface::createArgDescriptorLayout(const device& inDevice) const
+    vk::UniqueDescriptorSetLayout createArgumentDescriptorLayout(const kernel_interface& kernel, const device& inDevice)
     {
-        assert(getArgDescriptorSet() == (getLiteralSamplers().empty() ? 0 : 1));
+        assert(kernel.getArgDescriptorSet() == (kernel.getLiteralSamplers().empty() ? 0 : 1));
 
         vector<vk::DescriptorSetLayoutBinding> bindingSet;
 
@@ -156,7 +156,7 @@ namespace clspv_utils {
         binding.setStageFlags(vk::ShaderStageFlagBits::eCompute)
                 .setDescriptorCount(1);
 
-        for (auto &ka : mArguments) {
+        for (auto &ka : kernel.getArguments()) {
             // ignore any argument not in offset 0
             if (0 != ka.offset) continue;
 

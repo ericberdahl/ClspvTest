@@ -29,7 +29,6 @@ namespace clspv_utils {
 
         int                             getArgDescriptorSet() const;
         const string&                   getEntryPoint() const { return mName; }
-        vk::UniqueDescriptorSetLayout   createArgDescriptorLayout(const device& dev) const;
 
         sampler_list_proxy_t            getLiteralSamplers() const { return mLiteralSamplers; }
         int                             getLiteralSamplersDescriptorSet() const;
@@ -44,6 +43,8 @@ namespace clspv_utils {
         sampler_list_proxy_t    mLiteralSamplers;
         arg_list_t              mArguments;
     };
+
+    vk::UniqueDescriptorSetLayout createArgumentDescriptorLayout(const kernel_interface& kernel, const device& inDevice);
 }
 
 #endif //CLSPVUTILS_KERNEL_INTERFACE_HPP
