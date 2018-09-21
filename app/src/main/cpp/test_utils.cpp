@@ -114,7 +114,7 @@ namespace test_utils {
                 throw std::runtime_error("cannot open spvmap for " + moduleTest.mName);
             }
 
-            clspv_utils::module_interface moduleInterface(moduleTest.mName, spvmapStream);
+            clspv_utils::module_interface moduleInterface(spvmapStream);
             spvmapStream.close();
 
             file_utils::AndroidAssetStream spvStream(moduleTest.mName + ".spv");

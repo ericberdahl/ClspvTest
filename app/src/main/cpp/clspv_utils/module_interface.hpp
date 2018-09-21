@@ -20,8 +20,7 @@ namespace clspv_utils {
 
                                 module_interface();
 
-                                module_interface(const string& moduleName,
-                                                 std::istream& spvmapStream);
+        explicit                module_interface(std::istream& spvmapStream);
 
         const kernel_interface* findKernelInterface(const string& entryPoint) const;
 
@@ -33,7 +32,6 @@ namespace clspv_utils {
         void    addLiteralSampler(sampler_spec_t sampler);
 
     private:
-        string          mName;
         sampler_list_t  mSamplers;
         kernel_list_t   mKernels;
     };

@@ -128,11 +128,9 @@ namespace clspv_utils {
     {
     }
 
-    module_interface::module_interface(const string& moduleName, std::istream& in)
+    module_interface::module_interface(std::istream& in)
             : module_interface()
     {
-        mName = moduleName;
-
         /*
          * TODO Change file reading.
          * Do CRLF conversion via a streambuf filter. This allows the "main" loop to work on

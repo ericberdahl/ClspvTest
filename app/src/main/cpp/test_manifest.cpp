@@ -224,7 +224,7 @@ namespace
             throw std::runtime_error("cannot open module interface for " + moduleTest.mName);
         }
 
-        clspv_utils::module_interface moduleInterface(moduleTest.mName, in);
+        clspv_utils::module_interface moduleInterface(in);
         in.close();
 
         for (auto& entryPoint : moduleInterface.getEntryPoints())
