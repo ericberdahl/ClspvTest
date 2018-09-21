@@ -20,8 +20,26 @@ namespace {
     vk::UniqueShaderModule create_shader(vk::Device     device,
                                          const string&  spvFilename)
     {
-        vector<std::uint32_t> spvModule;
-        file_utils::read_file_contents(spvFilename, spvModule);
+        file_utils::AndroidAssetStream in(spvFilename);
+        if (!in.good())
+        {
+            fail_runtime_error("cannot open spv module for loading");
+        }
+
+        const auto savePos = in.tellg();
+        in.seekg(0, std::ios_base::end);
+        const auto num_bytes = in.tellg();
+        in.seekg(savePos, std::ios_base::beg);
+
+        const auto num_words = (num_bytes + std::streamoff(sizeof(std::uint32_t) - 1)) / sizeof(std::uint32_t);
+        vector<std::uint32_t> spvModule(num_words);
+        if (num_bytes != (spvModule.size() * sizeof(std::uint32_t)))
+        {
+            fail_runtime_error("spv module size is not multiple of uint32_t word size");
+        }
+
+        in.read(reinterpret_cast<char*>(spvModule.data()), num_bytes);
+        in.close();
 
         vk::ShaderModuleCreateInfo shaderModuleCreateInfo;
         shaderModuleCreateInfo.setCodeSize(spvModule.size() * sizeof(decltype(spvModule)::value_type))
