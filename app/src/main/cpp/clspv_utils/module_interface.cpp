@@ -135,13 +135,15 @@ namespace clspv_utils {
     {
         mName = moduleName;
 
-        string buffer;
-        file_utils::read_file_contents(moduleName + ".spvmap", buffer);
+        file_utils::AndroidAssetStream in(moduleName + ".spvmap");
+        if (!in.good())
+        {
+            fail_runtime_error("cannot open module interface");
+        }
 
         map<string, kernel_interface::arg_list_t> kernel_args;
 
         string line;
-        std::istringstream in(buffer);
         while (!in.eof()) {
             // spvmap files may have been generated on a system which uses different line ending
             // conventions than the system on which the consumer runs. Safer to fetch lines

@@ -65,6 +65,8 @@ namespace file_utils {
 
         explicit            AndroidAssetStream(const char* filename);
 
+        explicit            AndroidAssetStream(const std::string& filename);
+
                             AndroidAssetStream(const AndroidAssetStream &) = delete;
 
                             AndroidAssetStream(AndroidAssetStream &&);

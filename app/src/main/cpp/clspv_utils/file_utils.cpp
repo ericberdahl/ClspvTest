@@ -134,6 +134,12 @@ namespace file_utils {
         open(filename);
     }
 
+    AndroidAssetStream::AndroidAssetStream(const std::string& filename)
+            : AndroidAssetStream()
+    {
+        open(filename.c_str());
+    }
+
     AndroidAssetStream::AndroidAssetStream(AndroidAssetStream && other)
             : AndroidAssetStream()
     {
