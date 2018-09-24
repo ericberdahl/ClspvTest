@@ -65,7 +65,7 @@ namespace file_utils {
         swap(mBuffer, other.mBuffer);
     }
 
-    std::streambuf::int_type FILE_buffer::underflow()
+    FILE_buffer::int_type FILE_buffer::underflow()
     {
         if (gptr() < egptr()) // buffer not exhausted
             return traits_type::to_int_type(*gptr());
