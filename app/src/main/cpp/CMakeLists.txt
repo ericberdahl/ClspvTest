@@ -49,7 +49,7 @@ add_library(native-activity SHARED
         clspv_utils/clspv_utils_interop.cpp
         clspv_utils/device.cpp
         file_utils.cpp
-        clspv_utils/getline_crlf_savvy.cpp
+        crlf_savvy.cpp
         clspv_utils/kernel.cpp
         clspv_utils/kernel_interface.cpp
         clspv_utils/kernel_invocation.cpp

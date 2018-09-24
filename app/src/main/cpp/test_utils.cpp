@@ -9,6 +9,7 @@
 #include "clspv_utils/kernel_module.hpp"
 #include "clspv_utils/module_interface.hpp"
 
+#include "crlf_savvy.hpp"
 #include "file_utils.hpp"
 
 namespace {
@@ -113,6 +114,12 @@ namespace test_utils {
             {
                 throw std::runtime_error("cannot open spvmap for " + moduleTest.mName);
             }
+
+            // spvmap files may have been generated on a system which uses different line ending
+            // conventions than the system on which the consumer runs. Safer to fetch lines
+            // using a function which recognizes multiple line endings.
+            crlf_savvy::crlf_filter_buffer filter(spvmapStream.rdbuf());
+            spvmapStream.rdbuf(&filter);
 
             clspv_utils::module_interface moduleInterface(spvmapStream);
             spvmapStream.close();

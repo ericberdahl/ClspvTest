@@ -2,10 +2,11 @@
 // Created by Eric Berdahl on 4/26/18.
 //
 
-#ifndef CLSPVUTILS_GETLINE_CRLF_SAVVY_HPP
-#define CLSPVUTILS_GETLINE_CRLF_SAVVY_HPP
+#ifndef CLSPVUTILS_CRLF_SAVVY_HPP
+#define CLSPVUTILS_CRLF_SAVVY_HPP
 
-#include <ios>
+#include <iosfwd>
+#include <streambuf>
 #include <string>
 
 namespace crlf_savvy {
@@ -15,6 +16,17 @@ namespace crlf_savvy {
     // than that which is preferred by the host system on which the software is running.
     std::istream& getline(std::istream& is, std::string& t);
 
+    class crlf_filter_buffer : public std::streambuf
+    {
+    public:
+        explicit            crlf_filter_buffer(std::streambuf* source);
+
+        virtual int_type    underflow();
+
+    private:
+        std::streambuf* mSource;
+        char            mBuffer;
+    };
 }
 
-#endif //CLSPVUTILS_GETLINE_CRLF_SAVVY_HPP
+#endif //CLSPVUTILS_CRLF_SAVVY_HPP

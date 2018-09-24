@@ -18,6 +18,7 @@
 #include "kernel_tests/strangeshuffle_kernel.hpp"
 #include "kernel_tests/testgreaterthanorequalto_kernel.hpp"
 
+#include "crlf_savvy.hpp"
 #include "file_utils.hpp"
 #include "util.hpp" // for LOGxx macros
 
@@ -218,14 +219,20 @@ namespace
 
     void ensure_all_entries_tested(test_utils::ModuleTest& moduleTest)
     {
-        file_utils::AndroidAssetStream in(moduleTest.mName + ".spvmap");
-        if (!in.good())
+        file_utils::AndroidAssetStream spvmapStream(moduleTest.mName + ".spvmap");
+        if (!spvmapStream.good())
         {
             throw std::runtime_error("cannot open module interface for " + moduleTest.mName);
         }
 
-        clspv_utils::module_interface moduleInterface(in);
-        in.close();
+        // spvmap files may have been generated on a system which uses different line ending
+        // conventions than the system on which the consumer runs. Safer to fetch lines
+        // using a function which recognizes multiple line endings.
+        crlf_savvy::crlf_filter_buffer filter(spvmapStream.rdbuf());
+        spvmapStream.rdbuf(&filter);
+
+        clspv_utils::module_interface moduleInterface(spvmapStream);
+        spvmapStream.close();
 
         for (auto& entryPoint : moduleInterface.getEntryPoints())
         {

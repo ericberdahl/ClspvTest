@@ -12,8 +12,6 @@
 #include "opencl_types.hpp"
 #include "sampler_spec.hpp"
 
-#include "getline_crlf_savvy.hpp"
-
 #include <algorithm>
 #include <cassert>
 #include <cstring>
@@ -141,10 +139,7 @@ namespace clspv_utils {
 
         string line;
         while (!in.eof()) {
-            // spvmap files may have been generated on a system which uses different line ending
-            // conventions than the system on which the consumer runs. Safer to fetch lines
-            // using a function which recognizes multiple line endings.
-            crlf_savvy::getline(in, line);
+            std::getline(in, line);
 
             std::istringstream in_line(line);
             auto tag = read_key_value_pair(in_line);
