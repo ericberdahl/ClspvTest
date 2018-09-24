@@ -45,7 +45,6 @@ android {
 
     sourceSets.main.jniLibs.srcDirs file(ndkDir).absolutePath +
             '/sources/third_party/vulkan/src/build-android/jniLibs'
-    buildToolsVersion '28.0.1'
 }
 
 dependencies {
