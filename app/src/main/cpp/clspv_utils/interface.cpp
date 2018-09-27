@@ -5,7 +5,6 @@
 #include "interface.hpp"
 
 #include "clspv_utils_interop.hpp"
-#include "device.hpp"
 
 #include <algorithm>
 #include <cassert>
@@ -117,22 +116,9 @@ namespace {
 
 namespace clspv_utils {
 
-    const kernel_spec_t* findKernelSpec(const string&                       name,
-                                        const module_spec_t::kernel_list&   kernels)
-    {
-        auto kernel = std::find_if(kernels.begin(), kernels.end(),
-                                   [&name](const kernel_spec_t &iter) {
-                                       return iter.mName == name;
-                                   });
-
-        return (kernel == kernels.end() ? nullptr : &(*kernel));
-    }
-
-    kernel_spec_t* findKernelSpec(const string&                 name,
-                                  module_spec_t::kernel_list&   kernels)
-    {
-        return const_cast<kernel_spec_t*>(findKernelSpec(name, const_cast<const module_spec_t::kernel_list&>(kernels)));
-    }
+    /***********************************************************************************************
+     * module_spect_t functions
+     **********************************************************************************************/
 
     module_spec_t createModuleSpec(std::istream& in)
     {
@@ -184,6 +170,54 @@ namespace clspv_utils {
         return result;
     }
 
+    /***********************************************************************************************
+     * module_spec_t::kernel_list functions
+     **********************************************************************************************/
+
+    const kernel_spec_t* findKernelSpec(const string&                       name,
+                                        const module_spec_t::kernel_list&   kernels)
+    {
+        auto kernel = std::find_if(kernels.begin(), kernels.end(),
+                                   [&name](const kernel_spec_t &iter) {
+                                       return iter.mName == name;
+                                   });
+
+        return (kernel == kernels.end() ? nullptr : &(*kernel));
+    }
+
+    kernel_spec_t* findKernelSpec(const string&                 name,
+                                  module_spec_t::kernel_list&   kernels)
+    {
+        return const_cast<kernel_spec_t*>(findKernelSpec(name, const_cast<const module_spec_t::kernel_list&>(kernels)));
+    }
+
+    vector<string> getEntryPointNames(const module_spec_t::kernel_list& specs)
+    {
+        vector<string> result;
+
+        std::transform(specs.begin(), specs.end(),
+                       std::back_inserter(result),
+                       [](const kernel_spec_t& k) { return k.mName; });
+
+        return result;
+    }
+
+    /***********************************************************************************************
+     * module_spec_t::sampler_list functions
+     **********************************************************************************************/
+
+    int getSamplersDescriptorSet(const module_spec_t::sampler_list& samplers) {
+        auto found = std::find_if(samplers.begin(), samplers.end(),
+                                  [](const sampler_spec_t &ss) {
+                                      return (-1 != ss.mDescriptorSet);
+                                  });
+        return (found == samplers.end() ? -1 : found->mDescriptorSet);
+    }
+
+    /***********************************************************************************************
+     * Validation functions
+     **********************************************************************************************/
+
     void validateModule(const module_spec_t& spec)
     {
         const int sampler_ds = getSamplersDescriptorSet(spec.mSamplers);
@@ -199,25 +233,6 @@ namespace clspv_utils {
             validateKernel(k, kernel_ds);
         }
 
-    }
-
-    int getSamplersDescriptorSet(const module_spec_t::sampler_list& samplers) {
-        auto found = std::find_if(samplers.begin(), samplers.end(),
-                                  [](const sampler_spec_t &ss) {
-                                      return (-1 != ss.mDescriptorSet);
-                                  });
-        return (found == samplers.end() ? -1 : found->mDescriptorSet);
-    }
-
-    vector<string> getEntryPointNames(const module_spec_t::kernel_list& specs)
-    {
-        vector<string> result;
-
-        std::transform(specs.begin(), specs.end(),
-                       std::back_inserter(result),
-                       [](const kernel_spec_t& k) { return k.mName; });
-
-        return result;
     }
 
 } // namespace clspv_utils
