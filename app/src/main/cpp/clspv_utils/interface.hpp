@@ -81,7 +81,7 @@ namespace clspv_utils {
      */
 
     vk::UniqueDescriptorSetLayout createKernelArgumentDescriptorLayout(const kernel_spec_t::arg_list&   arguments,
-                                                                       const device&                    inDevice);
+                                                                       vk::Device                       inDevice);
 
     /*
      * Sort the args such that pods are grouped together at the end of the sequence, and that

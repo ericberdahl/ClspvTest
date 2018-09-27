@@ -5,7 +5,6 @@
 #include "interface.hpp"
 
 #include "clspv_utils_interop.hpp"
-#include "device.hpp"
 
 #include <algorithm>
 #include <cassert>
@@ -115,7 +114,7 @@ namespace clspv_utils {
         return (found == arguments.end() ? -1 : found->mDescriptorSet);
     }
 
-    vk::UniqueDescriptorSetLayout createKernelArgumentDescriptorLayout(const kernel_spec_t::arg_list& arguments, const device& inDevice)
+    vk::UniqueDescriptorSetLayout createKernelArgumentDescriptorLayout(const kernel_spec_t::arg_list& arguments, vk::Device inDevice)
     {
         vector<vk::DescriptorSetLayoutBinding> bindingSet;
 
@@ -137,7 +136,7 @@ namespace clspv_utils {
         createInfo.setBindingCount(bindingSet.size())
                 .setPBindings(bindingSet.size() ? bindingSet.data() : nullptr);
 
-        return inDevice.getDevice().createDescriptorSetLayoutUnique(createInfo);
+        return inDevice.createDescriptorSetLayoutUnique(createInfo);
     }
 
 } // namespace clspv_utils
