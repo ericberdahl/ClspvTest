@@ -78,7 +78,7 @@ namespace {
 
         for (auto& s : samplers)
         {
-            boost_hash_combine_impl(result, std::hash<int>{}(s.opencl_flags));
+            boost_hash_combine_impl(result, std::hash<int>{}(s.mOpenclFlags));
         }
 
         return result;
@@ -128,7 +128,7 @@ namespace clspv_utils {
 
             for (auto& s : samplers) {
                 binding.descriptorType = vk::DescriptorType::eSampler;
-                binding.binding = s.binding;
+                binding.binding = s.mBinding;
                 bindingSet.push_back(binding);
             }
 
@@ -158,12 +158,12 @@ namespace clspv_utils {
 
             for (auto s : samplers) {
                 vk::DescriptorImageInfo samplerInfo;
-                samplerInfo.setSampler(getCachedSampler(s.opencl_flags));
+                samplerInfo.setSampler(getCachedSampler(s.mOpenclFlags));
                 literalSamplerInfo.push_back(samplerInfo);
 
                 vk::WriteDescriptorSet literalSamplerSet;
                 literalSamplerSet.setDstSet(*samplerDescriptor)
-                        .setDstBinding(s.binding)
+                        .setDstBinding(s.mBinding)
                         .setDescriptorCount(1)
                         .setDescriptorType(vk::DescriptorType::eSampler)
                         .setPImageInfo(&literalSamplerInfo.back());

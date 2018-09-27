@@ -12,7 +12,7 @@
 namespace clspv_utils {
 
     struct arg_spec_t {
-        enum kind_t {
+        enum kind {
             kind_unknown,
             kind_pod,
             kind_pod_ubo,
@@ -23,18 +23,18 @@ namespace clspv_utils {
             kind_local
         };
 
-        kind_t  kind            = kind_unknown;
-        int     ordinal         = -1;
-        int     descriptor_set  = -1;
-        int     binding         = -1;
-        int     offset          = -1;
-        int     spec_constant   = -1;
+        kind    mKind           = kind_unknown;
+        int     mOrdinal        = -1;
+        int     mDescriptorSet  = -1;
+        int     mBinding        = -1;
+        int     mOffset         = -1;
+        int     mSpecConstant   = -1;
     };
 
     struct sampler_spec_t {
-        int opencl_flags    = 0;
-        int descriptor_set  = -1;
-        int binding         = -1;
+        int mOpenclFlags    = 0;
+        int mDescriptorSet  = -1;
+        int mBinding        = -1;
     };
 
     struct kernel_spec_t {
@@ -95,7 +95,7 @@ namespace clspv_utils {
      * arg_spec_t::kind_t functions
      */
 
-    vk::DescriptorType  getDescriptorType(arg_spec_t::kind_t argKind);
+    vk::DescriptorType  getDescriptorType(arg_spec_t::kind argKind);
 
     /*
      * OpenCL sampler flags functions

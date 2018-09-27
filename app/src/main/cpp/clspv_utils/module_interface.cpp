@@ -24,16 +24,16 @@ namespace {
     typedef std::pair<string, string> key_value_t;
 
     const auto kSpvMapArgType_ArgKind_Map = {
-            std::make_pair("pod", arg_spec_t::kind_pod),
-            std::make_pair("pod_ubo", arg_spec_t::kind_pod_ubo),
-            std::make_pair("buffer", arg_spec_t::kind_buffer),
+            std::make_pair("pod",      arg_spec_t::kind_pod),
+            std::make_pair("pod_ubo",  arg_spec_t::kind_pod_ubo),
+            std::make_pair("buffer",   arg_spec_t::kind_buffer),
             std::make_pair("ro_image", arg_spec_t::kind_ro_image),
             std::make_pair("wo_image", arg_spec_t::kind_wo_image),
-            std::make_pair("sampler", arg_spec_t::kind_sampler),
-            std::make_pair("local", arg_spec_t::kind_local)
+            std::make_pair("sampler",  arg_spec_t::kind_sampler),
+            std::make_pair("local",    arg_spec_t::kind_local)
     };
 
-    arg_spec_t::kind_t find_arg_kind(const string &argType) {
+    arg_spec_t::kind find_arg_kind(const string &argType) {
         auto found = std::find_if(std::begin(kSpvMapArgType_ArgKind_Map),
                                   std::end(kSpvMapArgType_ArgKind_Map),
                                   [&argType](decltype(kSpvMapArgType_ArgKind_Map)::const_reference p) {
@@ -72,15 +72,15 @@ namespace {
     sampler_spec_t parse_spvmap_sampler(key_value_t tag, std::istream& in) {
         sampler_spec_t result;
 
-        result.opencl_flags = std::atoi(tag.second.c_str());
+        result.mOpenclFlags = std::atoi(tag.second.c_str());
 
         while (!in.eof()) {
             tag = read_key_value_pair(in);
 
             if ("descriptorSet" == tag.first) {
-                result.descriptor_set = std::atoi(tag.second.c_str());
+                result.mDescriptorSet = std::atoi(tag.second.c_str());
             } else if ("binding" == tag.first) {
-                result.binding = std::atoi(tag.second.c_str());
+                result.mBinding = std::atoi(tag.second.c_str());
             }
         }
 
@@ -94,19 +94,19 @@ namespace {
             tag = read_key_value_pair(in);
 
             if ("argOrdinal" == tag.first) {
-                result.ordinal = std::atoi(tag.second.c_str());
+                result.mOrdinal = std::atoi(tag.second.c_str());
             } else if ("descriptorSet" == tag.first) {
-                result.descriptor_set = std::atoi(tag.second.c_str());
+                result.mDescriptorSet = std::atoi(tag.second.c_str());
             } else if ("binding" == tag.first) {
-                result.binding = std::atoi(tag.second.c_str());
+                result.mBinding = std::atoi(tag.second.c_str());
             } else if ("offset" == tag.first) {
-                result.offset = std::atoi(tag.second.c_str());
+                result.mOffset = std::atoi(tag.second.c_str());
             } else if ("argKind" == tag.first) {
-                result.kind = find_arg_kind(tag.second);
+                result.mKind = find_arg_kind(tag.second);
             } else if ("arrayElemSize" == tag.first) {
                 // arrayElemSize is ignored by clspvtest
             } else if ("arrayNumElemSpecId" == tag.first) {
-                result.spec_constant = std::atoi(tag.second.c_str());
+                result.mSpecConstant = std::atoi(tag.second.c_str());
             }
 
         }
@@ -173,7 +173,7 @@ namespace clspv_utils {
         // important if the sequence is later used to determine whether a cached sampler descriptor
         // set can be re-used for this module.
         std::sort(result.mSamplers.begin(), result.mSamplers.end(), [](const sampler_spec_t& lhs, const sampler_spec_t& rhs) {
-            return lhs.binding < rhs.binding;
+            return lhs.mBinding < rhs.mBinding;
         });
 
         for (auto& k : result.mKernels) {
@@ -205,9 +205,9 @@ namespace clspv_utils {
     int getSamplersDescriptorSet(const module_spec_t::sampler_list& samplers) {
         auto found = std::find_if(samplers.begin(), samplers.end(),
                                   [](const sampler_spec_t &ss) {
-                                      return (-1 != ss.descriptor_set);
+                                      return (-1 != ss.mDescriptorSet);
                                   });
-        return (found == samplers.end() ? -1 : found->descriptor_set);
+        return (found == samplers.end() ? -1 : found->mDescriptorSet);
     }
 
     vector<string> getEntryPointNames(const module_spec_t::kernel_list& specs)

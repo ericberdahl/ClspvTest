@@ -87,26 +87,26 @@ namespace clspv_utils {
         }
 
         auto& ka = mArgList.data()[ordinal];
-        if (getDescriptorType(ka.kind) != kind) {
+        if (getDescriptorType(ka.mKind) != kind) {
             fail_runtime_error("adding incompatible argument to kernel invocation");
         }
 
-        return ka.binding;
+        return ka.mBinding;
     }
 
     std::uint32_t kernel_invocation::validateArgType(std::size_t        ordinal,
-                                                     arg_spec_t::kind_t kind) const
+                                                     arg_spec_t::kind   kind) const
     {
         if (ordinal >= mArgList.size()) {
             fail_runtime_error("adding too many arguments to kernel invocation");
         }
 
         auto& ka = mArgList.data()[ordinal];
-        if (ka.kind != kind) {
+        if (ka.mKind != kind) {
             fail_runtime_error("adding incompatible argument to kernel invocation");
         }
 
-        return ka.binding;
+        return ka.mBinding;
     }
 
     void kernel_invocation::addStorageBufferArgument(vulkan_utils::storage_buffer& buffer) {
@@ -172,7 +172,7 @@ namespace clspv_utils {
     }
 
     void kernel_invocation::addLocalArraySizeArgument(unsigned int numElements) {
-        validateArgType(countArguments(), arg_spec_t::kind_t::kind_local);
+        validateArgType(countArguments(), arg_spec_t::kind_local);
         mSpecConstantArguments.push_back(numElements);
     }
 

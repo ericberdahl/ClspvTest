@@ -71,7 +71,7 @@ namespace clspv_utils {
         // Sanity check that the nth argument (specified by ordinal) has the indicated
         // spvmap type. Throw an exception if false. Return the binding number if true.
         std::uint32_t   validateArgType(std::size_t ordinal, vk::DescriptorType kind) const;
-        std::uint32_t   validateArgType(std::size_t ordinal, arg_spec_t::kind_t kind) const;
+        std::uint32_t   validateArgType(std::size_t ordinal, arg_spec_t::kind kind) const;
 
         std::size_t countArguments() const;
 
