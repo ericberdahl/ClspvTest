@@ -6,7 +6,6 @@
 
 #include "clspv_utils_interop.hpp"
 #include "device.hpp"
-#include "opencl_types.hpp"
 
 #include <algorithm>
 #include <cassert>
