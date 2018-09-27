@@ -4,8 +4,8 @@
 
 #include "kernel_module.hpp"
 
+#include "interface.hpp"
 #include "kernel.hpp"
-#include "kernel_interface.hpp"
 #include "kernel_layout.hpp"
 
 #include <istream>

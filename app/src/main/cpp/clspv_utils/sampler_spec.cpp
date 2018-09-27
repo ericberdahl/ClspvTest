@@ -2,7 +2,7 @@
 // Created by Eric Berdahl on 10/22/17.
 //
 
-#include "sampler_spec.hpp"
+#include "interface.hpp"
 
 #include "clspv_utils_interop.hpp"
 #include "opencl_types.hpp"

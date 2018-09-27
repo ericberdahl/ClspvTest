@@ -4,7 +4,7 @@
 
 #include "device.hpp"
 
-#include "sampler_spec.hpp"
+#include "interface.hpp"
 
 #include <cassert>
 

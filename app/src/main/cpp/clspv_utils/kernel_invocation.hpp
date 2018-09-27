@@ -7,9 +7,9 @@
 
 #include "clspv_utils_fwd.hpp"
 
-#include "arg_spec.hpp"
 #include "clspv_utils_interop.hpp"
 #include "device.hpp"
+#include "interface.hpp"
 
 #include <chrono>
 #include <memory>

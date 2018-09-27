@@ -2,11 +2,10 @@
 // Created by Eric Berdahl on 10/22/17.
 //
 
-#include "kernel_interface.hpp"
+#include "interface.hpp"
 
 #include "clspv_utils_interop.hpp"
 #include "device.hpp"
-#include "sampler_spec.hpp"
 
 #include <algorithm>
 #include <cassert>
@@ -83,7 +82,7 @@ namespace clspv_utils {
         });
     }
 
-    void validateKernelSpec(const kernel_spec_t& spec, int requiredDescriptorSet)
+    void validateKernel(const kernel_spec_t& spec, int requiredDescriptorSet)
     {
         if (spec.mName.empty()) {
             fail_runtime_error("kernel has no name");

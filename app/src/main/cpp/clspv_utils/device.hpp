@@ -8,7 +8,7 @@
 #include "clspv_utils_fwd.hpp"
 
 #include "clspv_utils_interop.hpp"
-#include "sampler_spec.hpp"
+#include "interface.hpp"
 
 #include <vulkan/vulkan.hpp>
 

@@ -9,7 +9,7 @@
 
 #include "clspv_utils_interop.hpp"
 #include "device.hpp"
-#include "module_interface.hpp"
+#include "interface.hpp"
 
 #include <vulkan/vulkan.hpp>
 

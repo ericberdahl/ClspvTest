@@ -4,8 +4,8 @@
 
 #include "kernel_invocation.hpp"
 
+#include "interface.hpp"
 #include "kernel.hpp"
-#include "kernel_interface.hpp"
 
 #include <cassert>
 #include <memory>

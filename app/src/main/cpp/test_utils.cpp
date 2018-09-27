@@ -4,10 +4,9 @@
 
 #include "test_utils.hpp"
 
+#include "clspv_utils/interface.hpp"
 #include "clspv_utils/kernel.hpp"
-#include "clspv_utils/kernel_interface.hpp"
 #include "clspv_utils/kernel_module.hpp"
-#include "clspv_utils/module_interface.hpp"
 
 #include "crlf_savvy.hpp"
 #include "file_utils.hpp"

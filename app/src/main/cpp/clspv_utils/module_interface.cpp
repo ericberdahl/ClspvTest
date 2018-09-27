@@ -2,14 +2,11 @@
 // Created by Eric Berdahl on 10/22/17.
 //
 
-#include "module_interface.hpp"
+#include "interface.hpp"
 
-#include "arg_spec.hpp"
 #include "clspv_utils_interop.hpp"
 #include "device.hpp"
-#include "kernel_interface.hpp" // TODO: break dependency?
 #include "opencl_types.hpp"
-#include "sampler_spec.hpp"
 
 #include <algorithm>
 #include <cassert>
@@ -183,12 +180,12 @@ namespace clspv_utils {
             standardizeKernelArgumentOrder(k.mArguments);
         }
 
-        validateModuleSpec(result);
+        validateModule(result);
 
         return result;
     }
 
-    void validateModuleSpec(const module_spec_t& spec)
+    void validateModule(const module_spec_t& spec)
     {
         const int sampler_ds = getSamplersDescriptorSet(spec.mSamplers);
         for (auto& ls : spec.mSamplers) {
@@ -200,7 +197,7 @@ namespace clspv_utils {
         // they are in descriptor set 0
         const int kernel_ds = (sampler_ds > 0 ? 1 : 0);
         for (auto& k : spec.mKernels) {
-            validateKernelSpec(k, kernel_ds);
+            validateKernel(k, kernel_ds);
         }
 
     }
