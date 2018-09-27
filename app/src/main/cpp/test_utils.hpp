@@ -273,8 +273,8 @@ namespace test_utils {
         }
     }
 
-    KernelTest::result test_kernel(clspv_utils::kernel_module&    module,
-                                   const KernelTest&              kernelTest);
+    KernelTest::result test_kernel(clspv_utils::module& module,
+                                   const KernelTest&    kernelTest);
 
     ModuleTest::result test_module(clspv_utils::device& inDevice,
                                    const ModuleTest&    moduleTest);

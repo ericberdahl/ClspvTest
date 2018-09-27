@@ -12,19 +12,6 @@
 namespace {
     using namespace clspv_utils;
 
-    /* TODO opportunity for sharing */
-    vk::UniqueDescriptorSet allocate_descriptor_set(const device&           inDevice,
-                                                    vk::DescriptorSetLayout layout)
-    {
-        vk::DescriptorSetAllocateInfo createInfo;
-        createInfo.setDescriptorPool(inDevice.getDescriptorPool())
-                .setDescriptorSetCount(1)
-                .setPSetLayouts(&layout);
-
-        return std::move(inDevice.getDevice().allocateDescriptorSetsUnique(createInfo)[0]);
-    }
-
-
     //
     // boost_* code heavily borrowed from Boost 1.65.0
     // Ideally, we'd just use boost directly (that's what it's for, after all). However, it's a lot
@@ -88,6 +75,17 @@ namespace {
 
 namespace clspv_utils {
 
+    vk::UniqueDescriptorSet allocateDescriptorSet(const device&           inDevice,
+                                                  vk::DescriptorSetLayout layout)
+    {
+        vk::DescriptorSetAllocateInfo createInfo;
+        createInfo.setDescriptorPool(inDevice.getDescriptorPool())
+                .setDescriptorSetCount(1)
+                .setPSetLayouts(&layout);
+
+        return std::move(inDevice.getDevice().allocateDescriptorSetsUnique(createInfo)[0]);
+    }
+
     device::device(vk::PhysicalDevice                   physicalDevice,
                    vk::Device                           device,
                    vk::DescriptorPool                   descriptorPool,
@@ -148,7 +146,7 @@ namespace clspv_utils {
         vk::UniqueDescriptorSet samplerDescriptor;
 
         if (layout) {
-            samplerDescriptor = allocate_descriptor_set(*this, layout);
+            samplerDescriptor = allocateDescriptorSet(*this, layout);
 
             vector<vk::DescriptorImageInfo> literalSamplerInfo;
             vector<vk::WriteDescriptorSet> literalSamplerDescriptorWrites;

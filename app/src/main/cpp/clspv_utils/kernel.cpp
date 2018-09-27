@@ -6,29 +6,42 @@
 
 #include "kernel_invocation.hpp"
 
+namespace {
+
+    vk::UniquePipelineLayout create_pipeline_layout(vk::Device                                      device,
+                                                    vk::ArrayProxy<const vk::DescriptorSetLayout>   layouts)
+    {
+        vk::PipelineLayoutCreateInfo createInfo;
+        createInfo.setSetLayoutCount(layouts.size())
+                .setPSetLayouts(layouts.data());
+
+        return device.createPipelineLayoutUnique(createInfo);
+    }
+
+}
+
 namespace clspv_utils {
 
     kernel::kernel()
-            : mArgList(nullptr)
     {
     }
 
-    kernel::kernel(device               inDevice,
-                   kernel_layout_t      layout,
-                   vk::ShaderModule     shaderModule,
-                   vk::PipelineCache    pipelineCache,
-                   string               entryPoint,
-                   const vk::Extent3D&  workgroup_sizes,
-                   arg_list_proxy_t     args) :
-            mDevice(inDevice),
-            mShaderModule(shaderModule),
-            mEntryPoint(entryPoint),
-            mWorkgroupSizes(workgroup_sizes),
+    kernel::kernel(kernel_req_t         layout,
+                   const vk::Extent3D&  workgroup_sizes) :
             mLayout(std::move(layout)),
-            mPipelineCache(pipelineCache),
-            mPipeline(),
-            mArgList(args)
+            mWorkgroupSizes(workgroup_sizes)
     {
+        if (-1 != getKernelArgumentDescriptorSet(mLayout.mKernelSpec.mArguments)) {
+            mArgumentsLayout = createKernelArgumentDescriptorLayout(mLayout.mKernelSpec.mArguments, mLayout.mDevice.getDevice());
+
+            mArgumentsDescriptor = allocateDescriptorSet(mLayout.mDevice, *mArgumentsLayout);
+        }
+
+        vector<vk::DescriptorSetLayout> layouts;
+        if (mLayout.mLiteralSamplerLayout) layouts.push_back(mLayout.mLiteralSamplerLayout);
+        if (mArgumentsLayout) layouts.push_back(*mArgumentsLayout);
+        mPipelineLayout = create_pipeline_layout(mLayout.mDevice.getDevice(), layouts);
+
         updatePipeline(nullptr);
     }
 
@@ -51,22 +64,20 @@ namespace clspv_utils {
     {
         using std::swap;
 
-        swap(mDevice, other.mDevice);
-        swap(mShaderModule, other.mShaderModule);
-        swap(mEntryPoint, other.mEntryPoint);
-        swap(mWorkgroupSizes, other.mWorkgroupSizes);
         swap(mLayout, other.mLayout);
-        swap(mPipelineCache, other.mPipelineCache);
+        swap(mArgumentsLayout, other.mArgumentsLayout);
+        swap(mArgumentsDescriptor, other.mArgumentsDescriptor);
+        swap(mPipelineLayout, other.mPipelineLayout);
         swap(mPipeline, other.mPipeline);
-        swap(mArgList, other.mArgList);
+        swap(mWorkgroupSizes, other.mWorkgroupSizes);
     }
 
     kernel_invocation kernel::createInvocation()
     {
         return kernel_invocation(*this,
-                                 mDevice,
-                                 *mLayout.mArgumentsDescriptor,
-                                 mArgList);
+                                 mLayout.mDevice,
+                                 *mArgumentsDescriptor,
+                                 mLayout.mKernelSpec.mArguments);
     }
 
     void kernel::updatePipeline(vk::ArrayProxy<int32_t> otherSpecConstants) {
@@ -94,25 +105,25 @@ namespace clspv_utils {
                 .setPData(specConstants.data());
 
         vk::ComputePipelineCreateInfo createInfo;
-        createInfo.setLayout(*mLayout.mPipelineLayout);
+        createInfo.setLayout(*mPipelineLayout);
         createInfo.stage.setStage(vk::ShaderStageFlagBits::eCompute)
-                .setModule(mShaderModule)
-                .setPName(mEntryPoint.c_str())
+                .setModule(mLayout.mShaderModule)
+                .setPName(mLayout.mKernelSpec.mName.c_str())
                 .setPSpecializationInfo(&specializationInfo);
 
-        mPipeline = mDevice.getDevice().createComputePipelineUnique(mPipelineCache, createInfo);
+        mPipeline = mLayout.mDevice.getDevice().createComputePipelineUnique(mLayout.mPipelineCache, createInfo);
     }
 
     void kernel::bindCommand(vk::CommandBuffer command) const {
         // TODO: Refactor bindCommand to move into kernel_invocation
         command.bindPipeline(vk::PipelineBindPoint::eCompute, *mPipeline);
 
-        vk::DescriptorSet descriptors[] = { mLayout.mLiteralSamplerDescriptor, *mLayout.mArgumentsDescriptor };
+        vk::DescriptorSet descriptors[] = { mLayout.mLiteralSamplerDescriptor, *mArgumentsDescriptor };
         std::uint32_t numDescriptors = (descriptors[0] ? 2 : 1);
         if (1 == numDescriptors) descriptors[0] = descriptors[1];
 
         command.bindDescriptorSets(vk::PipelineBindPoint::eCompute,
-                                   *mLayout.mPipelineLayout,
+                                   *mPipelineLayout,
                                    0,
                                    { numDescriptors, descriptors },
                                    nullptr);

@@ -18,6 +18,8 @@ namespace clspv_utils {
 
     class device {
     public:
+        // TODO: normalize typenames
+        // TODO: normalize member names
         struct descriptor_group_t
         {
             vk::DescriptorSet       descriptor;
@@ -72,6 +74,10 @@ namespace clspv_utils {
         shared_ptr<descriptor_cache_t>      mSamplerDescriptorCache;
         shared_ptr<sampler_cache_t>         mSamplerCache;
     };
+
+    vk::UniqueDescriptorSet allocateDescriptorSet(const device&           inDevice,
+                                                  vk::DescriptorSetLayout layout);
+
 }
 
 #endif //CLSPVUTILS_DEVICE_HPP

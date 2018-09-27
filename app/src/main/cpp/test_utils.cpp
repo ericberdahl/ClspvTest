@@ -6,7 +6,7 @@
 
 #include "clspv_utils/interface.hpp"
 #include "clspv_utils/kernel.hpp"
-#include "clspv_utils/kernel_module.hpp"
+#include "clspv_utils/module.hpp"
 
 #include "crlf_savvy.hpp"
 #include "file_utils.hpp"
@@ -65,8 +65,8 @@ namespace {
 
 namespace test_utils {
 
-    KernelTest::result test_kernel(clspv_utils::kernel_module&    module,
-                                   const KernelTest&              kernelTest) {
+    KernelTest::result test_kernel(clspv_utils::module& module,
+                                   const KernelTest&    kernelTest) {
         KernelTest::result result;
         result.first = &kernelTest;
         result.second.mSkipped = false;
@@ -74,7 +74,7 @@ namespace test_utils {
         clspv_utils::kernel kernel;
 
 		try {
-	        kernel = module.createKernel(kernelTest.mEntryName, kernelTest.mWorkgroupSize);
+	        kernel = clspv_utils::kernel(module.createKernelReq(kernelTest.mEntryName), kernelTest.mWorkgroupSize);
             result.second.mCompiledCorrectly = true;
 		}
         catch (...) {
@@ -129,10 +129,7 @@ namespace test_utils {
                 throw std::runtime_error("cannot open spv for " + moduleTest.mName);
             }
 
-            clspv_utils::kernel_module module(moduleTest.mName,
-                                              spvStream,
-                                              inDevice,
-                                              moduleInterface);
+            clspv_utils::module module(spvStream, inDevice, moduleInterface);
             result.second.mLoadedCorrectly = true;
             spvStream.close();
 

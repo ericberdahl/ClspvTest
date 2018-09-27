@@ -2,11 +2,10 @@
 // Created by Eric Berdahl on 10/22/17.
 //
 
-#include "kernel_module.hpp"
+#include "module.hpp"
 
 #include "interface.hpp"
-#include "kernel.hpp"
-#include "kernel_layout.hpp"
+#include "kernel_req.hpp"
 
 #include <istream>
 #include <functional>
@@ -39,48 +38,25 @@ namespace {
         return device.createShaderModuleUnique(shaderModuleCreateInfo);
     }
 
-    /* TODO opportunity for sharing */
-    vk::UniqueDescriptorSet allocate_descriptor_set(const device&           inDevice,
-                                                    vk::DescriptorSetLayout layout)
-    {
-        vk::DescriptorSetAllocateInfo createInfo;
-        createInfo.setDescriptorPool(inDevice.getDescriptorPool())
-                .setDescriptorSetCount(1)
-                .setPSetLayouts(&layout);
-
-        return std::move(inDevice.getDevice().allocateDescriptorSetsUnique(createInfo)[0]);
-    }
-
-    vk::UniquePipelineLayout create_pipeline_layout(vk::Device                                      device,
-                                                    vk::ArrayProxy<const vk::DescriptorSetLayout>   layouts)
-    {
-        vk::PipelineLayoutCreateInfo createInfo;
-        createInfo.setSetLayoutCount(layouts.size())
-                .setPSetLayouts(layouts.data());
-
-        return device.createPipelineLayoutUnique(createInfo);
-    }
 
 } // anonymous namespace
 
 namespace clspv_utils {
 
-    kernel_module::kernel_module()
+    module::module()
     {
     }
 
-    kernel_module::kernel_module(kernel_module&& other)
-            : kernel_module()
+    module::module(module&& other)
+            : module()
     {
         swap(other);
     }
 
-    kernel_module::kernel_module(const string&  moduleName,
-                                 std::istream&  spvmoduleStream,
+    module::module(std::istream&  spvmoduleStream,
                                  device         inDevice,
                                  module_spec_t  spec)
-            : mName(moduleName),
-              mDevice(inDevice),
+            : mDevice(std::move(inDevice)),
               mModuleSpec(std::move(spec)),
               mLiteralSamplerDescriptor(),
               mLiteralSamplerDescriptorLayout()
@@ -93,21 +69,20 @@ namespace clspv_utils {
         mPipelineCache = mDevice.getDevice().createPipelineCacheUnique(vk::PipelineCacheCreateInfo());
     }
 
-    kernel_module::~kernel_module()
+    module::~module()
     {
     }
 
-    kernel_module& kernel_module::operator=(kernel_module&& other)
+    module& module::operator=(module&& other)
     {
         swap(other);
         return *this;
     }
 
-    void kernel_module::swap(kernel_module& other)
+    void module::swap(module& other)
     {
         using std::swap;
 
-        swap(mName, other.mName);
         swap(mDevice, other.mDevice);
         swap(mModuleSpec, other.mModuleSpec);
         swap(mLiteralSamplerDescriptorLayout, other.mLiteralSamplerDescriptorLayout);
@@ -116,50 +91,30 @@ namespace clspv_utils {
         swap(mPipelineCache, other.mPipelineCache);
     }
 
-    vector<string> kernel_module::getEntryPoints() const
+    vector<string> module::getEntryPoints() const
     {
         return getEntryPointNames(mModuleSpec.mKernels);
     }
 
-    kernel_layout_t kernel_module::createKernelLayout(const string& entryPoint) const {
+    kernel_req_t module::createKernelReq(const string &entryPoint) const {
         if (!isLoaded()) {
             fail_runtime_error("cannot create layout for unloaded module");
         }
-
-        kernel_layout_t result;
 
         const auto kernelSpec = findKernelSpec(entryPoint, mModuleSpec.mKernels);
         if (!kernelSpec) {
             fail_runtime_error("cannot create kernel layout for unknown entry point");
         }
 
-        if (-1 != getKernelArgumentDescriptorSet(kernelSpec->mArguments)) {
-            result.mArgumentDescriptorLayout = createKernelArgumentDescriptorLayout(kernelSpec->mArguments, mDevice.getDevice());
-
-            result.mArgumentsDescriptor = allocate_descriptor_set(mDevice,
-                                                                  *result.mArgumentDescriptorLayout);
-        }
-
+        kernel_req_t result;
+        result.mDevice = mDevice;
+        result.mKernelSpec = *kernelSpec;
+        result.mShaderModule = *mShaderModule;
+        result.mPipelineCache = *mPipelineCache;
         result.mLiteralSamplerDescriptor = mLiteralSamplerDescriptor;
-
-        vector<vk::DescriptorSetLayout> layouts;
-        if (mLiteralSamplerDescriptorLayout) layouts.push_back(mLiteralSamplerDescriptorLayout);
-        if (result.mArgumentDescriptorLayout) layouts.push_back(*result.mArgumentDescriptorLayout);
-        result.mPipelineLayout = create_pipeline_layout(mDevice.getDevice(), layouts);
+        result.mLiteralSamplerLayout = mLiteralSamplerDescriptorLayout;
 
         return result;
-    }
-
-    kernel kernel_module::createKernel(const string&        entryPoint,
-                                       const vk::Extent3D&  workgroup_sizes)
-    {
-        return kernel(mDevice,
-                      createKernelLayout(entryPoint),
-                      *mShaderModule,
-                      *mPipelineCache,
-                      entryPoint,
-                      workgroup_sizes,
-                      findKernelSpec(entryPoint, mModuleSpec.mKernels)->mArguments);
     }
 
 } // namespace clspv_utils

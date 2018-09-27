@@ -10,7 +10,7 @@
 #include "clspv_utils_interop.hpp"
 #include "device.hpp"
 #include "interface.hpp"
-#include "kernel_layout.hpp"
+#include "kernel_req.hpp"
 
 #include <vulkan/vulkan.hpp>
 
@@ -18,17 +18,10 @@ namespace clspv_utils {
 
     class kernel {
     public:
-        typedef vk::ArrayProxy<const arg_spec_t> arg_list_proxy_t;
-
         kernel();
 
-        kernel(device               dev,
-               kernel_layout_t      layout,
-               vk::ShaderModule     shaderModule,
-               vk::PipelineCache    pipelineCache,
-               string               entryPoint,
-               const vk::Extent3D&  workgroup_sizes,
-               arg_list_proxy_t     args);
+        kernel(kernel_req_t         layout,
+               const vk::Extent3D&  workgroup_sizes);
 
         kernel(kernel&& other);
 
@@ -39,24 +32,22 @@ namespace clspv_utils {
         kernel_invocation   createInvocation();
         void                bindCommand(vk::CommandBuffer command) const;
 
-        string              getEntryPoint() const { return mEntryPoint; }
+        string              getEntryPoint() const { return mLayout.mKernelSpec.mName; }
         vk::Extent3D        getWorkgroupSize() const { return mWorkgroupSizes; }
 
-        const device&       getDevice() { return mDevice; }
+        const device&       getDevice() { return mLayout.mDevice; }
 
         void                updatePipeline(vk::ArrayProxy<int32_t> otherSpecConstants);
 
         void                swap(kernel& other);
 
     private:
-        device              mDevice;
-        vk::ShaderModule    mShaderModule;
-        string              mEntryPoint;
-        vk::Extent3D        mWorkgroupSizes;
-        kernel_layout_t     mLayout;
-        vk::PipelineCache   mPipelineCache;
-        vk::UniquePipeline  mPipeline;
-        arg_list_proxy_t    mArgList;
+        kernel_req_t                    mLayout;
+        vk::UniqueDescriptorSetLayout   mArgumentsLayout;
+        vk::UniqueDescriptorSet         mArgumentsDescriptor;
+        vk::UniquePipelineLayout        mPipelineLayout;
+        vk::UniquePipeline              mPipeline;
+        vk::Extent3D                    mWorkgroupSizes;
     };
 
     inline void swap(kernel& lhs, kernel& rhs)

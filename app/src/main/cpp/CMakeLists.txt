@@ -53,7 +53,7 @@ add_library(native-activity SHARED
         clspv_utils/interface.cpp
         clspv_utils/kernel.cpp
         clspv_utils/kernel_invocation.cpp
-        clspv_utils/kernel_module.cpp
+        clspv_utils/module.cpp
         kernel_tests/copyimagetobuffer_kernel.cpp
         kernel_tests/copybuffertoimage_kernel.cpp
         kernel_tests/fillarraystruct_kernel.cpp
