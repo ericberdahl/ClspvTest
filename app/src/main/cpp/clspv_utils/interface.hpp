@@ -92,7 +92,7 @@ namespace clspv_utils {
     int     getKernelArgumentDescriptorSet(const kernel_spec_t::arg_list& arguments);
 
     /*
-     * arg_spec_t::kind_t functions
+     * arg_spec_t::kind functions
      */
 
     vk::DescriptorType  getDescriptorType(arg_spec_t::kind argKind);

@@ -5,6 +5,7 @@
 #include "interface.hpp"
 
 #include "clspv_utils_interop.hpp"
+#include "opencl_types.hpp"
 
 #include <algorithm>
 #include <cassert>
@@ -20,6 +21,23 @@ namespace {
     using namespace clspv_utils;
 
     typedef std::pair<string, string> key_value_t;
+
+    const auto kCLAddressMode_VkAddressMode_Map = {
+            std::make_pair(CLK_ADDRESS_NONE,            vk::SamplerAddressMode::eClampToEdge),
+            std::make_pair(CLK_ADDRESS_CLAMP_TO_EDGE,   vk::SamplerAddressMode::eClampToEdge),
+            std::make_pair(CLK_ADDRESS_CLAMP,           vk::SamplerAddressMode::eClampToBorder),
+            std::make_pair(CLK_ADDRESS_REPEAT,          vk::SamplerAddressMode::eRepeat),
+            std::make_pair(CLK_ADDRESS_MIRRORED_REPEAT, vk::SamplerAddressMode::eMirroredRepeat)
+    };
+
+    const auto kArgKind_DescriptorType_Map = {
+            std::make_pair(arg_spec_t::kind_pod_ubo,  vk::DescriptorType::eUniformBuffer),
+            std::make_pair(arg_spec_t::kind_pod,      vk::DescriptorType::eStorageBuffer),
+            std::make_pair(arg_spec_t::kind_buffer,   vk::DescriptorType::eStorageBuffer),
+            std::make_pair(arg_spec_t::kind_ro_image, vk::DescriptorType::eSampledImage),
+            std::make_pair(arg_spec_t::kind_wo_image, vk::DescriptorType::eStorageImage),
+            std::make_pair(arg_spec_t::kind_sampler,  vk::DescriptorType::eSampler)
+    };
 
     const auto kSpvMapArgType_ArgKind_Map = {
             std::make_pair("pod",      arg_spec_t::kind_pod),
@@ -215,6 +233,130 @@ namespace clspv_utils {
     }
 
     /***********************************************************************************************
+     * kernel_spec_t::arg_list functions
+     **********************************************************************************************/
+
+    void standardizeKernelArgumentOrder(kernel_spec_t::arg_list& arguments)
+    {
+        std::sort(arguments.begin(), arguments.end(), [](const arg_spec_t& lhs, const arg_spec_t& rhs) {
+            auto isPod = [](arg_spec_t::kind kind) {
+                return (kind == arg_spec_t::kind_pod || kind == arg_spec_t::kind_pod_ubo);
+            };
+
+            const auto lhs_is_pod = isPod(lhs.mKind);
+            const auto rhs_is_pod = isPod(rhs.mKind);
+
+            return (lhs_is_pod == rhs_is_pod ? lhs.mOrdinal < rhs.mOrdinal : !lhs_is_pod);
+        });
+    }
+
+    int getKernelArgumentDescriptorSet(const kernel_spec_t::arg_list& arguments) {
+        auto found = std::find_if(arguments.begin(), arguments.end(), [](const arg_spec_t& as) {
+            return (-1 != as.mDescriptorSet);
+        });
+        return (found == arguments.end() ? -1 : found->mDescriptorSet);
+    }
+
+    vk::UniqueDescriptorSetLayout createKernelArgumentDescriptorLayout(const kernel_spec_t::arg_list& arguments,
+                                                                       vk::Device inDevice)
+    {
+        vector<vk::DescriptorSetLayoutBinding> bindingSet;
+
+        vk::DescriptorSetLayoutBinding binding;
+        binding.setStageFlags(vk::ShaderStageFlagBits::eCompute)
+                .setDescriptorCount(1);
+
+        for (auto &ka : arguments) {
+            // ignore any argument not in offset 0
+            if (0 != ka.mOffset) continue;
+
+            binding.descriptorType = getDescriptorType(ka.mKind);
+            binding.binding = ka.mBinding;
+
+            bindingSet.push_back(binding);
+        }
+
+        vk::DescriptorSetLayoutCreateInfo createInfo;
+        createInfo.setBindingCount(bindingSet.size())
+                .setPBindings(bindingSet.size() ? bindingSet.data() : nullptr);
+
+        return inDevice.createDescriptorSetLayoutUnique(createInfo);
+    }
+
+    /***********************************************************************************************
+     * arg_spec_t::kind functions
+     **********************************************************************************************/
+
+    vk::DescriptorType getDescriptorType(arg_spec_t::kind argKind) {
+        auto found = std::find_if(std::begin(kArgKind_DescriptorType_Map),
+                                  std::end(kArgKind_DescriptorType_Map),
+                                  [argKind](decltype(kArgKind_DescriptorType_Map)::const_reference p) {
+                                      return argKind == p.first;
+                                  });
+        if (found == std::end(kArgKind_DescriptorType_Map)) {
+            fail_runtime_error("unknown argKind encountered");
+        }
+        return found->second;
+    }
+
+    /***********************************************************************************************
+     * OpenCL sampler flags functions
+     **********************************************************************************************/
+
+    vk::SamplerAddressMode getSamplerAddressMode(int opencl_flags) {
+        opencl_flags &= CLK_ADDRESS_MASK;
+
+        auto found = std::find_if(std::begin(kCLAddressMode_VkAddressMode_Map),
+                                  std::end(kCLAddressMode_VkAddressMode_Map),
+                                  [&opencl_flags](decltype(kCLAddressMode_VkAddressMode_Map)::const_reference am) {
+                                      return (am.first == opencl_flags);
+                                  });
+
+        return (found == std::end(kCLAddressMode_VkAddressMode_Map) ? vk::SamplerAddressMode::eClampToEdge : found->second);
+    }
+
+
+    vk::Filter getSamplerFilter(int opencl_flags) {
+        return ((opencl_flags & CLK_FILTER_MASK) == CLK_FILTER_LINEAR ? vk::Filter::eLinear
+                                                                      : vk::Filter::eNearest);
+    }
+
+    vk::Bool32 isSamplerUnnormalizedCoordinates(int opencl_flags) {
+        return ((opencl_flags & CLK_NORMALIZED_COORDS_MASK) == CLK_NORMALIZED_COORDS_FALSE ? VK_TRUE : VK_FALSE);
+    }
+
+    bool isSamplerSupported(int opencl_flags)
+    {
+        const vk::Bool32 unnormalizedCoordinates    = isSamplerUnnormalizedCoordinates(opencl_flags);
+        const vk::SamplerAddressMode addressMode    = getSamplerAddressMode(opencl_flags);
+
+        return (!unnormalizedCoordinates || addressMode == vk::SamplerAddressMode::eClampToEdge || addressMode == vk::SamplerAddressMode::eClampToBorder);
+    }
+
+    vk::UniqueSampler createCompatibleSampler(vk::Device device, int opencl_flags) {
+        if (!isSamplerSupported(opencl_flags)) {
+            fail_runtime_error("This OpenCL sampler cannot be represented in Vulkan");
+        }
+
+        const vk::Filter filter                     = getSamplerFilter(opencl_flags);
+        const vk::Bool32 unnormalizedCoordinates    = isSamplerUnnormalizedCoordinates(opencl_flags);
+        const vk::SamplerAddressMode addressMode    = getSamplerAddressMode(opencl_flags);
+
+        vk::SamplerCreateInfo samplerCreateInfo;
+        samplerCreateInfo.setMagFilter(filter)
+                .setMinFilter(filter)
+                .setMipmapMode(vk::SamplerMipmapMode::eNearest)
+                .setAddressModeU(addressMode)
+                .setAddressModeV(addressMode)
+                .setAddressModeW(addressMode)
+                .setAnisotropyEnable(VK_FALSE)
+                .setCompareEnable(VK_FALSE)
+                .setUnnormalizedCoordinates(unnormalizedCoordinates);
+
+        return device.createSamplerUnique(samplerCreateInfo);
+    }
+
+    /***********************************************************************************************
      * Validation functions
      **********************************************************************************************/
 
@@ -233,6 +375,84 @@ namespace clspv_utils {
             validateKernel(k, kernel_ds);
         }
 
+    }
+
+    void validateKernel(const kernel_spec_t& spec, int requiredDescriptorSet)
+    {
+        if (spec.mName.empty()) {
+            fail_runtime_error("kernel has no name");
+        }
+
+        const int arg_ds = getKernelArgumentDescriptorSet(spec.mArguments);
+        if (requiredDescriptorSet > 0 && arg_ds != requiredDescriptorSet) {
+            fail_runtime_error("kernel's arguments are in incorrect descriptor set");
+        }
+
+        for (auto& ka : spec.mArguments) {
+            // All arguments for a given kernel that are passed in a descriptor set need to be in
+            // the same descriptor set
+            if (ka.mKind != arg_spec_t::kind_local && ka.mDescriptorSet != arg_ds) {
+                fail_runtime_error("kernel arg descriptor_sets don't match");
+            }
+
+            validateKernelArg(ka);
+        }
+
+        // TODO: mArguments entries are in increasing binding, and pod/pod_ubo's come after non-pod/non-pod_ubo's
+        // TODO: there cannot be both pod and pod_ubo arguments for a given kernel
+        // TODO: if there is a pod or pod_ubo argument, its binding must be larger than other descriptor sets
+    }
+
+    void validateSampler(const sampler_spec_t& spec, int requiredDescriptorSet) {
+        if (spec.mOpenclFlags == 0) {
+            fail_runtime_error("sampler missing OpenCL flags");
+        }
+        if (spec.mDescriptorSet < 0) {
+            fail_runtime_error("sampler missing descriptorSet");
+        }
+        if (spec.mBinding < 0) {
+            fail_runtime_error("sampler missing binding");
+        }
+
+        // all samplers, are documented to share descriptor set 0
+        if (spec.mDescriptorSet != 0) {
+            fail_runtime_error("all clspv literal samplers must use descriptor set 0");
+        }
+
+        if (!isSamplerSupported(spec.mOpenclFlags)) {
+            fail_runtime_error("sampler is not representable in Vulkan");
+        }
+
+        // All literal samplers for a module need to be in the same descriptor set
+        if (requiredDescriptorSet > 0 && spec.mDescriptorSet != requiredDescriptorSet) {
+            fail_runtime_error("sampler is not in required descriptor_set");
+        }
+    }
+
+    void validateKernelArg(const arg_spec_t &arg) {
+        if (arg.mKind == arg_spec_t::kind_unknown) {
+            fail_runtime_error("kernel argument kind unknown");
+        }
+        if (arg.mOrdinal < 0) {
+            fail_runtime_error("kernel argument missing ordinal");
+        }
+
+        if (arg.mKind == arg_spec_t::kind_local) {
+            if (arg.mSpecConstant < 0) {
+                fail_runtime_error("local kernel argument missing spec constant");
+            }
+        }
+        else {
+            if (arg.mDescriptorSet < 0) {
+                fail_runtime_error("kernel argument missing descriptorSet");
+            }
+            if (arg.mBinding < 0) {
+                fail_runtime_error("kernel argument missing binding");
+            }
+            if (arg.mOffset < 0) {
+                fail_runtime_error("kernel argument missing offset");
+            }
+        }
     }
 
 } // namespace clspv_utils
