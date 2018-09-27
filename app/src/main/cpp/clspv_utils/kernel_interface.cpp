@@ -27,8 +27,11 @@ namespace {
             std::make_pair(arg_spec_t::kind_sampler, vk::DescriptorType::eSampler)
     };
 
-    /* TODO opportunity for sharing */
-    vk::DescriptorType find_descriptor_type(arg_spec_t::kind_t argKind) {
+} // anonymous namespace
+
+namespace clspv_utils {
+
+    vk::DescriptorType getDescriptorType(arg_spec_t::kind_t argKind) {
         auto found = std::find_if(std::begin(kArgKind_DescriptorType_Map),
                                   std::end(kArgKind_DescriptorType_Map),
                                   [argKind](decltype(kArgKind_DescriptorType_Map)::const_reference p) {
@@ -40,7 +43,7 @@ namespace {
         return found->second;
     }
 
-    void validate_kernel_arg(const arg_spec_t& arg) {
+    void validateKernelArg(const arg_spec_t &arg) {
         if (arg.kind == arg_spec_t::kind_unknown) {
             fail_runtime_error("kernel argument kind unknown");
         }
@@ -66,27 +69,9 @@ namespace {
         }
     }
 
-} // anonymous namespace
-
-namespace clspv_utils {
-
-    kernel_interface::kernel_interface()
-            : mLiteralSamplers(nullptr)
+    void standardizeKernelArgumentOrder(kernel_spec_t::arg_list& arguments)
     {
-    }
-
-    kernel_interface::kernel_interface(string               entryPoint,
-                                       sampler_list_proxy_t samplers,
-                                       arg_list_t           arguments)
-            : kernel_interface()
-    {
-        mName = entryPoint;
-        mArguments = std::move(arguments);
-        mLiteralSamplers = samplers;
-
-        // Sort the args such that pods are grouped together at the end of the sequence, and that
-        // the non-pod and pod groups are each individually sorted by increasing ordinal
-        std::sort(mArguments.begin(), mArguments.end(), [](const arg_spec_t& lhs, const arg_spec_t& rhs) {
+        std::sort(arguments.begin(), arguments.end(), [](const arg_spec_t& lhs, const arg_spec_t& rhs) {
             auto isPod = [](arg_spec_t::kind_t kind) {
                 return (kind == arg_spec_t::kind_pod || kind == arg_spec_t::kind_pod_ubo);
             };
@@ -96,71 +81,50 @@ namespace clspv_utils {
 
             return (lhs_is_pod == rhs_is_pod ? lhs.ordinal < rhs.ordinal : !lhs_is_pod);
         });
-
-        validate();
     }
 
-    void kernel_interface::validate() const
+    void validateKernelSpec(const kernel_spec_t& spec)
     {
-        if (mName.empty()) {
+        if (spec.mName.empty()) {
             fail_runtime_error("kernel has no name");
         }
 
-        const int arg_ds = getArgDescriptorSet();
-        for (auto& ka : mArguments) {
+        const int arg_ds = getKernelArgumentDescriptorSet(spec.mArguments);
+        for (auto& ka : spec.mArguments) {
             // All arguments for a given kernel that are passed in a descriptor set need to be in
             // the same descriptor set
             if (ka.kind != arg_spec_t::kind_local && ka.descriptor_set != arg_ds) {
                 fail_runtime_error("kernel arg descriptor_sets don't match");
             }
 
-            validate_kernel_arg(ka);
+            validateKernelArg(ka);
         }
 
-        const int sampler_ds = getLiteralSamplersDescriptorSet();
-        for (auto& ls : mLiteralSamplers) {
-            // All literal samplers for a given kernel need to be in the same descriptor set
-            if (ls.descriptor_set != sampler_ds) {
-                fail_runtime_error("literal sampler descriptor_sets don't match");
-            }
-
-            ls.validate();
-        }
-
-        // TODO: mArgSpec entries are in increasing binding, and pod/pod_ubo's come after non-pod/non-pod_ubo's
+        // TODO: mArguments entries are in increasing binding, and pod/pod_ubo's come after non-pod/non-pod_ubo's
         // TODO: there cannot be both pod and pod_ubo arguments for a given kernel
         // TODO: if there is a pod or pod_ubo argument, its descriptor set must be larger than other descriptor sets
     }
 
-    int kernel_interface::getArgDescriptorSet() const {
-        auto found = std::find_if(mArguments.begin(), mArguments.end(), [](const arg_spec_t& as) {
+    int getKernelArgumentDescriptorSet(const kernel_spec_t::arg_list& arguments) {
+        auto found = std::find_if(arguments.begin(), arguments.end(), [](const arg_spec_t& as) {
             return (-1 != as.descriptor_set);
         });
-        return (found == mArguments.end() ? -1 : found->descriptor_set);
+        return (found == arguments.end() ? -1 : found->descriptor_set);
     }
 
-    int kernel_interface::getLiteralSamplersDescriptorSet() const {
-        auto found = std::find_if(mLiteralSamplers.begin(), mLiteralSamplers.end(), [](const sampler_spec_t& ss) {
-            return (-1 != ss.descriptor_set);
-        });
-        return (found == mLiteralSamplers.end() ? -1 : found->descriptor_set);
-    }
-
-    vk::UniqueDescriptorSetLayout createArgumentDescriptorLayout(const kernel_interface& kernel, const device& inDevice)
+    vk::UniqueDescriptorSetLayout createKernelArgumentDescriptorLayout(const kernel_spec_t::arg_list& arguments, const device& inDevice)
     {
-        assert(kernel.getArgDescriptorSet() == (kernel.getLiteralSamplers().empty() ? 0 : 1));
-
         vector<vk::DescriptorSetLayoutBinding> bindingSet;
 
         vk::DescriptorSetLayoutBinding binding;
         binding.setStageFlags(vk::ShaderStageFlagBits::eCompute)
                 .setDescriptorCount(1);
 
-        for (auto &ka : kernel.getArguments()) {
+        for (auto &ka : arguments) {
             // ignore any argument not in offset 0
             if (0 != ka.offset) continue;
 
-            binding.descriptorType = find_descriptor_type(ka.kind);
+            binding.descriptorType = getDescriptorType(ka.kind);
             binding.binding = ka.binding;
 
             bindingSet.push_back(binding);

@@ -135,7 +135,7 @@ namespace clspv_utils {
          * generic istream and getline functionality.
          */
 
-        map<string, kernel_interface::arg_list_t> kernel_args;
+        map<string, kernel_spec_t::arg_list> kernel_args;
 
         string line;
         while (!in.eof()) {
@@ -150,6 +150,8 @@ namespace clspv_utils {
             }
         }
 
+        // TODO: validate that all kernels have arguments in the correct descriptor set
+
         // Ensure that the literal samplers are sorted by increasing binding number. This will be
         // important if the sequence is later used to determine whether a cached sampler descriptor
         // set can be re-used for this module.
@@ -157,23 +159,34 @@ namespace clspv_utils {
             return lhs.binding < rhs.binding;
         });
 
+        const int sampler_ds = getLiteralSamplersDescriptorSet();
+        for (auto& ls : mSamplers) {
+            // All literal samplers for a module need to be in the same descriptor set
+            if (ls.descriptor_set != sampler_ds) {
+                fail_runtime_error("literal sampler descriptor_sets don't match");
+            }
+
+            validateSampler(ls);
+        }
+
         for (auto& k : kernel_args) {
-            mKernels.push_back(kernel_interface(k.first, mSamplers, k.second));
+            mKernels.push_back(kernel_spec_t{k.first, k.second});
+            standardizeKernelArgumentOrder(mKernels.back().mArguments);
+            validateKernelSpec(mKernels.back());
         }
     }
 
     void module_interface::addLiteralSampler(clspv_utils::sampler_spec_t sampler) {
-        sampler.validate();
+        validateSampler(sampler);
         mSamplers.push_back(sampler);
     }
 
-    const kernel_interface* module_interface::findKernelInterface(const string& name) const {
-        auto kernel = std::find_if(mKernels.begin(), mKernels.end(),
-                                   [&name](const kernel_interface &iter) {
-                                       return iter.getEntryPoint() == name;
-                                   });
-
-        return (kernel == mKernels.end() ? nullptr : &(*kernel));
+    int module_interface::getLiteralSamplersDescriptorSet() const {
+        auto found = std::find_if(mSamplers.begin(), mSamplers.end(),
+                                  [](const sampler_spec_t &ss) {
+                                      return (-1 != ss.descriptor_set);
+                                  });
+        return (found == mSamplers.end() ? -1 : found->descriptor_set);
     }
 
     vector<string> module_interface::getEntryPoints() const
@@ -182,7 +195,7 @@ namespace clspv_utils {
 
         std::transform(mKernels.begin(), mKernels.end(),
                        std::back_inserter(result),
-                       [](const kernel_interface& k) { return k.getEntryPoint(); });
+                       [](const kernel_spec_t& k) { return k.mName; });
 
         return result;
     }

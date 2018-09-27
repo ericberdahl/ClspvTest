@@ -62,24 +62,24 @@ namespace {
         return device.createPipelineLayoutUnique(createInfo);
     }
 
-    const kernel_interface* find_kernel_interface(const string&                             name,
-                                                  vk::ArrayProxy<const kernel_interface>    kernels)
+    const kernel_spec_t* find_kernel_interface(const string&                             name,
+                                                  vk::ArrayProxy<const kernel_spec_t>    kernels)
     {
         auto kernel = std::find_if(kernels.begin(), kernels.end(),
-                                   [&name](const kernel_interface &iter) {
-                                       return iter.getEntryPoint() == name;
+                                   [&name](const kernel_spec_t &iter) {
+                                       return iter.mName == name;
                                    });
 
         return (kernel == kernels.end() ? nullptr : &(*kernel));
     }
 
-    vector<string> get_entry_points(vk::ArrayProxy<const kernel_interface> kernels)
+    vector<string> get_entry_points(vk::ArrayProxy<const kernel_spec_t> kernels)
     {
         vector<string> result;
 
         std::transform(kernels.begin(), kernels.end(),
                        std::back_inserter(result),
-                       [](const kernel_interface& k) { return k.getEntryPoint(); });
+                       [](const kernel_spec_t& k) { return k.mName; });
 
         return result;
     }
@@ -152,13 +152,13 @@ namespace clspv_utils {
 
         kernel_layout_t result;
 
-        const auto kernelInterface = find_kernel_interface(entryPoint, mKernelInterfaces);
-        if (!kernelInterface) {
+        const auto kernelSpec = find_kernel_interface(entryPoint, mKernelInterfaces);
+        if (!kernelSpec) {
             fail_runtime_error("cannot create kernel layout for unknown entry point");
         }
 
-        if (-1 != kernelInterface->getArgDescriptorSet()) {
-            result.mArgumentDescriptorLayout = createArgumentDescriptorLayout(*kernelInterface, mDevice);
+        if (-1 != getKernelArgumentDescriptorSet(kernelSpec->mArguments)) {
+            result.mArgumentDescriptorLayout = createKernelArgumentDescriptorLayout(kernelSpec->mArguments, mDevice);
 
             result.mArgumentsDescriptor = allocate_descriptor_set(mDevice,
                                                                   *result.mArgumentDescriptorLayout);
@@ -183,7 +183,7 @@ namespace clspv_utils {
                       *mPipelineCache,
                       entryPoint,
                       workgroup_sizes,
-                      find_kernel_interface(entryPoint, mKernelInterfaces)->getArguments());
+                      find_kernel_interface(entryPoint, mKernelInterfaces)->mArguments);
     }
 
 } // namespace clspv_utils

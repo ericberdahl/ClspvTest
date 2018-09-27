@@ -12,10 +12,6 @@
 namespace clspv_utils {
 
     struct sampler_spec_t {
-    public:
-        void    validate() const;
-
-    public:
         int opencl_flags    = 0;
         int descriptor_set  = -1;
         int binding         = -1;
@@ -25,6 +21,7 @@ namespace clspv_utils {
 
     vk::UniqueSampler createCompatibleSampler(vk::Device device, int opencl_flags);
 
+    void validateSampler(const sampler_spec_t& spec);
 }
 
 #endif //CLSPVUTILS_SAMPLER_SPEC_HPP

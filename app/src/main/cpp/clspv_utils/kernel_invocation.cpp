@@ -5,37 +5,11 @@
 #include "kernel_invocation.hpp"
 
 #include "kernel.hpp"
+#include "kernel_interface.hpp"
 
 #include <cassert>
 #include <memory>
 
-
-namespace {
-    using namespace clspv_utils;
-
-    const auto kArgKind_DescriptorType_Map = {
-            std::make_pair(arg_spec_t::kind_pod_ubo, vk::DescriptorType::eUniformBuffer),
-            std::make_pair(arg_spec_t::kind_pod, vk::DescriptorType::eStorageBuffer),
-            std::make_pair(arg_spec_t::kind_buffer, vk::DescriptorType::eStorageBuffer),
-            std::make_pair(arg_spec_t::kind_ro_image, vk::DescriptorType::eSampledImage),
-            std::make_pair(arg_spec_t::kind_wo_image, vk::DescriptorType::eStorageImage),
-            std::make_pair(arg_spec_t::kind_sampler, vk::DescriptorType::eSampler)
-    };
-
-    /* TODO opportunity for sharing */
-    vk::DescriptorType find_descriptor_type(arg_spec_t::kind_t argKind) {
-        auto found = std::find_if(std::begin(kArgKind_DescriptorType_Map),
-                                  std::end(kArgKind_DescriptorType_Map),
-                                  [argKind](decltype(kArgKind_DescriptorType_Map)::const_reference p) {
-                                      return argKind == p.first;
-                                  });
-        if (found == std::end(kArgKind_DescriptorType_Map)) {
-            fail_runtime_error("unknown argKind encountered");
-        }
-        return found->second;
-    }
-
-} // anonymous namespace
 
 namespace clspv_utils {
 
@@ -113,7 +87,7 @@ namespace clspv_utils {
         }
 
         auto& ka = mArgList.data()[ordinal];
-        if (find_descriptor_type(ka.kind) != kind) {
+        if (getDescriptorType(ka.kind) != kind) {
             fail_runtime_error("adding incompatible argument to kernel invocation");
         }
 

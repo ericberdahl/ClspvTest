@@ -16,7 +16,7 @@ namespace clspv_utils {
 
     struct module_proxy_t {
         vk::ArrayProxy<const sampler_spec_t>    mSamplers;
-        vk::ArrayProxy<const kernel_interface>  mKernels;
+        vk::ArrayProxy<const kernel_spec_t>     mKernels;
     };
 }
 

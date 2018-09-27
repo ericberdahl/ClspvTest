@@ -9,7 +9,6 @@ namespace clspv_utils {
 
     class device;
     class kernel;
-    class kernel_interface;
     class kernel_invocation;
     class kernel_module;
     class module_interface;
@@ -17,6 +16,7 @@ namespace clspv_utils {
     struct arg_spec_t;
     struct execution_time_t;
     struct kernel_layout_t;
+    struct kernel_spec_t;
     struct module_proxy_t;
     struct sampler_spec_t;
 

@@ -48,23 +48,23 @@ namespace {
 
 namespace clspv_utils {
 
-    void sampler_spec_t::validate() const {
-        if (opencl_flags == 0) {
+    void validateSampler(const sampler_spec_t& spec) {
+        if (spec.opencl_flags == 0) {
             fail_runtime_error("sampler missing OpenCL flags");
         }
-        if (descriptor_set < 0) {
+        if (spec.descriptor_set < 0) {
             fail_runtime_error("sampler missing descriptorSet");
         }
-        if (binding < 0) {
+        if (spec.binding < 0) {
             fail_runtime_error("sampler missing binding");
         }
 
         // all samplers, are documented to share descriptor set 0
-        if (descriptor_set != 0) {
+        if (spec.descriptor_set != 0) {
             fail_runtime_error("all clspv literal samplers must use descriptor set 0");
         }
 
-        if (!isSamplerSupported(opencl_flags)) {
+        if (!isSamplerSupported(spec.opencl_flags)) {
             fail_runtime_error("sampler is not representable in Vulkan");
         }
     }

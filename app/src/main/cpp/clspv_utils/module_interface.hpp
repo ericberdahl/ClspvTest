@@ -15,14 +15,12 @@ namespace clspv_utils {
 
     class module_interface {
     public:
-        typedef vector<sampler_spec_t>     sampler_list_t;
-        typedef vector<kernel_interface>   kernel_list_t;
+        typedef vector<sampler_spec_t>  sampler_list_t;
+        typedef vector<kernel_spec_t>   kernel_list_t;
 
                                 module_interface();
 
         explicit                module_interface(std::istream& spvmapStream);
-
-        const kernel_interface* findKernelInterface(const string& entryPoint) const;
 
         vector<string>          getEntryPoints() const;
 
@@ -30,6 +28,8 @@ namespace clspv_utils {
 
     private:
         void    addLiteralSampler(sampler_spec_t sampler);
+
+        int                         getLiteralSamplersDescriptorSet() const;
 
     private:
         sampler_list_t  mSamplers;

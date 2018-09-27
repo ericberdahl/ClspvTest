@@ -15,36 +15,27 @@
 
 namespace clspv_utils {
 
-    class kernel_interface {
-    public:
-        typedef vector<arg_spec_t>                      arg_list_t;
-        typedef vk::ArrayProxy<const arg_spec_t>        arg_list_proxy_t;
-        typedef vk::ArrayProxy<const sampler_spec_t>    sampler_list_proxy_t;
+    struct kernel_spec_t {
+        typedef vector<arg_spec_t>  arg_list;
 
-        kernel_interface();
-
-        kernel_interface(string                 entryPoint,
-                         sampler_list_proxy_t   samplers,
-                         arg_list_t             arguments);
-
-        int                             getArgDescriptorSet() const;
-        const string&                   getEntryPoint() const { return mName; }
-
-        sampler_list_proxy_t            getLiteralSamplers() const { return mLiteralSamplers; }
-        int                             getLiteralSamplersDescriptorSet() const;
-
-        arg_list_proxy_t                getArguments() const { return mArguments; }
-
-    private:
-        void        validate() const;
-
-    private:
-        string                  mName;
-        sampler_list_proxy_t    mLiteralSamplers;
-        arg_list_t              mArguments;
+        string      mName;
+        arg_list    mArguments;
     };
 
-    vk::UniqueDescriptorSetLayout createArgumentDescriptorLayout(const kernel_interface& kernel, const device& inDevice);
+    vk::UniqueDescriptorSetLayout createKernelArgumentDescriptorLayout(const kernel_spec_t::arg_list&   arguments,
+                                                                       const device&                    inDevice);
+
+    int     getKernelArgumentDescriptorSet(const kernel_spec_t::arg_list& arguments);
+
+    void    validateKernelArg(const arg_spec_t &arg);
+
+    void    validateKernelSpec(const kernel_spec_t& spec);
+
+    vk::DescriptorType  getDescriptorType(arg_spec_t::kind_t argKind);
+
+    // Sort the args such that pods are grouped together at the end of the sequence, and that
+    // the non-pod and pod groups are each individually sorted by increasing ordinal
+    void    standardizeKernelArgumentOrder(kernel_spec_t::arg_list& arguments);
 }
 
 #endif //CLSPVUTILS_KERNEL_INTERFACE_HPP

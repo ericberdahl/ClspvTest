@@ -19,7 +19,7 @@ namespace clspv_utils {
 
     class kernel_module {
     public:
-        typedef vk::ArrayProxy<const kernel_interface>  kernel_list_proxy_t;
+        typedef vk::ArrayProxy<const kernel_spec_t>  kernel_list_proxy_t;
 
                             kernel_module();
 
