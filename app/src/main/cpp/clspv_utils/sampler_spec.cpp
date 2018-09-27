@@ -15,14 +15,18 @@ namespace {
     using namespace clspv_utils;
 
     const auto kCLAddressMode_VkAddressMode_Map = {
-            std::make_pair(CLK_ADDRESS_NONE, vk::SamplerAddressMode::eClampToEdge),
-            std::make_pair(CLK_ADDRESS_CLAMP_TO_EDGE, vk::SamplerAddressMode::eClampToEdge),
-            std::make_pair(CLK_ADDRESS_CLAMP, vk::SamplerAddressMode::eClampToBorder),
-            std::make_pair(CLK_ADDRESS_REPEAT, vk::SamplerAddressMode::eRepeat),
+            std::make_pair(CLK_ADDRESS_NONE,            vk::SamplerAddressMode::eClampToEdge),
+            std::make_pair(CLK_ADDRESS_CLAMP_TO_EDGE,   vk::SamplerAddressMode::eClampToEdge),
+            std::make_pair(CLK_ADDRESS_CLAMP,           vk::SamplerAddressMode::eClampToBorder),
+            std::make_pair(CLK_ADDRESS_REPEAT,          vk::SamplerAddressMode::eRepeat),
             std::make_pair(CLK_ADDRESS_MIRRORED_REPEAT, vk::SamplerAddressMode::eMirroredRepeat)
     };
 
-    vk::SamplerAddressMode find_address_mode(int opencl_flags) {
+} // anonymous namespace
+
+namespace clspv_utils {
+
+    vk::SamplerAddressMode getSamplerAddressMode(int opencl_flags) {
         opencl_flags &= CLK_ADDRESS_MASK;
 
         auto found = std::find_if(std::begin(kCLAddressMode_VkAddressMode_Map),
@@ -35,18 +39,14 @@ namespace {
     }
 
 
-    vk::Filter get_vk_filter(int opencl_flags) {
+    vk::Filter getSamplerFilter(int opencl_flags) {
         return ((opencl_flags & CLK_FILTER_MASK) == CLK_FILTER_LINEAR ? vk::Filter::eLinear
                                                                       : vk::Filter::eNearest);
     }
 
-    vk::Bool32 get_vk_unnormalized_coordinates(int opencl_flags) {
+    vk::Bool32 isSamplerUnnormalizedCoordinates(int opencl_flags) {
         return ((opencl_flags & CLK_NORMALIZED_COORDS_MASK) == CLK_NORMALIZED_COORDS_FALSE ? VK_TRUE : VK_FALSE);
     }
-
-} // anonymous namespace
-
-namespace clspv_utils {
 
     void validateSampler(const sampler_spec_t& spec, int requiredDescriptorSet) {
         if (spec.mOpenclFlags == 0) {
@@ -76,8 +76,8 @@ namespace clspv_utils {
 
     bool isSamplerSupported(int opencl_flags)
     {
-        const vk::Bool32 unnormalizedCoordinates    = get_vk_unnormalized_coordinates(opencl_flags);
-        const vk::SamplerAddressMode addressMode    = find_address_mode(opencl_flags);
+        const vk::Bool32 unnormalizedCoordinates    = isSamplerUnnormalizedCoordinates(opencl_flags);
+        const vk::SamplerAddressMode addressMode    = getSamplerAddressMode(opencl_flags);
 
         return (!unnormalizedCoordinates || addressMode == vk::SamplerAddressMode::eClampToEdge || addressMode == vk::SamplerAddressMode::eClampToBorder);
     }
@@ -87,9 +87,9 @@ namespace clspv_utils {
             fail_runtime_error("This OpenCL sampler cannot be represented in Vulkan");
         }
 
-        const vk::Filter filter                     = get_vk_filter(opencl_flags);
-        const vk::Bool32 unnormalizedCoordinates    = get_vk_unnormalized_coordinates(opencl_flags);
-        const vk::SamplerAddressMode addressMode    = find_address_mode(opencl_flags);
+        const vk::Filter filter                     = getSamplerFilter(opencl_flags);
+        const vk::Bool32 unnormalizedCoordinates    = isSamplerUnnormalizedCoordinates(opencl_flags);
+        const vk::SamplerAddressMode addressMode    = getSamplerAddressMode(opencl_flags);
 
         vk::SamplerCreateInfo samplerCreateInfo;
         samplerCreateInfo.setMagFilter(filter)

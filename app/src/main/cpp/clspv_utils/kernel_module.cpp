@@ -134,7 +134,7 @@ namespace clspv_utils {
         }
 
         if (-1 != getKernelArgumentDescriptorSet(kernelSpec->mArguments)) {
-            result.mArgumentDescriptorLayout = createKernelArgumentDescriptorLayout(kernelSpec->mArguments, mDevice);
+            result.mArgumentDescriptorLayout = createKernelArgumentDescriptorLayout(kernelSpec->mArguments, mDevice.getDevice());
 
             result.mArgumentsDescriptor = allocate_descriptor_set(mDevice,
                                                                   *result.mArgumentDescriptorLayout);

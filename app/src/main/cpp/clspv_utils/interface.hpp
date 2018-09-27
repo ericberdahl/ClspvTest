@@ -101,9 +101,15 @@ namespace clspv_utils {
      * OpenCL sampler flags functions
      */
 
-    bool isSamplerSupported(int opencl_flags);
+    vk::SamplerAddressMode  getSamplerAddressMode(int opencl_flags);
 
-    vk::UniqueSampler createCompatibleSampler(vk::Device device, int opencl_flags);
+    vk::Filter              getSamplerFilter(int opencl_flags);
+
+    vk::Bool32              isSamplerUnnormalizedCoordinates(int opencl_flags);
+
+    bool                    isSamplerSupported(int opencl_flags);
+
+    vk::UniqueSampler       createCompatibleSampler(vk::Device device, int opencl_flags);
 
     /*
      * Validation functions
