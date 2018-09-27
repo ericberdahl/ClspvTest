@@ -83,13 +83,17 @@ namespace clspv_utils {
         });
     }
 
-    void validateKernelSpec(const kernel_spec_t& spec)
+    void validateKernelSpec(const kernel_spec_t& spec, int requiredDescriptorSet)
     {
         if (spec.mName.empty()) {
             fail_runtime_error("kernel has no name");
         }
 
         const int arg_ds = getKernelArgumentDescriptorSet(spec.mArguments);
+        if (requiredDescriptorSet > 0 && arg_ds != requiredDescriptorSet) {
+            fail_runtime_error("kernel's arguments are in incorrect descriptor set");
+        }
+
         for (auto& ka : spec.mArguments) {
             // All arguments for a given kernel that are passed in a descriptor set need to be in
             // the same descriptor set
@@ -102,7 +106,7 @@ namespace clspv_utils {
 
         // TODO: mArguments entries are in increasing binding, and pod/pod_ubo's come after non-pod/non-pod_ubo's
         // TODO: there cannot be both pod and pod_ubo arguments for a given kernel
-        // TODO: if there is a pod or pod_ubo argument, its descriptor set must be larger than other descriptor sets
+        // TODO: if there is a pod or pod_ubo argument, its binding must be larger than other descriptor sets
     }
 
     int getKernelArgumentDescriptorSet(const kernel_spec_t::arg_list& arguments) {

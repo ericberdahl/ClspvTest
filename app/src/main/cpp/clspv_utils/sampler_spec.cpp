@@ -48,7 +48,7 @@ namespace {
 
 namespace clspv_utils {
 
-    void validateSampler(const sampler_spec_t& spec) {
+    void validateSampler(const sampler_spec_t& spec, int requiredDescriptorSet) {
         if (spec.opencl_flags == 0) {
             fail_runtime_error("sampler missing OpenCL flags");
         }
@@ -66,6 +66,11 @@ namespace clspv_utils {
 
         if (!isSamplerSupported(spec.opencl_flags)) {
             fail_runtime_error("sampler is not representable in Vulkan");
+        }
+
+        // All literal samplers for a module need to be in the same descriptor set
+        if (requiredDescriptorSet > 0 && spec.descriptor_set != requiredDescriptorSet) {
+            fail_runtime_error("sampler is not in required descriptor_set");
         }
     }
 

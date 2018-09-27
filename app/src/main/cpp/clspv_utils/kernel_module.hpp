@@ -9,7 +9,7 @@
 
 #include "clspv_utils_interop.hpp"
 #include "device.hpp"
-#include "module_proxy.hpp"
+#include "module_interface.hpp"
 
 #include <vulkan/vulkan.hpp>
 
@@ -25,10 +25,10 @@ namespace clspv_utils {
 
                             kernel_module(kernel_module&& other);
 
-                            kernel_module(const string&         moduleName,
-                                          std::istream&         spvModuleStream,
-                                          device                dev,
-                                          const module_proxy_t& proxy);
+                            kernel_module(const string& moduleName,
+                                          std::istream& spvModuleStream,
+                                          device        dev,
+                                          module_spec_t spec);
 
                             ~kernel_module();
 
@@ -51,7 +51,7 @@ namespace clspv_utils {
     private:
         string                  mName;
         device                  mDevice;
-        kernel_list_proxy_t     mKernelInterfaces;
+        module_spec_t           mModuleSpec;
 
         vk::DescriptorSetLayout mLiteralSamplerDescriptorLayout;
         vk::DescriptorSet       mLiteralSamplerDescriptor;

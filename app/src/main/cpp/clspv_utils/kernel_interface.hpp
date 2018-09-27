@@ -29,7 +29,7 @@ namespace clspv_utils {
 
     void    validateKernelArg(const arg_spec_t &arg);
 
-    void    validateKernelSpec(const kernel_spec_t& spec);
+    void    validateKernelSpec(const kernel_spec_t& spec, int requiredDescriptorSet = -1);
 
     vk::DescriptorType  getDescriptorType(arg_spec_t::kind_t argKind);
 

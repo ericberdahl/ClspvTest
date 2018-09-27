@@ -121,7 +121,7 @@ namespace test_utils {
             crlf_savvy::crlf_filter_buffer filter(spvmapStream.rdbuf());
             spvmapStream.rdbuf(&filter);
 
-            clspv_utils::module_interface moduleInterface(spvmapStream);
+            clspv_utils::module_spec_t moduleInterface = clspv_utils::createModuleSpec(spvmapStream);
             spvmapStream.close();
 
             file_utils::AndroidAssetStream spvStream(moduleTest.mName + ".spv");
@@ -133,7 +133,7 @@ namespace test_utils {
             clspv_utils::kernel_module module(moduleTest.mName,
                                               spvStream,
                                               inDevice,
-                                              moduleInterface.createModuleProxy());
+                                              moduleInterface);
             result.second.mLoadedCorrectly = true;
             spvStream.close();
 

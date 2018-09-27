@@ -231,10 +231,10 @@ namespace
         crlf_savvy::crlf_filter_buffer filter(spvmapStream.rdbuf());
         spvmapStream.rdbuf(&filter);
 
-        clspv_utils::module_interface moduleInterface(spvmapStream);
+        clspv_utils::module_spec_t moduleInterface = clspv_utils::createModuleSpec(spvmapStream);
         spvmapStream.close();
 
-        for (auto& entryPoint : moduleInterface.getEntryPoints())
+        for (auto& entryPoint : getEntryPointNames(moduleInterface.mKernels))
         {
             auto found = std::find_if(moduleTest.mKernelTests.begin(), moduleTest.mKernelTests.end(),
                          [&entryPoint](const test_utils::KernelTest& kt) {

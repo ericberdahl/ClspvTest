@@ -7,7 +7,6 @@
 #include "kernel.hpp"
 #include "kernel_interface.hpp"
 #include "kernel_layout.hpp"
-#include "module_proxy.hpp"
 
 #include <istream>
 #include <functional>
@@ -62,34 +61,11 @@ namespace {
         return device.createPipelineLayoutUnique(createInfo);
     }
 
-    const kernel_spec_t* find_kernel_interface(const string&                             name,
-                                                  vk::ArrayProxy<const kernel_spec_t>    kernels)
-    {
-        auto kernel = std::find_if(kernels.begin(), kernels.end(),
-                                   [&name](const kernel_spec_t &iter) {
-                                       return iter.mName == name;
-                                   });
-
-        return (kernel == kernels.end() ? nullptr : &(*kernel));
-    }
-
-    vector<string> get_entry_points(vk::ArrayProxy<const kernel_spec_t> kernels)
-    {
-        vector<string> result;
-
-        std::transform(kernels.begin(), kernels.end(),
-                       std::back_inserter(result),
-                       [](const kernel_spec_t& k) { return k.mName; });
-
-        return result;
-    }
-
 } // anonymous namespace
 
 namespace clspv_utils {
 
     kernel_module::kernel_module()
-            : mKernelInterfaces(nullptr)
     {
     }
 
@@ -99,17 +75,17 @@ namespace clspv_utils {
         swap(other);
     }
 
-    kernel_module::kernel_module(const string&          moduleName,
-                                 std::istream&          spvmoduleStream,
-                                 device                 inDevice,
-                                 const module_proxy_t&  proxy)
+    kernel_module::kernel_module(const string&  moduleName,
+                                 std::istream&  spvmoduleStream,
+                                 device         inDevice,
+                                 module_spec_t  spec)
             : mName(moduleName),
               mDevice(inDevice),
-              mKernelInterfaces(proxy.mKernels),
+              mModuleSpec(std::move(spec)),
               mLiteralSamplerDescriptor(),
               mLiteralSamplerDescriptorLayout()
     {
-        const auto literalSamplerDescriptorGroup = inDevice.getCachedSamplerDescriptorGroup(proxy.mSamplers);
+        const auto literalSamplerDescriptorGroup = inDevice.getCachedSamplerDescriptorGroup(mModuleSpec.mSamplers);
         mLiteralSamplerDescriptor = literalSamplerDescriptorGroup.descriptor;
         mLiteralSamplerDescriptorLayout = literalSamplerDescriptorGroup.layout;
 
@@ -133,7 +109,7 @@ namespace clspv_utils {
 
         swap(mName, other.mName);
         swap(mDevice, other.mDevice);
-        swap(mKernelInterfaces, other.mKernelInterfaces);
+        swap(mModuleSpec, other.mModuleSpec);
         swap(mLiteralSamplerDescriptorLayout, other.mLiteralSamplerDescriptorLayout);
         swap(mLiteralSamplerDescriptor, other.mLiteralSamplerDescriptor);
         swap(mShaderModule, other.mShaderModule);
@@ -142,7 +118,7 @@ namespace clspv_utils {
 
     vector<string> kernel_module::getEntryPoints() const
     {
-        return get_entry_points(mKernelInterfaces);
+        return getEntryPointNames(mModuleSpec.mKernels);
     }
 
     kernel_layout_t kernel_module::createKernelLayout(const string& entryPoint) const {
@@ -152,7 +128,7 @@ namespace clspv_utils {
 
         kernel_layout_t result;
 
-        const auto kernelSpec = find_kernel_interface(entryPoint, mKernelInterfaces);
+        const auto kernelSpec = findKernelSpec(entryPoint, mModuleSpec.mKernels);
         if (!kernelSpec) {
             fail_runtime_error("cannot create kernel layout for unknown entry point");
         }
@@ -183,7 +159,7 @@ namespace clspv_utils {
                       *mPipelineCache,
                       entryPoint,
                       workgroup_sizes,
-                      find_kernel_interface(entryPoint, mKernelInterfaces)->mArguments);
+                      findKernelSpec(entryPoint, mModuleSpec.mKernels)->mArguments);
     }
 
 } // namespace clspv_utils

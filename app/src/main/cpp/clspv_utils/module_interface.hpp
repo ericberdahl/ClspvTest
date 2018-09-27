@@ -13,28 +13,27 @@
 
 namespace clspv_utils {
 
-    class module_interface {
-    public:
-        typedef vector<sampler_spec_t>  sampler_list_t;
-        typedef vector<kernel_spec_t>   kernel_list_t;
+    struct module_spec_t {
+        typedef vector<sampler_spec_t>  sampler_list;
+        typedef vector<kernel_spec_t>   kernel_list;
 
-                                module_interface();
-
-        explicit                module_interface(std::istream& spvmapStream);
-
-        vector<string>          getEntryPoints() const;
-
-        module_proxy_t          createModuleProxy() const;
-
-    private:
-        void    addLiteralSampler(sampler_spec_t sampler);
-
-        int                         getLiteralSamplersDescriptorSet() const;
-
-    private:
-        sampler_list_t  mSamplers;
-        kernel_list_t   mKernels;
+        sampler_list  mSamplers;
+        kernel_list   mKernels;
     };
+
+    module_spec_t           createModuleSpec(std::istream& spvmapStream);
+
+    const kernel_spec_t*    findKernelSpec(const string&                        name,
+                                           const module_spec_t::kernel_list&    kernels);
+
+    kernel_spec_t*          findKernelSpec(const string&                name,
+                                           module_spec_t::kernel_list&  kernels);
+
+    int                     getSamplersDescriptorSet(const module_spec_t::sampler_list& spec);
+
+    vector<string>          getEntryPointNames(const module_spec_t::kernel_list& specs);
+
+    void                    validateModuleSpec(const module_spec_t& spec);
 }
 
 #endif //CLSPVUTILS_MODULE_INTERFACE_HPP

@@ -21,7 +21,7 @@ namespace clspv_utils {
 
     vk::UniqueSampler createCompatibleSampler(vk::Device device, int opencl_flags);
 
-    void validateSampler(const sampler_spec_t& spec);
+    void validateSampler(const sampler_spec_t& spec, int requiredDescriptorSet = -1);
 }
 
 #endif //CLSPVUTILS_SAMPLER_SPEC_HPP

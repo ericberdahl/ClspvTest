@@ -8,7 +8,6 @@
 #include "clspv_utils_interop.hpp"
 #include "device.hpp"
 #include "kernel_interface.hpp" // TODO: break dependency?
-#include "module_proxy.hpp"
 #include "opencl_types.hpp"
 #include "sampler_spec.hpp"
 
@@ -122,20 +121,33 @@ namespace {
 
 namespace clspv_utils {
 
-    module_interface::module_interface()
+    const kernel_spec_t* findKernelSpec(const string&                       name,
+                                        const module_spec_t::kernel_list&   kernels)
     {
+        auto kernel = std::find_if(kernels.begin(), kernels.end(),
+                                   [&name](const kernel_spec_t &iter) {
+                                       return iter.mName == name;
+                                   });
+
+        return (kernel == kernels.end() ? nullptr : &(*kernel));
     }
 
-    module_interface::module_interface(std::istream& in)
-            : module_interface()
+    kernel_spec_t* findKernelSpec(const string&                 name,
+                                  module_spec_t::kernel_list&   kernels)
     {
+        return const_cast<kernel_spec_t*>(findKernelSpec(name, const_cast<const module_spec_t::kernel_list&>(kernels)));
+    }
+
+    module_spec_t createModuleSpec(std::istream& in)
+    {
+        module_spec_t result;
+
         /*
          * TODO Change file reading.
-         * Do CRLF conversion via a streambuf filter. This allows the "main" loop to work on
-         * generic istream and getline functionality.
+         * Parse each line into vector of key-value pairs.
          */
 
-        map<string, kernel_spec_t::arg_list> kernel_args;
+        kernel_spec_t* recentKernel = nullptr;
 
         string line;
         while (!in.eof()) {
@@ -144,66 +156,70 @@ namespace clspv_utils {
             std::istringstream in_line(line);
             auto tag = read_key_value_pair(in_line);
             if ("sampler" == tag.first) {
-                addLiteralSampler(parse_spvmap_sampler(tag, in_line));
+                result.mSamplers.push_back(parse_spvmap_sampler(tag, in_line));
             } else if ("kernel" == tag.first) {
-                kernel_args[tag.second].push_back(parse_spvmap_kernel_arg(tag, in_line));
+                if (!recentKernel || recentKernel->mName != tag.second)
+                {
+                    recentKernel = findKernelSpec(tag.second, result.mKernels);
+                    if (!recentKernel) {
+                        result.mKernels.push_back(kernel_spec_t{ tag.second, kernel_spec_t::arg_list() });
+                        recentKernel = &result.mKernels.back();
+                    }
+                }
+                assert(recentKernel);
+
+                recentKernel->mArguments.push_back(parse_spvmap_kernel_arg(tag, in_line));
             }
         }
-
-        // TODO: validate that all kernels have arguments in the correct descriptor set
 
         // Ensure that the literal samplers are sorted by increasing binding number. This will be
         // important if the sequence is later used to determine whether a cached sampler descriptor
         // set can be re-used for this module.
-        std::sort(mSamplers.begin(), mSamplers.end(), [](const sampler_spec_t& lhs, const sampler_spec_t& rhs) {
+        std::sort(result.mSamplers.begin(), result.mSamplers.end(), [](const sampler_spec_t& lhs, const sampler_spec_t& rhs) {
             return lhs.binding < rhs.binding;
         });
 
-        const int sampler_ds = getLiteralSamplersDescriptorSet();
-        for (auto& ls : mSamplers) {
-            // All literal samplers for a module need to be in the same descriptor set
-            if (ls.descriptor_set != sampler_ds) {
-                fail_runtime_error("literal sampler descriptor_sets don't match");
-            }
-
-            validateSampler(ls);
+        for (auto& k : result.mKernels) {
+            standardizeKernelArgumentOrder(k.mArguments);
         }
 
-        for (auto& k : kernel_args) {
-            mKernels.push_back(kernel_spec_t{k.first, k.second});
-            standardizeKernelArgumentOrder(mKernels.back().mArguments);
-            validateKernelSpec(mKernels.back());
-        }
-    }
-
-    void module_interface::addLiteralSampler(clspv_utils::sampler_spec_t sampler) {
-        validateSampler(sampler);
-        mSamplers.push_back(sampler);
-    }
-
-    int module_interface::getLiteralSamplersDescriptorSet() const {
-        auto found = std::find_if(mSamplers.begin(), mSamplers.end(),
-                                  [](const sampler_spec_t &ss) {
-                                      return (-1 != ss.descriptor_set);
-                                  });
-        return (found == mSamplers.end() ? -1 : found->descriptor_set);
-    }
-
-    vector<string> module_interface::getEntryPoints() const
-    {
-        vector<string> result;
-
-        std::transform(mKernels.begin(), mKernels.end(),
-                       std::back_inserter(result),
-                       [](const kernel_spec_t& k) { return k.mName; });
+        validateModuleSpec(result);
 
         return result;
     }
 
-    module_proxy_t module_interface::createModuleProxy() const {
-        module_proxy_t result = {};
-        result.mSamplers = mSamplers;
-        result.mKernels = mKernels;
+    void validateModuleSpec(const module_spec_t& spec)
+    {
+        const int sampler_ds = getSamplersDescriptorSet(spec.mSamplers);
+        for (auto& ls : spec.mSamplers) {
+            // All literal samplers for a module need to be in the same descriptor set
+            validateSampler(ls, sampler_ds);
+        }
+
+        // If there are literal samplers, the kernel arguments are in descriptor set 1, otherwise
+        // they are in descriptor set 0
+        const int kernel_ds = (sampler_ds > 0 ? 1 : 0);
+        for (auto& k : spec.mKernels) {
+            validateKernelSpec(k, kernel_ds);
+        }
+
+    }
+
+    int getSamplersDescriptorSet(const module_spec_t::sampler_list& samplers) {
+        auto found = std::find_if(samplers.begin(), samplers.end(),
+                                  [](const sampler_spec_t &ss) {
+                                      return (-1 != ss.descriptor_set);
+                                  });
+        return (found == samplers.end() ? -1 : found->descriptor_set);
+    }
+
+    vector<string> getEntryPointNames(const module_spec_t::kernel_list& specs)
+    {
+        vector<string> result;
+
+        std::transform(specs.begin(), specs.end(),
+                       std::back_inserter(result),
+                       [](const kernel_spec_t& k) { return k.mName; });
 
         return result;
     }
