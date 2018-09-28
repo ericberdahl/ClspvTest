@@ -24,7 +24,7 @@ namespace strangeshuffle_kernel {
                                           1,
                                           1);
 
-        clspv_utils::kernel_invocation invocation = kernel.createInvocation();
+        clspv_utils::kernel_invocation invocation(kernel.createInvocationReq());
 
         invocation.addStorageBufferArgument(index_buffer);
         invocation.addStorageBufferArgument(source_buffer);

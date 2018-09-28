@@ -30,7 +30,7 @@ namespace fillarraystruct_kernel {
                 1,
                 1);
 
-        clspv_utils::kernel_invocation invocation = kernel.createInvocation();
+        clspv_utils::kernel_invocation invocation(kernel.createInvocationReq());
 
         invocation.addStorageBufferArgument(destination_buffer);
         return invocation.run(num_workgroups);

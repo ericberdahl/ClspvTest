@@ -5,7 +5,6 @@
 #include "kernel_invocation.hpp"
 
 #include "interface.hpp"
-#include "kernel.hpp"
 
 #include <cassert>
 #include <memory>
@@ -20,29 +19,20 @@ namespace clspv_utils {
     }
 
     kernel_invocation::kernel_invocation()
-            : mArgList(nullptr)
     {
         // this space intentionally left blank
     }
 
-    kernel_invocation::kernel_invocation(kernel&            kernel,
-                                         device             inDevice,
-                                         vk::DescriptorSet  argumentDescSet,
-                                         arg_list_proxy_t   argList)
-            : kernel_invocation()
+    kernel_invocation::kernel_invocation(invocation_req_t req)
+            : mReq(std::move(req))
     {
-        mKernel = &kernel;
-        mDevice = inDevice;
-        mArgList = argList;
-        mArgumentDescriptorSet = argumentDescSet;
-
-        mCommand = vulkan_utils::allocate_command_buffer(mDevice.getDevice(), mDevice.getCommandPool());
+        mCommand = vulkan_utils::allocate_command_buffer(mReq.mDevice.getDevice(), mReq.mDevice.getCommandPool());
 
         vk::QueryPoolCreateInfo poolCreateInfo;
         poolCreateInfo.setQueryType(vk::QueryType::eTimestamp)
                 .setQueryCount(kQueryIndex_Count);
 
-        mQueryPool = mDevice.getDevice().createQueryPoolUnique(poolCreateInfo);
+        mQueryPool = mReq.mDevice.getDevice().createQueryPoolUnique(poolCreateInfo);
     }
 
     kernel_invocation::kernel_invocation(kernel_invocation&& other)
@@ -58,13 +48,9 @@ namespace clspv_utils {
     {
         using std::swap;
 
-        swap(mKernel, other.mKernel);
-        swap(mDevice, other.mDevice);
-        swap(mArgList, other.mArgList);
+        swap(mReq, other.mReq);
         swap(mCommand, other.mCommand);
         swap(mQueryPool, other.mQueryPool);
-
-        swap(mArgumentDescriptorSet, other.mArgumentDescriptorSet);
 
         swap(mSpecConstantArguments, other.mSpecConstantArguments);
         swap(mBufferMemoryBarriers, other.mBufferMemoryBarriers);
@@ -82,11 +68,11 @@ namespace clspv_utils {
     std::uint32_t kernel_invocation::validateArgType(std::size_t        ordinal,
                                                      vk::DescriptorType kind) const
     {
-        if (ordinal >= mArgList.size()) {
+        if (ordinal >= mReq.mKernelSpec.mArguments.size()) {
             fail_runtime_error("adding too many arguments to kernel invocation");
         }
 
-        auto& ka = mArgList.data()[ordinal];
+        auto& ka = mReq.mKernelSpec.mArguments.data()[ordinal];
         if (getDescriptorType(ka.mKind) != kind) {
             fail_runtime_error("adding incompatible argument to kernel invocation");
         }
@@ -97,11 +83,11 @@ namespace clspv_utils {
     std::uint32_t kernel_invocation::validateArgType(std::size_t        ordinal,
                                                      arg_spec_t::kind   kind) const
     {
-        if (ordinal >= mArgList.size()) {
+        if (ordinal >= mReq.mKernelSpec.mArguments.size()) {
             fail_runtime_error("adding too many arguments to kernel invocation");
         }
 
-        auto& ka = mArgList.data()[ordinal];
+        auto& ka = mReq.mKernelSpec.mArguments.data()[ordinal];
         if (ka.mKind != kind) {
             fail_runtime_error("adding incompatible argument to kernel invocation");
         }
@@ -115,7 +101,7 @@ namespace clspv_utils {
         mBufferArgumentInfo.push_back(buffer.use());
 
         vk::WriteDescriptorSet argSet;
-        argSet.setDstSet(mArgumentDescriptorSet)
+        argSet.setDstSet(mReq.mArgumentsDescriptor)
                 .setDstBinding(validateArgType(countArguments(), vk::DescriptorType::eStorageBuffer))
                 .setDescriptorCount(1)
                 .setDescriptorType(vk::DescriptorType::eStorageBuffer);
@@ -127,7 +113,7 @@ namespace clspv_utils {
         mBufferArgumentInfo.push_back(buffer.use());
 
         vk::WriteDescriptorSet argSet;
-        argSet.setDstSet(mArgumentDescriptorSet)
+        argSet.setDstSet(mReq.mArgumentsDescriptor)
                 .setDstBinding(validateArgType(countArguments(), vk::DescriptorType::eUniformBuffer))
                 .setDescriptorCount(1)
                 .setDescriptorType(vk::DescriptorType::eUniformBuffer);
@@ -140,7 +126,7 @@ namespace clspv_utils {
         mImageArgumentInfo.push_back(samplerInfo);
 
         vk::WriteDescriptorSet argSet;
-        argSet.setDstSet(mArgumentDescriptorSet)
+        argSet.setDstSet(mReq.mArgumentsDescriptor)
                 .setDstBinding(validateArgType(countArguments(), vk::DescriptorType::eSampler))
                 .setDescriptorCount(1)
                 .setDescriptorType(vk::DescriptorType::eSampler);
@@ -152,7 +138,7 @@ namespace clspv_utils {
         mImageArgumentInfo.push_back(image.use());
 
         vk::WriteDescriptorSet argSet;
-        argSet.setDstSet(mArgumentDescriptorSet)
+        argSet.setDstSet(mReq.mArgumentsDescriptor)
                 .setDstBinding(validateArgType(countArguments(), vk::DescriptorType::eSampledImage))
                 .setDescriptorCount(1)
                 .setDescriptorType(vk::DescriptorType::eSampledImage);
@@ -164,7 +150,7 @@ namespace clspv_utils {
         mImageArgumentInfo.push_back(image.use());
 
         vk::WriteDescriptorSet argSet;
-        argSet.setDstSet(mArgumentDescriptorSet)
+        argSet.setDstSet(mReq.mArgumentsDescriptor)
                 .setDstBinding(validateArgType(countArguments(), vk::DescriptorType::eStorageImage))
                 .setDescriptorCount(1)
                 .setDescriptorType(vk::DescriptorType::eStorageImage);
@@ -213,19 +199,26 @@ namespace clspv_utils {
         //
         // Do the actual descriptor set updates
         //
-        mDevice.getDevice().updateDescriptorSets(writeSets, nullptr);
-    }
-
-    void kernel_invocation::bindCommand()
-    {
-        mKernel->bindCommand(*mCommand);
+        mReq.mDevice.getDevice().updateDescriptorSets(writeSets, nullptr);
     }
 
     void kernel_invocation::fillCommandBuffer(const vk::Extent3D& num_workgroups)
     {
+        auto pipeline = mReq.mGetPipelineFn(mSpecConstantArguments);
+
         mCommand->begin(vk::CommandBufferBeginInfo());
 
-        bindCommand();
+        mCommand->bindPipeline(vk::PipelineBindPoint::eCompute, pipeline);
+
+        vk::DescriptorSet descriptors[] = { mReq.mLiteralSamplerDescriptor, mReq.mArgumentsDescriptor };
+        std::uint32_t numDescriptors = (descriptors[0] ? 2 : 1);
+        if (1 == numDescriptors) descriptors[0] = descriptors[1];
+
+        mCommand->bindDescriptorSets(vk::PipelineBindPoint::eCompute,
+                                     mReq.mPipelineLayout,
+                                     0,
+                                     { numDescriptors, descriptors },
+                                     nullptr);
 
         mCommand->resetQueryPool(*mQueryPool, kQueryIndex_FirstIndex, kQueryIndex_Count);
 
@@ -256,39 +249,27 @@ namespace clspv_utils {
         submitInfo.setCommandBufferCount(1)
                 .setPCommandBuffers(&rawCommand);
 
-        mDevice.getComputeQueue().submit(submitInfo, nullptr);
+        mReq.mDevice.getComputeQueue().submit(submitInfo, nullptr);
 
-    }
-
-    void kernel_invocation::updatePipeline()
-    {
-        mKernel->updatePipeline(mSpecConstantArguments);
     }
 
     execution_time_t kernel_invocation::run(const vk::Extent3D& num_workgroups) {
-        // HACK re-create the pipeline if the invocation includes spec constant arguments.
-        // TODO factor the pipeline recreation better, possibly along with an overhaul of kernel
-        // management
-        if (!mSpecConstantArguments.empty()) {
-            updatePipeline();
-        }
-
         updateDescriptorSets();
         fillCommandBuffer(num_workgroups);
 
         auto start = std::chrono::high_resolution_clock::now();
         submitCommand();
-        mDevice.getComputeQueue().waitIdle();
+        mReq.mDevice.getComputeQueue().waitIdle();
         auto end = std::chrono::high_resolution_clock::now();
 
         uint64_t timestamps[kQueryIndex_Count];
-        mDevice.getDevice().getQueryPoolResults(*mQueryPool,
-                                                kQueryIndex_FirstIndex,
-                                                kQueryIndex_Count,
-                                                sizeof(uint64_t),
-                                                timestamps,
-                                                sizeof(uint64_t),
-                                                vk::QueryResultFlagBits::e64 | vk::QueryResultFlagBits::eWait);
+        mReq.mDevice.getDevice().getQueryPoolResults(*mQueryPool,
+                                                     kQueryIndex_FirstIndex,
+                                                     kQueryIndex_Count,
+                                                     sizeof(uint64_t),
+                                                     timestamps,
+                                                     sizeof(uint64_t),
+                                                     vk::QueryResultFlagBits::e64 | vk::QueryResultFlagBits::eWait);
 
         execution_time_t result;
         result.cpu_duration = end - start;

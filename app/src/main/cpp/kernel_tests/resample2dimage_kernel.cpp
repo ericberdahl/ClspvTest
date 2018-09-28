@@ -81,7 +81,7 @@ namespace resample2dimage_kernel {
                 (extent.height + workgroup_sizes.height - 1) / workgroup_sizes.height,
                 1);
 
-        clspv_utils::kernel_invocation invocation = kernel.createInvocation();
+        clspv_utils::kernel_invocation invocation(kernel.createInvocationReq());
 
         invocation.addReadOnlyImageArgument(src_image);
         invocation.addStorageBufferArgument(dst_buffer);

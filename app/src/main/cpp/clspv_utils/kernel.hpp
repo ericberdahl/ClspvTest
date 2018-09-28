@@ -10,6 +10,7 @@
 #include "clspv_utils_interop.hpp"
 #include "device.hpp"
 #include "interface.hpp"
+#include "invocation_req.hpp"
 #include "kernel_req.hpp"
 
 #include <vulkan/vulkan.hpp>
@@ -18,28 +19,30 @@ namespace clspv_utils {
 
     class kernel {
     public:
-        kernel();
+                            kernel();
 
-        kernel(kernel_req_t         layout,
-               const vk::Extent3D&  workgroup_sizes);
+                            kernel(kernel_req_t         layout,
+                                   const vk::Extent3D&  workgroup_sizes);
 
-        kernel(kernel&& other);
+                            kernel(kernel&& other);
 
-        ~kernel();
+                            ~kernel();
 
         kernel&             operator=(kernel&& other);
 
-        kernel_invocation   createInvocation();
-        void                bindCommand(vk::CommandBuffer command) const;
-
         string              getEntryPoint() const { return mReq.mKernelSpec.mName; }
-        vk::Extent3D        getWorkgroupSize() const { return mWorkgroupSizes; }
+        vk::Extent3D        getWorkgroupSize() const { return vk::Extent3D(mSpecConstants[0], mSpecConstants[1], mSpecConstants[2]); }
 
         const device&       getDevice() { return mReq.mDevice; }
 
-        void                updatePipeline(vk::ArrayProxy<int32_t> otherSpecConstants);
+        vk::Pipeline        updatePipeline(vk::ArrayProxy<uint32_t> otherSpecConstants);
 
         void                swap(kernel& other);
+
+        invocation_req_t    createInvocationReq();
+
+    private:
+        typedef vector<std::uint32_t>   spec_constant_list;
 
     private:
         kernel_req_t                    mReq;
@@ -47,7 +50,7 @@ namespace clspv_utils {
         vk::UniqueDescriptorSet         mArgumentsDescriptor;
         vk::UniquePipelineLayout        mPipelineLayout;
         vk::UniquePipeline              mPipeline;
-        vk::Extent3D                    mWorkgroupSizes;
+        spec_constant_list              mSpecConstants;
     };
 
     inline void swap(kernel& lhs, kernel& rhs)

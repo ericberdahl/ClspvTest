@@ -54,14 +54,14 @@ namespace clspv_utils {
     }
 
     module::module(std::istream&  spvmoduleStream,
-                                 device         inDevice,
-                                 module_spec_t  spec)
-            : mDevice(std::move(inDevice)),
-              mModuleSpec(std::move(spec)),
+                   device         inDevice,
+                   module_spec_t  spec)
+            : mDevice(inDevice),
+              mModuleSpec(spec),
               mLiteralSamplerDescriptor(),
               mLiteralSamplerDescriptorLayout()
     {
-        const auto literalSamplerDescriptorGroup = inDevice.getCachedSamplerDescriptorGroup(mModuleSpec.mSamplers);
+        const auto literalSamplerDescriptorGroup = mDevice.getCachedSamplerDescriptorGroup(mModuleSpec.mSamplers);
         mLiteralSamplerDescriptor = literalSamplerDescriptorGroup.descriptor;
         mLiteralSamplerDescriptorLayout = literalSamplerDescriptorGroup.layout;
 

@@ -52,7 +52,7 @@ namespace resample3dimage_kernel {
                 (height + workgroup_sizes.height - 1) / workgroup_sizes.height,
                 (depth + workgroup_sizes.depth - 1) / workgroup_sizes.depth);
 
-        clspv_utils::kernel_invocation invocation = kernel.createInvocation();
+        clspv_utils::kernel_invocation invocation(kernel.createInvocationReq());
 
         invocation.addReadOnlyImageArgument(src_image);
         invocation.addStorageBufferArgument(dst_buffer);

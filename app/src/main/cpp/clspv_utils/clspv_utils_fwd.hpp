@@ -15,6 +15,7 @@ namespace clspv_utils {
 
     struct execution_time_t;
     struct kernel_req_t;
+    struct invocation_req_t;
 
     // interface types
     struct arg_spec_t;

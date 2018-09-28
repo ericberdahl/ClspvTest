@@ -4,8 +4,6 @@
 
 #include "kernel.hpp"
 
-#include "kernel_invocation.hpp"
-
 namespace {
 
     vk::UniquePipelineLayout create_pipeline_layout(vk::Device                                      device,
@@ -29,7 +27,7 @@ namespace clspv_utils {
     kernel::kernel(kernel_req_t         layout,
                    const vk::Extent3D&  workgroup_sizes) :
             mReq(std::move(layout)),
-            mWorkgroupSizes(workgroup_sizes)
+            mSpecConstants({ workgroup_sizes.width, workgroup_sizes.height, workgroup_sizes.depth })
     {
         if (-1 != getKernelArgumentDescriptorSet(mReq.mKernelSpec.mArguments)) {
             mArgumentsLayout = createKernelArgumentDescriptorLayout(mReq.mKernelSpec.mArguments, mReq.mDevice.getDevice());
@@ -69,40 +67,51 @@ namespace clspv_utils {
         swap(mArgumentsDescriptor, other.mArgumentsDescriptor);
         swap(mPipelineLayout, other.mPipelineLayout);
         swap(mPipeline, other.mPipeline);
-        swap(mWorkgroupSizes, other.mWorkgroupSizes);
+        swap(mSpecConstants, other.mSpecConstants);
     }
 
-    kernel_invocation kernel::createInvocation()
-    {
-        return kernel_invocation(*this,
-                                 mReq.mDevice,
-                                 *mArgumentsDescriptor,
-                                 mReq.mKernelSpec.mArguments);
+    invocation_req_t kernel::createInvocationReq() {
+        invocation_req_t result;
+
+        result.mDevice = mReq.mDevice;
+        result.mKernelSpec = mReq.mKernelSpec;
+        result.mPipelineLayout = *mPipelineLayout;
+        result.mGetPipelineFn = std::bind(&kernel::updatePipeline, this, std::placeholders::_1);
+        result.mLiteralSamplerDescriptor = mReq.mLiteralSamplerDescriptor;
+        result.mArgumentsDescriptor = *mArgumentsDescriptor;
+
+        return result;
     }
 
-    void kernel::updatePipeline(vk::ArrayProxy<int32_t> otherSpecConstants) {
-        // TODO: refactor pipelines so invocations that use spec constants don't create them twice, and are still efficient
-        vector<std::uint32_t> specConstants = {
-                mWorkgroupSizes.width,
-                mWorkgroupSizes.height,
-                mWorkgroupSizes.depth
-        };
-        typedef decltype(specConstants)::value_type spec_constant_t;
-        std::copy(otherSpecConstants.begin(), otherSpecConstants.end(), std::back_inserter(specConstants));
+    vk::Pipeline kernel::updatePipeline(vk::ArrayProxy<uint32_t> otherSpecConstants) {
+        // If the spec constants being passed are equal to the spec constants we already have,
+        // the existing pipeline is up to date.
+        if (mPipeline
+            && mSpecConstants.size() == otherSpecConstants.size() + 3
+            && std::equal(std::next(mSpecConstants.begin(), 3), mSpecConstants.end(),
+                                    otherSpecConstants.begin()) ) {
+            return *mPipeline;
+        }
+
+        mSpecConstants.resize(3 + otherSpecConstants.size());
+        std::copy(otherSpecConstants.begin(), otherSpecConstants.end(), std::next(mSpecConstants.begin(), 3));
 
         vector<vk::SpecializationMapEntry> specializationEntries;
         uint32_t index = 0;
         std::generate_n(std::back_inserter(specializationEntries),
-                        specConstants.size(),
+                        mSpecConstants.size(),
                         [&index] () {
                             const uint32_t current = index++;
-                            return vk::SpecializationMapEntry(current, current * sizeof(spec_constant_t), sizeof(spec_constant_t));
+                            return vk::SpecializationMapEntry(current, // constantID
+                                                              current * sizeof(spec_constant_list::value_type), // offset
+                                                              sizeof(spec_constant_list::value_type)); // size
                         });
+
         vk::SpecializationInfo specializationInfo;
-        specializationInfo.setMapEntryCount(specConstants.size())
+        specializationInfo.setMapEntryCount(mSpecConstants.size())
                 .setPMapEntries(specializationEntries.data())
-                .setDataSize(specConstants.size() * sizeof(spec_constant_t))
-                .setPData(specConstants.data());
+                .setDataSize(mSpecConstants.size() * sizeof(spec_constant_list::value_type))
+                .setPData(mSpecConstants.data());
 
         vk::ComputePipelineCreateInfo createInfo;
         createInfo.setLayout(*mPipelineLayout);
@@ -112,21 +121,8 @@ namespace clspv_utils {
                 .setPSpecializationInfo(&specializationInfo);
 
         mPipeline = mReq.mDevice.getDevice().createComputePipelineUnique(mReq.mPipelineCache, createInfo);
-    }
 
-    void kernel::bindCommand(vk::CommandBuffer command) const {
-        // TODO: Refactor bindCommand to move into kernel_invocation
-        command.bindPipeline(vk::PipelineBindPoint::eCompute, *mPipeline);
-
-        vk::DescriptorSet descriptors[] = { mReq.mLiteralSamplerDescriptor, *mArgumentsDescriptor };
-        std::uint32_t numDescriptors = (descriptors[0] ? 2 : 1);
-        if (1 == numDescriptors) descriptors[0] = descriptors[1];
-
-        command.bindDescriptorSets(vk::PipelineBindPoint::eCompute,
-                                   *mPipelineLayout,
-                                   0,
-                                   { numDescriptors, descriptors },
-                                   nullptr);
+        return *mPipeline;
     }
 
 } // namespace clspv_utils

@@ -10,6 +10,7 @@
 #include "clspv_utils_interop.hpp"
 #include "device.hpp"
 #include "interface.hpp"
+#include "invocation_req.hpp"
 
 #include <chrono>
 #include <memory>
@@ -37,14 +38,9 @@ namespace clspv_utils {
 
     class kernel_invocation {
     public:
-        typedef vk::ArrayProxy<const arg_spec_t> arg_list_proxy_t;
-
                     kernel_invocation();
 
-        explicit    kernel_invocation(kernel&           kernel,
-                                      device            device,
-                                      vk::DescriptorSet argumentDescSet,
-                                      arg_list_proxy_t  argList);
+        explicit    kernel_invocation(invocation_req_t  req);
 
                     kernel_invocation(kernel_invocation&& other);
 
@@ -62,8 +58,6 @@ namespace clspv_utils {
         void    swap(kernel_invocation& other);
 
     private:
-        void    bindCommand();
-        void    updatePipeline();
         void    fillCommandBuffer(const vk::Extent3D&    num_workgroups);
         void    updateDescriptorSets();
         void    submitCommand();
@@ -86,22 +80,18 @@ namespace clspv_utils {
         };
 
     private:
-        kernel*                            mKernel = nullptr;
-        device                             mDevice;
-        arg_list_proxy_t                   mArgList;
-        vk::UniqueCommandBuffer            mCommand;
-        vk::UniqueQueryPool                mQueryPool;
+        invocation_req_t                    mReq;
+        vk::UniqueCommandBuffer             mCommand;
+        vk::UniqueQueryPool                 mQueryPool;
 
-        vk::DescriptorSet                  mArgumentDescriptorSet;
+        vector<vk::BufferMemoryBarrier>     mBufferMemoryBarriers;
+        vector<vk::ImageMemoryBarrier>      mImageMemoryBarriers;
 
-        vector<vk::BufferMemoryBarrier>    mBufferMemoryBarriers;
-        vector<vk::ImageMemoryBarrier>     mImageMemoryBarriers;
+        vector<vk::DescriptorImageInfo>     mImageArgumentInfo;
+        vector<vk::DescriptorBufferInfo>    mBufferArgumentInfo;
 
-        vector<vk::DescriptorImageInfo>    mImageArgumentInfo;
-        vector<vk::DescriptorBufferInfo>   mBufferArgumentInfo;
-
-        vector<vk::WriteDescriptorSet>     mArgumentDescriptorWrites;
-        vector<int32_t>                    mSpecConstantArguments;
+        vector<vk::WriteDescriptorSet>      mArgumentDescriptorWrites;
+        vector<std::uint32_t>               mSpecConstantArguments;
     };
 
     inline void swap(kernel_invocation & lhs, kernel_invocation & rhs)
