@@ -32,17 +32,17 @@ namespace clspv_utils {
         kernel_invocation   createInvocation();
         void                bindCommand(vk::CommandBuffer command) const;
 
-        string              getEntryPoint() const { return mLayout.mKernelSpec.mName; }
+        string              getEntryPoint() const { return mReq.mKernelSpec.mName; }
         vk::Extent3D        getWorkgroupSize() const { return mWorkgroupSizes; }
 
-        const device&       getDevice() { return mLayout.mDevice; }
+        const device&       getDevice() { return mReq.mDevice; }
 
         void                updatePipeline(vk::ArrayProxy<int32_t> otherSpecConstants);
 
         void                swap(kernel& other);
 
     private:
-        kernel_req_t                    mLayout;
+        kernel_req_t                    mReq;
         vk::UniqueDescriptorSetLayout   mArgumentsLayout;
         vk::UniqueDescriptorSet         mArgumentsDescriptor;
         vk::UniquePipelineLayout        mPipelineLayout;
