@@ -62,8 +62,8 @@ namespace clspv_utils {
               mLiteralSamplerDescriptorLayout()
     {
         const auto literalSamplerDescriptorGroup = mDevice.getCachedSamplerDescriptorGroup(mModuleSpec.mSamplers);
-        mLiteralSamplerDescriptor = literalSamplerDescriptorGroup.descriptor;
-        mLiteralSamplerDescriptorLayout = literalSamplerDescriptorGroup.layout;
+        mLiteralSamplerDescriptor = literalSamplerDescriptorGroup.mDescriptor;
+        mLiteralSamplerDescriptorLayout = literalSamplerDescriptorGroup.mLayout;
 
         mShaderModule = create_shader(mDevice.getDevice(), spvmoduleStream);
         mPipelineCache = mDevice.getDevice().createPipelineCacheUnique(vk::PipelineCacheCreateInfo());

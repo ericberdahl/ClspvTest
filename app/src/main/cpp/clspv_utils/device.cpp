@@ -97,8 +97,8 @@ namespace clspv_utils {
               mDescriptorPool(descriptorPool),
               mCommandPool(commandPool),
               mComputeQueue(computeQueue),
-              mSamplerCache(new sampler_cache_t),
-              mSamplerDescriptorCache(new descriptor_cache_t)
+              mSamplerCache(new sampler_cache),
+              mSamplerDescriptorCache(new descriptor_cache)
     {
     }
 
@@ -112,7 +112,7 @@ namespace clspv_utils {
         return *(*mSamplerCache)[opencl_flags];
     }
 
-    vk::UniqueDescriptorSetLayout device::createSamplerDescriptorLayout(const sampler_list_proxy_t& samplers) const
+    vk::UniqueDescriptorSetLayout device::createSamplerDescriptorLayout(const sampler_list_proxy& samplers) const
     {
         vk::UniqueDescriptorSetLayout samplerDescriptorLayout;
 
@@ -140,7 +140,7 @@ namespace clspv_utils {
         return samplerDescriptorLayout;
     }
 
-    vk::UniqueDescriptorSet device::createSamplerDescriptor(const sampler_list_proxy_t& samplers,
+    vk::UniqueDescriptorSet device::createSamplerDescriptor(const sampler_list_proxy& samplers,
                                                             vk::DescriptorSetLayout     layout)
     {
         vk::UniqueDescriptorSet samplerDescriptor;
@@ -174,7 +174,7 @@ namespace clspv_utils {
         return samplerDescriptor;
     }
 
-    device::descriptor_group_t device::getCachedSamplerDescriptorGroup(const sampler_list_proxy_t& samplers)
+    device::descriptor_group device::getCachedSamplerDescriptorGroup(const sampler_list_proxy& samplers)
     {
         assert(mSamplerDescriptorCache);
 
@@ -182,9 +182,9 @@ namespace clspv_utils {
 
         if (0 == mSamplerDescriptorCache->count(hash))
         {
-            unique_descriptor_group_t unique_group;
-            unique_group.layout = createSamplerDescriptorLayout(samplers);
-            unique_group.descriptor = createSamplerDescriptor(samplers, *unique_group.layout);
+            unique_descriptor_group unique_group;
+            unique_group.mLayout = createSamplerDescriptorLayout(samplers);
+            unique_group.mDescriptor = createSamplerDescriptor(samplers, *unique_group.mLayout);
 
             (*mSamplerDescriptorCache)[hash] = std::move(unique_group);
         }
@@ -192,9 +192,9 @@ namespace clspv_utils {
         const auto found = mSamplerDescriptorCache->find(hash);
         assert(found != mSamplerDescriptorCache->end());
 
-        descriptor_group_t result;
-        result.layout = *found->second.layout;
-        result.descriptor = *found->second.descriptor;
+        descriptor_group result;
+        result.mLayout = *found->second.mLayout;
+        result.mDescriptor = *found->second.mDescriptor;
         return result;
     }
 
