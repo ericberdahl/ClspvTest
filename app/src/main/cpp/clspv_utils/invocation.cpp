@@ -2,7 +2,7 @@
 // Created by Eric Berdahl on 10/22/17.
 //
 
-#include "kernel_invocation.hpp"
+#include "invocation.hpp"
 
 #include "interface.hpp"
 
@@ -18,12 +18,12 @@ namespace clspv_utils {
     {
     }
 
-    kernel_invocation::kernel_invocation()
+    invocation::invocation()
     {
         // this space intentionally left blank
     }
 
-    kernel_invocation::kernel_invocation(invocation_req_t req)
+    invocation::invocation(invocation_req_t req)
             : mReq(std::move(req))
     {
         mCommand = vulkan_utils::allocate_command_buffer(mReq.mDevice.getDevice(), mReq.mDevice.getCommandPool());
@@ -35,16 +35,16 @@ namespace clspv_utils {
         mQueryPool = mReq.mDevice.getDevice().createQueryPoolUnique(poolCreateInfo);
     }
 
-    kernel_invocation::kernel_invocation(kernel_invocation&& other)
-            : kernel_invocation()
+    invocation::invocation(invocation&& other)
+            : invocation()
     {
         swap(other);
     }
 
-    kernel_invocation::~kernel_invocation() {
+    invocation::~invocation() {
     }
 
-    void kernel_invocation::swap(kernel_invocation& other)
+    void invocation::swap(invocation& other)
     {
         using std::swap;
 
@@ -61,11 +61,11 @@ namespace clspv_utils {
         swap(mArgumentDescriptorWrites, other.mArgumentDescriptorWrites);
     }
 
-    std::size_t kernel_invocation::countArguments() const {
+    std::size_t invocation::countArguments() const {
         return mArgumentDescriptorWrites.size() + mSpecConstantArguments.size();
     }
 
-    std::uint32_t kernel_invocation::validateArgType(std::size_t        ordinal,
+    std::uint32_t invocation::validateArgType(std::size_t        ordinal,
                                                      vk::DescriptorType kind) const
     {
         if (ordinal >= mReq.mKernelSpec.mArguments.size()) {
@@ -80,7 +80,7 @@ namespace clspv_utils {
         return ka.mBinding;
     }
 
-    std::uint32_t kernel_invocation::validateArgType(std::size_t        ordinal,
+    std::uint32_t invocation::validateArgType(std::size_t        ordinal,
                                                      arg_spec_t::kind   kind) const
     {
         if (ordinal >= mReq.mKernelSpec.mArguments.size()) {
@@ -95,7 +95,7 @@ namespace clspv_utils {
         return ka.mBinding;
     }
 
-    void kernel_invocation::addStorageBufferArgument(vulkan_utils::storage_buffer& buffer) {
+    void invocation::addStorageBufferArgument(vulkan_utils::storage_buffer& buffer) {
         mBufferMemoryBarriers.push_back(buffer.prepareForRead());
         mBufferMemoryBarriers.push_back(buffer.prepareForWrite());
         mBufferArgumentInfo.push_back(buffer.use());
@@ -108,7 +108,7 @@ namespace clspv_utils {
         mArgumentDescriptorWrites.push_back(argSet);
     }
 
-    void kernel_invocation::addUniformBufferArgument(vulkan_utils::uniform_buffer& buffer) {
+    void invocation::addUniformBufferArgument(vulkan_utils::uniform_buffer& buffer) {
         mBufferMemoryBarriers.push_back(buffer.prepareForRead());
         mBufferArgumentInfo.push_back(buffer.use());
 
@@ -120,7 +120,7 @@ namespace clspv_utils {
         mArgumentDescriptorWrites.push_back(argSet);
     }
 
-    void kernel_invocation::addSamplerArgument(vk::Sampler samp) {
+    void invocation::addSamplerArgument(vk::Sampler samp) {
         vk::DescriptorImageInfo samplerInfo;
         samplerInfo.setSampler(samp);
         mImageArgumentInfo.push_back(samplerInfo);
@@ -133,7 +133,7 @@ namespace clspv_utils {
         mArgumentDescriptorWrites.push_back(argSet);
     }
 
-    void kernel_invocation::addReadOnlyImageArgument(vulkan_utils::image& image) {
+    void invocation::addReadOnlyImageArgument(vulkan_utils::image& image) {
         mImageMemoryBarriers.push_back(image.prepare(vk::ImageLayout::eShaderReadOnlyOptimal));
         mImageArgumentInfo.push_back(image.use());
 
@@ -145,7 +145,7 @@ namespace clspv_utils {
         mArgumentDescriptorWrites.push_back(argSet);
     }
 
-    void kernel_invocation::addWriteOnlyImageArgument(vulkan_utils::image& image) {
+    void invocation::addWriteOnlyImageArgument(vulkan_utils::image& image) {
         mImageMemoryBarriers.push_back(image.prepare(vk::ImageLayout::eGeneral));
         mImageArgumentInfo.push_back(image.use());
 
@@ -157,12 +157,12 @@ namespace clspv_utils {
         mArgumentDescriptorWrites.push_back(argSet);
     }
 
-    void kernel_invocation::addLocalArraySizeArgument(unsigned int numElements) {
+    void invocation::addLocalArraySizeArgument(unsigned int numElements) {
         validateArgType(countArguments(), arg_spec_t::kind_local);
         mSpecConstantArguments.push_back(numElements);
     }
 
-    void kernel_invocation::updateDescriptorSets() {
+    void invocation::updateDescriptorSets() {
         //
         // Set up to create the descriptor set write structures for arguments.
         // We will iterate the param lists in the same order,
@@ -202,7 +202,7 @@ namespace clspv_utils {
         mReq.mDevice.getDevice().updateDescriptorSets(writeSets, nullptr);
     }
 
-    void kernel_invocation::fillCommandBuffer(const vk::Extent3D& num_workgroups)
+    void invocation::fillCommandBuffer(const vk::Extent3D& num_workgroups)
     {
         auto pipeline = mReq.mGetPipelineFn(mSpecConstantArguments);
 
@@ -243,7 +243,7 @@ namespace clspv_utils {
         mCommand->end();
     }
 
-    void kernel_invocation::submitCommand() {
+    void invocation::submitCommand() {
         vk::CommandBuffer rawCommand = *mCommand;
         vk::SubmitInfo submitInfo;
         submitInfo.setCommandBufferCount(1)
@@ -253,7 +253,7 @@ namespace clspv_utils {
 
     }
 
-    execution_time_t kernel_invocation::run(const vk::Extent3D& num_workgroups) {
+    execution_time_t invocation::run(const vk::Extent3D& num_workgroups) {
         updateDescriptorSets();
         fillCommandBuffer(num_workgroups);
 

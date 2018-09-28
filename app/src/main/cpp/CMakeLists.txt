@@ -51,8 +51,8 @@ add_library(native-activity SHARED
         file_utils.cpp
         crlf_savvy.cpp
         clspv_utils/interface.cpp
+        clspv_utils/invocation.cpp
         clspv_utils/kernel.cpp
-        clspv_utils/kernel_invocation.cpp
         clspv_utils/module.cpp
         kernel_tests/copyimagetobuffer_kernel.cpp
         kernel_tests/copybuffertoimage_kernel.cpp

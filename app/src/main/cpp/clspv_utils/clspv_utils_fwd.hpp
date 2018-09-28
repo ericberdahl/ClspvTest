@@ -9,8 +9,8 @@ namespace clspv_utils {
 
     // execution types
     class device;
+    class invocation;
     class kernel;
-    class kernel_invocation;
     class module;
 
     struct execution_time_t;

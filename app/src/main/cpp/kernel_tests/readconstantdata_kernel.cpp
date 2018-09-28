@@ -31,7 +31,7 @@ namespace readconstantdata_kernel {
                 1,
                 1);
 
-        clspv_utils::kernel_invocation invocation(kernel.createInvocationReq());
+        clspv_utils::invocation invocation(kernel.createInvocationReq());
 
         invocation.addStorageBufferArgument(dst_buffer);
         invocation.addUniformBufferArgument(scalarBuffer);

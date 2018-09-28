@@ -36,15 +36,15 @@ namespace clspv_utils {
         vulkan_timestamps_t             timestamps;
     };
 
-    class kernel_invocation {
+    class invocation {
     public:
-                    kernel_invocation();
+                    invocation();
 
-        explicit    kernel_invocation(invocation_req_t  req);
+        explicit    invocation(invocation_req_t  req);
 
-                    kernel_invocation(kernel_invocation&& other);
+                    invocation(invocation&& other);
 
-                    ~kernel_invocation();
+                    ~invocation();
 
         void    addStorageBufferArgument(vulkan_utils::storage_buffer& buffer);
         void    addUniformBufferArgument(vulkan_utils::uniform_buffer& buffer);
@@ -55,7 +55,7 @@ namespace clspv_utils {
 
         execution_time_t    run(const vk::Extent3D& num_workgroups);
 
-        void    swap(kernel_invocation& other);
+        void    swap(invocation& other);
 
     private:
         void    fillCommandBuffer(const vk::Extent3D&    num_workgroups);
@@ -94,7 +94,7 @@ namespace clspv_utils {
         vector<std::uint32_t>               mSpecConstantArguments;
     };
 
-    inline void swap(kernel_invocation & lhs, kernel_invocation & rhs)
+    inline void swap(invocation & lhs, invocation & rhs)
     {
         lhs.swap(rhs);
     }

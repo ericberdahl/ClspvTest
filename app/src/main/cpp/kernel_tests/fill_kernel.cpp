@@ -53,7 +53,7 @@ namespace fill_kernel {
                 (height + workgroup_sizes.height - 1) / workgroup_sizes.height,
                 1);
 
-        clspv_utils::kernel_invocation invocation(kernel.createInvocationReq());
+        clspv_utils::invocation invocation(kernel.createInvocationReq());
 
         invocation.addStorageBufferArgument(dst_buffer);
         invocation.addUniformBufferArgument(scalarBuffer);
