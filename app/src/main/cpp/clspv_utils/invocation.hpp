@@ -23,7 +23,7 @@
 namespace clspv_utils {
 
     struct execution_time_t {
-        struct vulkan_timestamps_t {
+        struct vulkan_timestamps {
             uint64_t start          = 0;
             uint64_t host_barrier   = 0;
             uint64_t execution      = 0;
@@ -33,7 +33,7 @@ namespace clspv_utils {
         execution_time_t();
 
         std::chrono::duration<double>   cpu_duration;
-        vulkan_timestamps_t             timestamps;
+        vulkan_timestamps               timestamps;
     };
 
     class invocation {
