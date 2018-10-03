@@ -61,6 +61,28 @@ namespace {
         return found->second;
     }
 
+    vector<std::uint8_t> hexToBytes(string hexString) {
+        vector<std::uint8_t> result;
+
+        if (0 != (hexString.length() % 2)) {
+            fail_runtime_error("spvmap constant hex string must have even number of characters");
+        }
+
+        result.reserve(hexString.length() / 2);
+
+        for (string::size_type i = 0; i < hexString.length(); i +=2) {
+            const string    byteString = hexString.substr(i, 2);
+            const int       byteInt = std::stoi(byteString, nullptr, 16);
+
+            assert(0 <= byteInt);
+            assert(byteInt <= std::numeric_limits<std::uint8_t>::max());
+
+            result.push_back(static_cast<std::uint8_t>(byteInt));
+        }
+
+        return result;
+    }
+
     string read_csv_field(std::istream& in) {
         string result;
 
@@ -85,44 +107,63 @@ namespace {
         return std::make_pair(read_csv_field(in), read_csv_field(in));
     };
 
-    sampler_spec_t parse_spvmap_sampler(key_value_t tag, std::istream& in) {
-        sampler_spec_t result;
-
-        result.mOpenclFlags = std::atoi(tag.second.c_str());
+    constant_spec_t parse_spvmap_constant(std::istream& in) {
+        constant_spec_t result;
 
         while (!in.eof()) {
-            tag = read_key_value_pair(in);
+            const auto tag = read_key_value_pair(in);
 
             if ("descriptorSet" == tag.first) {
-                result.mDescriptorSet = std::atoi(tag.second.c_str());
+                result.mDescriptorSet = std::stoi(tag.second);
             } else if ("binding" == tag.first) {
-                result.mBinding = std::atoi(tag.second.c_str());
+                result.mBinding = std::stoi(tag.second);
+            } else if ("hexbytes" == tag.first) {
+                result.mBytes = hexToBytes(tag.second);
             }
         }
 
         return result;
     }
 
-    arg_spec_t parse_spvmap_kernel_arg(key_value_t tag, std::istream& in) {
+    sampler_spec_t parse_spvmap_sampler(std::istream& in) {
+        sampler_spec_t result;
+
+        const auto clFlagString = read_csv_field(in);
+        result.mOpenclFlags = std::stoi(clFlagString);
+
+        while (!in.eof()) {
+            const auto tag = read_key_value_pair(in);
+
+            if ("descriptorSet" == tag.first) {
+                result.mDescriptorSet = std::stoi(tag.second);
+            } else if ("binding" == tag.first) {
+                result.mBinding = std::stoi(tag.second);
+            }
+        }
+
+        return result;
+    }
+
+    arg_spec_t parse_spvmap_kernel_arg(std::istream& in) {
         arg_spec_t result;
 
         while (!in.eof()) {
-            tag = read_key_value_pair(in);
+            const auto tag = read_key_value_pair(in);
 
             if ("argOrdinal" == tag.first) {
-                result.mOrdinal = std::atoi(tag.second.c_str());
+                result.mOrdinal = std::stoi(tag.second);
             } else if ("descriptorSet" == tag.first) {
-                result.mDescriptorSet = std::atoi(tag.second.c_str());
+                result.mDescriptorSet = std::stoi(tag.second);
             } else if ("binding" == tag.first) {
-                result.mBinding = std::atoi(tag.second.c_str());
+                result.mBinding = std::stoi(tag.second);
             } else if ("offset" == tag.first) {
-                result.mOffset = std::atoi(tag.second.c_str());
+                result.mOffset = std::stoi(tag.second);
             } else if ("argKind" == tag.first) {
                 result.mKind = find_arg_kind(tag.second);
             } else if ("arrayElemSize" == tag.first) {
                 // arrayElemSize is ignored by clspvtest
             } else if ("arrayNumElemSpecId" == tag.first) {
-                result.mSpecConstant = std::atoi(tag.second.c_str());
+                result.mSpecConstant = std::stoi(tag.second);
             }
 
         }
@@ -142,11 +183,6 @@ namespace clspv_utils {
     {
         module_spec_t result;
 
-        /*
-         * TODO Change file reading.
-         * Parse each line into vector of key-value pairs.
-         */
-
         kernel_spec_t* recentKernel = nullptr;
 
         string line;
@@ -154,21 +190,24 @@ namespace clspv_utils {
             std::getline(in, line);
 
             std::istringstream in_line(line);
-            auto tag = read_key_value_pair(in_line);
-            if ("sampler" == tag.first) {
-                result.mSamplers.push_back(parse_spvmap_sampler(tag, in_line));
-            } else if ("kernel" == tag.first) {
-                if (!recentKernel || recentKernel->mName != tag.second)
+            const auto tag = read_csv_field(in_line);
+            if ("sampler" == tag) {
+                result.mSamplers.push_back(parse_spvmap_sampler(in_line));
+            } else if ("constant" == tag) {
+                result.mConstants.push_back(parse_spvmap_constant(in_line));
+            } else if ("kernel" == tag) {
+                const auto kernelName = read_csv_field(in_line);
+                if (!recentKernel || recentKernel->mName != kernelName)
                 {
-                    recentKernel = findKernelSpec(tag.second, result.mKernels);
+                    recentKernel = findKernelSpec(kernelName, result.mKernels);
                     if (!recentKernel) {
-                        result.mKernels.push_back(kernel_spec_t{ tag.second, kernel_spec_t::arg_list() });
+                        result.mKernels.push_back(kernel_spec_t{ kernelName, kernel_spec_t::arg_list() });
                         recentKernel = &result.mKernels.back();
                     }
                 }
                 assert(recentKernel);
 
-                recentKernel->mArguments.push_back(parse_spvmap_kernel_arg(tag, in_line));
+                recentKernel->mArguments.push_back(parse_spvmap_kernel_arg(in_line));
             }
         }
 

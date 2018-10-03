@@ -31,6 +31,12 @@ namespace clspv_utils {
         int     mSpecConstant   = -1;
     };
 
+    struct constant_spec_t {
+        int                     mDescriptorSet  = -1;
+        int                     mBinding        = -1;
+        vector<std::uint8_t>    mBytes;
+    };
+
     struct sampler_spec_t {
         int mOpenclFlags    = 0;
         int mDescriptorSet  = -1;
@@ -45,11 +51,13 @@ namespace clspv_utils {
     };
 
     struct module_spec_t {
+        typedef vector<constant_spec_t> constant_list;
         typedef vector<sampler_spec_t>  sampler_list;
         typedef vector<kernel_spec_t>   kernel_list;
 
-        sampler_list  mSamplers;
-        kernel_list   mKernels;
+        sampler_list    mSamplers;
+        constant_list   mConstants;
+        kernel_list     mKernels;
     };
 
     /*
@@ -122,6 +130,8 @@ namespace clspv_utils {
     void    validateKernel(const kernel_spec_t& spec, int requiredDescriptorSet = -1);
 
     void    validateModule(const module_spec_t& spec);
+
+    void    validateConstant(const constant_spec_t& spec);
 }
 
 #endif // CLSPVUTILS_INTERFACE_HPP

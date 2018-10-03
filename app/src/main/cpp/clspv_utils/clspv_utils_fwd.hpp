@@ -19,6 +19,7 @@ namespace clspv_utils {
 
     // interface types
     struct arg_spec_t;
+    struct constant_spec_t;
     struct kernel_spec_t;
     struct module_spec_t;
     struct sampler_spec_t;
