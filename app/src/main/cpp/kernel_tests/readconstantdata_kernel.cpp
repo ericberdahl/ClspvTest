@@ -51,7 +51,7 @@ namespace readconstantdata_kernel {
         const std::size_t buffer_size = buffer_length * sizeof(float);
 
         // number of elements in the constant data array (in the kernel itself)
-        const std::size_t constant_data_length = 10;
+        const std::size_t constant_data_length = 12;
 
         // allocate buffers and images
         vulkan_utils::storage_buffer  dstBuffer(device.getDevice(), device.getMemoryProperties(), buffer_size);

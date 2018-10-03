@@ -5,7 +5,7 @@ int KernelX()
     return get_global_id(0);
 }
 
-struct Float10 {
+typedef struct {
     float   m0,
             m1,
             m2,
@@ -15,11 +15,13 @@ struct Float10 {
             m6,
             m7,
             m8,
-            m9;
-};
+            m9,
+            m10,
+            m11;
+} FloatStruct;
 
 // Lookup table for the function 2^x, defined on the domain [0,9]
-__constant float kTwoPowX[10] =
+__constant float kTwoPowX[12] =
 {
     1.0f,
     2.0f,
@@ -30,10 +32,12 @@ __constant float kTwoPowX[10] =
     64.0f,
     128.0f,
     256.0f,
-    512.0f
+    512.0f,
+    1024.0f,
+    2048.0f
 };
 
-__constant struct Float10 kTwoPowX_struct = {
+__constant FloatStruct kTwoPowX_struct = {
     1.0f,
     2.0f,
     4.0f,
@@ -43,7 +47,9 @@ __constant struct Float10 kTwoPowX_struct = {
     64.0f,
     128.0f,
     256.0f,
-    512.0f
+    512.0f,
+    1024.0f,
+    2048.0f
 };
 
 inline float GetArrayValue(int index) {
@@ -101,10 +107,34 @@ inline float GetStructValue(int index) {
         --index;
     }
     if (index > 0) {
+        result = kTwoPowX_struct.m10;
+        --index;
+    }
+    if (index > 0) {
+        result = kTwoPowX_struct.m11;
+        --index;
+    }
+    if (index > 0) {
         return OUT_OF_BOUNDS_VALUE;
     }
 
     return result;
+}
+
+void WriteFloat(__global float* inBuffer, int inIndex, float inValue) {
+    inBuffer[inIndex] = inValue;
+}
+
+float ReadFloat(__constant float* inBuffer, int inIndex) {
+    return inBuffer[inIndex];
+}
+
+void WriteFloatStruct(__global FloatStruct* inBuffer, int inIndex, FloatStruct inValue) {
+    inBuffer[inIndex] = inValue;
+}
+
+FloatStruct ReadFloatStruct(__constant FloatStruct* inBuffer, int inIndex) {
+    return inBuffer[inIndex];
 }
 
 __kernel void ReadConstantArray(__global float* outDest, int inWidth)
@@ -123,3 +153,22 @@ __kernel void ReadConstantStruct(__global float* outDest, int inWidth)
     }
 }
 
+__kernel void CopyConstantBufferArg(__constant float*   inSource,
+                                    __global float*     outDest,
+                                    int                 inWidth)
+{
+    int index = KernelX();
+    if (index < inWidth) {
+        WriteFloat(outDest, index, ReadFloat(inSource, index));
+    }
+}
+
+__kernel void CopyConstantBufferStructArg(__constant FloatStruct*   inSource,
+                                          __global FloatStruct*     outDest,
+                                          int                       inWidth)
+{
+    int index = KernelX();
+    if (index < inWidth) {
+        WriteFloatStruct(outDest, index, ReadFloatStruct(inSource, index));
+    }
+}
