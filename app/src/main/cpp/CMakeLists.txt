@@ -80,8 +80,8 @@ target_link_libraries(native-activity
 
 # build OpenCL C kernels
 set(CLSHADER_SOURCE_DIR ${PROJECT_SOURCE_DIR}/kernels)
-set(CLSHADER_OUTPUT_DIR ${PROJECT_SOURCE_DIR}/assets/shaders_cl)
-set(CLSHADER_NOINLINE_DIR ${PROJECT_SOURCE_DIR}/assets/shaders_small_cl)
+set(CLSHADER_INLINE_DIR ${PROJECT_SOURCE_DIR}/assets/shaders_inlined_cl)
+set(CLSHADER_NOINLINE_DIR ${PROJECT_SOURCE_DIR}/assets/shaders_cl)
 
 set(CLSPV_SAMPLERMAP ${CLSHADER_SOURCE_DIR}/sampler_map)
 
@@ -97,7 +97,9 @@ set(CLSPV_FLAGS ${CLSPV_FLAGS} -hack-undef)
 set(CLSPV_FLAGS ${CLSPV_FLAGS} -pod-ubo)
 set(CLSPV_FLAGS ${CLSPV_FLAGS} -enable-pre=0)
 set(CLSPV_FLAGS ${CLSPV_FLAGS} -enable-load-pre=0)
-set(CLSPV_FLAGS ${CLSPV_FLAGS} -inline-entry-points)
+
+set(SPIRV_OPT_FLAGS)
+set(SPIRV_OPT_FLAGS ${SPIRV_OPT_FLAGS} --set-spec-const-default-value "0:2 1:2 2:2")
 
 set(OPENCL_KERNELS
         Fills
@@ -114,7 +116,7 @@ foreach (kernel ${OPENCL_KERNELS})
     add_custom_command(
             OUTPUT ${CLSHADER_NOINLINE_DIR}/${kernel}.spv ${CLSHADER_NOINLINE_DIR}/${kernel}.spvmap
             COMMAND ${CLSPV_COMMAND} ${CLSHADER_SOURCE_DIR}/${kernel}.cl -o=${CLSHADER_NOINLINE_DIR}/${kernel}.spvx -descriptormap=${CLSHADER_NOINLINE_DIR}/${kernel}.spvmap ${CLSPV_FLAGS}
-            COMMAND ${SPRIV_OPT_COMMAND} --set-spec-const-default-value "0:2 1:2 2:2" -Oconfig=${CLSHADER_SOURCE_DIR}/spirv-opt.config ${CLSHADER_NOINLINE_DIR}/${kernel}.spvx -o ${CLSHADER_NOINLINE_DIR}/${kernel}.spv
+            COMMAND ${SPRIV_OPT_COMMAND} ${SPIRV_OPT_FLAGS} -Oconfig=${CLSHADER_SOURCE_DIR}/spirv-opt.config ${CLSHADER_NOINLINE_DIR}/${kernel}.spvx -o ${CLSHADER_NOINLINE_DIR}/${kernel}.spv
             COMMAND ${CMAKE_COMMAND} -E remove ${CLSHADER_NOINLINE_DIR}/${kernel}.spvx
             DEPENDS ${CLSHADER_SOURCE_DIR}/${kernel}.cl ${CLSHADER_SOURCE_DIR}/sampler_map ${CLSHADER_SOURCE_DIR}/spirv-opt.config
             VERBATIM
@@ -122,21 +124,21 @@ foreach (kernel ${OPENCL_KERNELS})
     list(APPEND kernel_binaries ${CLSHADER_NOINLINE_DIR}/${kernel}.spv ${CLSHADER_NOINLINE_DIR}/${kernel}.spvmap)
 
     add_custom_command(
-            OUTPUT ${CLSHADER_OUTPUT_DIR}/${kernel}.spv ${CLSHADER_OUTPUT_DIR}/${kernel}.spvmap
-            COMMAND ${CLSPV_COMMAND} ${CLSHADER_SOURCE_DIR}/${kernel}.cl -o=${CLSHADER_OUTPUT_DIR}/${kernel}.spvx -descriptormap=${CLSHADER_OUTPUT_DIR}/${kernel}.spvmap ${CLSPV_FLAGS}
-            COMMAND ${SPRIV_OPT_COMMAND} --set-spec-const-default-value "0:2 1:2 2:2" -Oconfig=${CLSHADER_SOURCE_DIR}/spirv-opt-inline.config -Oconfig=${CLSHADER_SOURCE_DIR}/spirv-opt.config ${CLSHADER_OUTPUT_DIR}/${kernel}.spvx -o ${CLSHADER_OUTPUT_DIR}/${kernel}.spv
-            COMMAND ${CMAKE_COMMAND} -E remove ${CLSHADER_OUTPUT_DIR}/${kernel}.spvx
+            OUTPUT ${CLSHADER_INLINE_DIR}/${kernel}.spv ${CLSHADER_INLINE_DIR}/${kernel}.spvmap
+            COMMAND ${CLSPV_COMMAND} ${CLSHADER_SOURCE_DIR}/${kernel}.cl -o=${CLSHADER_INLINE_DIR}/${kernel}.spvx -descriptormap=${CLSHADER_INLINE_DIR}/${kernel}.spvmap ${CLSPV_FLAGS} -inline-entry-points
+            COMMAND ${SPRIV_OPT_COMMAND} ${SPIRV_OPT_FLAGS} -Oconfig=${CLSHADER_SOURCE_DIR}/spirv-opt-inline.config -Oconfig=${CLSHADER_SOURCE_DIR}/spirv-opt.config ${CLSHADER_INLINE_DIR}/${kernel}.spvx -o ${CLSHADER_INLINE_DIR}/${kernel}.spv
+            COMMAND ${CMAKE_COMMAND} -E remove ${CLSHADER_INLINE_DIR}/${kernel}.spvx
             DEPENDS ${CLSHADER_SOURCE_DIR}/${kernel}.cl ${CLSHADER_SOURCE_DIR}/sampler_map ${CLSHADER_SOURCE_DIR}/spirv-opt-inline.config ${CLSHADER_SOURCE_DIR}/spirv-opt.config
             VERBATIM
     )
-    list(APPEND kernel_binaries ${CLSHADER_OUTPUT_DIR}/${kernel}.spv ${CLSHADER_OUTPUT_DIR}/${kernel}.spvmap)
+    list(APPEND kernel_binaries ${CLSHADER_INLINE_DIR}/${kernel}.spv ${CLSHADER_INLINE_DIR}/${kernel}.spvmap)
 endforeach (kernel ${OPENCL_KERNELS})
 
 add_custom_target(build-cl-shaders
                   DEPENDS ${CLSPV_SAMPLERMAP} ${kernel_binaries})
 add_custom_command(TARGET build-cl-shaders
                    PRE_BUILD
-                   COMMAND ${CMAKE_COMMAND} -E make_directory ${CLSHADER_OUTPUT_DIR}
+                   COMMAND ${CMAKE_COMMAND} -E make_directory ${CLSHADER_INLINE_DIR}
                    COMMAND ${CMAKE_COMMAND} -E make_directory ${CLSHADER_NOINLINE_DIR}
                    )
 

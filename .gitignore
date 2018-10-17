@@ -11,3 +11,4 @@ loadmodules.txt
 shaders/
 shaders_cl/
 shaders_small_cl/
+shaders_inlined_cl/

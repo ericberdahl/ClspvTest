@@ -44,24 +44,41 @@ vkValidation all
 #
 #
 #
+module shaders_inlined_cl/StructArrays
+test2d FillStructArray fillarraystruct 32 1
+#
 module shaders_cl/StructArrays
 test2d FillStructArray fillarraystruct 32 1
 #
-module shaders_small_cl/StructArrays
-test2d FillStructArray fillarraystruct 32 1
 #
 #
-#
-module shaders_cl/LocalMemory
+module shaders_inlined_cl/LocalMemory
 test2d StrangeShuffle strangeShuffle 1024 1
 #
-module shaders_small_cl/LocalMemory
+module shaders_cl/LocalMemory
 test2d StrangeShuffle strangeShuffle 1024 1
 #
 module shaders/GL_LocalMemory
 test2d main strangeShuffle 1024 1
 #
 #
+#
+module shaders_inlined_cl/localsize
+test2d ReadLocalSize readLocalSize 32 32 global_id_x
+test2d ReadLocalSize readLocalSize 32 32 global_id_y
+test2d ReadLocalSize readLocalSize 32 32 global_id_z
+test2d ReadLocalSize readLocalSize 32 32 group_id_x
+test2d ReadLocalSize readLocalSize 32 32 group_id_y
+test2d ReadLocalSize readLocalSize 32 32 group_id_z
+test2d ReadLocalSize readLocalSize 32 32 local_id_x
+test2d ReadLocalSize readLocalSize 32 32 local_id_y
+test2d ReadLocalSize readLocalSize 32 32 local_id_z
+test2d ReadLocalSize readLocalSize 32 32 global_size_x
+test2d ReadLocalSize readLocalSize 32 32 global_size_y
+test2d ReadLocalSize readLocalSize 32 32 global_size_z
+test2d ReadLocalSize readLocalSize 32 32 local_size_x
+test2d ReadLocalSize readLocalSize 32 32 local_size_y
+test2d ReadLocalSize readLocalSize 32 32 local_size_z
 #
 module shaders_cl/localsize
 test2d ReadLocalSize readLocalSize 32 32 global_id_x
@@ -80,30 +97,13 @@ test2d ReadLocalSize readLocalSize 32 32 local_size_x
 test2d ReadLocalSize readLocalSize 32 32 local_size_y
 test2d ReadLocalSize readLocalSize 32 32 local_size_z
 #
-module shaders_small_cl/localsize
-test2d ReadLocalSize readLocalSize 32 32 global_id_x
-test2d ReadLocalSize readLocalSize 32 32 global_id_y
-test2d ReadLocalSize readLocalSize 32 32 global_id_z
-test2d ReadLocalSize readLocalSize 32 32 group_id_x
-test2d ReadLocalSize readLocalSize 32 32 group_id_y
-test2d ReadLocalSize readLocalSize 32 32 group_id_z
-test2d ReadLocalSize readLocalSize 32 32 local_id_x
-test2d ReadLocalSize readLocalSize 32 32 local_id_y
-test2d ReadLocalSize readLocalSize 32 32 local_id_z
-test2d ReadLocalSize readLocalSize 32 32 global_size_x
-test2d ReadLocalSize readLocalSize 32 32 global_size_y
-test2d ReadLocalSize readLocalSize 32 32 global_size_z
-test2d ReadLocalSize readLocalSize 32 32 local_size_x
-test2d ReadLocalSize readLocalSize 32 32 local_size_y
-test2d ReadLocalSize readLocalSize 32 32 local_size_z
 #
 #
-#
-module shaders_cl/Fills
+module shaders_inlined_cl/Fills
 test2d FillWithColorKernel fill 32 32 -w 64 -h 64
 test2d FillWithColorKernel fill 32 32 -w 1080 -h 720
 #
-module shaders_small_cl/Fills
+module shaders_cl/Fills
 test2d FillWithColorKernel fill 32 32 -w 64 -h 64
 test2d FillWithColorKernel fill 32 32 -w 1080 -h 720
 #
@@ -113,30 +113,30 @@ test2d main fill<float4> 32 32 -w 1080 -h 720
 #
 #
 #
-module shaders_cl/Memory
+module shaders_inlined_cl/Memory
 test2d CopyBufferToImageKernel copyBufferToImage 32 32
 test2d CopyImageToBufferKernel copyImageToBuffer 32 32
 test2d Resample2DImage resample2dimage 32 32
 test3d Resample3DImage resample3dimage 32 32 32
 #
-module shaders_small_cl/Memory
+module shaders_cl/Memory
 test2d CopyBufferToImageKernel copyBufferToImage 32 32
 test2d CopyImageToBufferKernel copyImageToBuffer 32 32
 #
 #
 #
+module shaders_inlined_cl/ReadConstantData
+test2d ReadConstantArray readConstantData 32 1
+test2d ReadConstantStruct readConstantData 32 1
+#
 module shaders_cl/ReadConstantData
 test2d ReadConstantArray readConstantData 32 1
 test2d ReadConstantStruct readConstantData 32 1
 #
-module shaders_small_cl/ReadConstantData
-test2d ReadConstantArray readConstantData 32 1
-test2d ReadConstantStruct readConstantData 32 1
 #
 #
-#
-module shaders_cl/TestComparisons
+module shaders_inlined_cl/TestComparisons
 test2d TestGreaterThanOrEqualTo testGtEq 32 32
 #
-module shaders_small_cl/TestComparisons
+module shaders_cl/TestComparisons
 test2d TestGreaterThanOrEqualTo testGtEq 32 32
