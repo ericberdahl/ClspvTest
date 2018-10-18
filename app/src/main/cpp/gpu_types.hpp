@@ -12,11 +12,15 @@
 namespace gpu_types {
     template<typename T>
     struct alignas(2 * sizeof(T)) vec2 {
-        vec2(T a, T b) : x(a), y(b) {}
+        typedef T   component_type;
 
-        vec2(T a) : vec2(a, T(0)) {}
+        static const int num_components = 2;
 
-        vec2() : vec2(T(0), T(0)) {}
+        vec2(component_type a, component_type b) : x(a), y(b) {}
+
+        vec2(component_type a) : vec2(a, component_type(0)) {}
+
+        vec2() : vec2(component_type(0), component_type(0)) {}
 
         vec2(const vec2<T> &other) : x(other.x), y(other.y) {}
 
@@ -29,8 +33,8 @@ namespace gpu_types {
             return *this;
         }
 
-        T x;
-        T y;
+        component_type x;
+        component_type y;
     };
 
     template<typename T>
@@ -48,15 +52,19 @@ namespace gpu_types {
 
     template<typename T>
     struct alignas(4 * sizeof(T)) vec4 {
-        vec4(T a, T b, T c, T d) : x(a), y(b), z(c), w(d) {}
+        typedef T   component_type;
 
-        vec4(T a, T b, T c) : vec4(a, b, c, T(0)) {}
+        static const int num_components = 4;
 
-        vec4(T a, T b) : vec4(a, b, T(0), T(0)) {}
+        vec4(component_type a, component_type b, component_type c, component_type d) : x(a), y(b), z(c), w(d) {}
 
-        vec4(T a) : vec4(a, T(0), T(0), T(0)) {}
+        vec4(component_type a, component_type b, component_type c) : vec4(a, b, c, component_type(0)) {}
 
-        vec4() : vec4(T(0), T(0), T(0), T(0)) {}
+        vec4(component_type a, component_type b) : vec4(a, b, component_type(0), component_type(0)) {}
+
+        vec4(component_type a) : vec4(a, component_type(0), component_type(0), component_type(0)) {}
+
+        vec4() : vec4(component_type(0), component_type(0), component_type(0), component_type(0)) {}
 
         vec4(const vec4<T> &other) : x(other.x), y(other.y), z(other.z), w(other.w) {}
 
@@ -69,10 +77,10 @@ namespace gpu_types {
             return *this;
         }
 
-        T x;
-        T y;
-        T z;
-        T w;
+        component_type x;
+        component_type y;
+        component_type z;
+        component_type w;
     };
 
     template<typename T>
