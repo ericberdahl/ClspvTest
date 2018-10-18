@@ -63,6 +63,7 @@ namespace {
 
         ResultCounts        mCounts     = ResultCounts::null();
         execution_times     mTimes;
+        double              mTestTime_s = 0.0;
         const std::string*  mVariation  = nullptr;
         const std::string*  mParameters = nullptr;
         unsigned int        mNumCorrect = 0;
@@ -192,6 +193,7 @@ namespace {
     InvocationSummary summarizeInvocation(const sample_info &info, const test_utils::InvocationTest::result& ir) {
         InvocationSummary result;
         result.mTimes = measureInvocationTime(info, ir.second);
+        result.mTestTime_s = ir.second.mTestTime.count();
         result.mNumCorrect = ir.second.mNumCorrect;
         result.mNumErrors = ir.second.mNumErrors;
         result.mMessages = std::make_pair(ir.second.mMessages.begin(), ir.second.mMessages.end());
@@ -285,6 +287,7 @@ namespace {
             os << " correctValues:" << summary.mNumCorrect
                << " incorrectValues:" << summary.mNumErrors
                << " wallClockTime:" << summary.mTimes.wallClockTime_s * 1000.0f << "ms"
+               << " resultEvalTime:" << summary.mTestTime_s << "s"
                << " executionTime:" << summary.mTimes.executionTime_ns / 1000.0f << "µs"
                << " hostBarrierTime:" << summary.mTimes.hostBarrierTime_ns / 1000.0f << "µs"
                << " gpuBarrierTime:" << summary.mTimes.gpuBarrierTime_ns / 1000.0f << "µs";

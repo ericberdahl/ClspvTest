@@ -100,12 +100,15 @@ namespace test_utils {
     }
 
     struct InvocationResult {
+        InvocationResult() : mTestTime(0.0) {}
+
         std::string                     mParameters;
         bool                            mSkipped    = false;
         unsigned int                    mNumCorrect = 0;
         unsigned int                    mNumErrors  = 0;
         std::vector<std::string>        mMessages;
         clspv_utils::execution_time_t   mExecutionTime;
+        std::chrono::duration<double>   mTestTime;
     };
 
     struct InvocationTest {
@@ -204,6 +207,8 @@ namespace test_utils {
                       InvocationResult& result) {
         typedef typename details::pixel_promotion<ExpectedPixelType, ObservedPixelType>::promotion_type promotion_type;
 
+        auto startTime = std::chrono::high_resolution_clock::now();
+
         auto expected = pixels::traits<promotion_type>::translate(expected_pixel);
         auto observed = pixels::traits<promotion_type>::translate(observed_pixel);
 
@@ -233,6 +238,9 @@ namespace test_utils {
                 result.mMessages.push_back(os.str());
             }
         }
+
+        auto endTime = std::chrono::high_resolution_clock::now();
+        result.mTestTime = endTime - startTime;
     }
 
     template<typename ObservedPixelType, typename ExpectedPixelType>
@@ -242,6 +250,8 @@ namespace test_utils {
                        ExpectedPixelType        expected,
                        bool                     verbose,
                        InvocationResult&        result) {
+        auto startTime = std::chrono::high_resolution_clock::now();
+
         auto row = observed_pixels;
         for (vk::Extent3D coord; coord.depth < extent.depth; ++coord.depth) {
             for (coord.height = 0; coord.height < extent.height; ++coord.height, row += pitch) {
@@ -251,6 +261,9 @@ namespace test_utils {
                 }
             }
         }
+
+        auto endTime = std::chrono::high_resolution_clock::now();
+        result.mTestTime = endTime - startTime;
     }
 
     template<typename ExpectedPixelType, typename ObservedPixelType>
@@ -260,6 +273,8 @@ namespace test_utils {
                        int                      pitch,
                        bool                     verbose,
                        InvocationResult&        result) {
+        auto startTime = std::chrono::high_resolution_clock::now();
+
         auto expected_row = expected_pixels;
         auto observed_row = observed_pixels;
         for (vk::Extent3D coord; coord.depth < extent.depth; ++coord.depth) {
@@ -271,6 +286,9 @@ namespace test_utils {
                 }
             }
         }
+
+        auto endTime = std::chrono::high_resolution_clock::now();
+        result.mTestTime = endTime - startTime;
     }
 
     KernelTest::result test_kernel(clspv_utils::module& module,
