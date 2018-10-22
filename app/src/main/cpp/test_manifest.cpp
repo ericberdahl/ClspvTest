@@ -8,6 +8,7 @@
 
 #include "kernel_tests/copybuffertoimage_kernel.hpp"
 #include "kernel_tests/copyimagetobuffer_kernel.hpp"
+#include "kernel_tests/copybuffertobuffer_kernel.hpp"
 #include "kernel_tests/fillarraystruct_kernel.hpp"
 #include "kernel_tests/fill_kernel.hpp"
 #include "kernel_tests/readconstantdata_kernel.hpp"
@@ -44,18 +45,20 @@ namespace
     test_utils::KernelTest::invocation_tests lookup_test_series(const std::string& testName)
     {
         static const auto test_map = {
-                std::make_pair("copyBufferToImage",  createGenerator(copybuffertoimage_kernel::getAllTestVariants)),
-                std::make_pair("copyImageToBuffer",  createGenerator(copyimagetobuffer_kernel::getAllTestVariants)),
-                std::make_pair("fillarraystruct",    createGenerator(fillarraystruct_kernel::getAllTestVariants)),
-                std::make_pair("fill",               createGenerator(fill_kernel::getAllTestVariants)),
-                std::make_pair("fill<float4>",       createGenerator(fill_kernel::getTestVariant<gpu_types::float4>)),
-                std::make_pair("fill<half4>",        createGenerator(fill_kernel::getTestVariant<gpu_types::half4>)),
-                std::make_pair("resample2dimage",    createGenerator(resample2dimage_kernel::getAllTestVariants)),
-                std::make_pair("resample3dimage",    createGenerator(resample3dimage_kernel::getAllTestVariants)),
-                std::make_pair("readLocalSize",      createGenerator(readlocalsize_kernel::getAllTestVariants)),
-                std::make_pair("readConstantData",   createGenerator(readconstantdata_kernel::getAllTestVariants)),
-                std::make_pair("strangeShuffle",     createGenerator(strangeshuffle_kernel::getAllTestVariants)),
-                std::make_pair("testGtEq",           createGenerator(testgreaterthanorequalto_kernel::getAllTestVariants)),
+                std::make_pair("copyBufferToImage",    createGenerator(copybuffertoimage_kernel::getAllTestVariants)),
+                std::make_pair("copyImageToBuffer",    createGenerator(copyimagetobuffer_kernel::getAllTestVariants)),
+                std::make_pair("copyBufferToBuffer<float4>", createGenerator(copybuffertobuffer_kernel::getTestVariant<gpu_types::float4>)),
+                std::make_pair("copyBUfferToBuffer<half4>",  createGenerator(copybuffertobuffer_kernel::getTestVariant<gpu_types::half4>)),
+                std::make_pair("fillarraystruct",      createGenerator(fillarraystruct_kernel::getAllTestVariants)),
+                std::make_pair("fill",                 createGenerator(fill_kernel::getAllTestVariants)),
+                std::make_pair("fill<float4>",         createGenerator(fill_kernel::getTestVariant<gpu_types::float4>)),
+                std::make_pair("fill<half4>",          createGenerator(fill_kernel::getTestVariant<gpu_types::half4>)),
+                std::make_pair("resample2dimage",      createGenerator(resample2dimage_kernel::getAllTestVariants)),
+                std::make_pair("resample3dimage",      createGenerator(resample3dimage_kernel::getAllTestVariants)),
+                std::make_pair("readLocalSize",        createGenerator(readlocalsize_kernel::getAllTestVariants)),
+                std::make_pair("readConstantData",     createGenerator(readconstantdata_kernel::getAllTestVariants)),
+                std::make_pair("strangeShuffle",       createGenerator(strangeshuffle_kernel::getAllTestVariants)),
+                std::make_pair("testGtEq",             createGenerator(testgreaterthanorequalto_kernel::getAllTestVariants)),
         };
 
         test_utils::KernelTest::invocation_tests result;

@@ -55,6 +55,7 @@ add_library(native-activity SHARED
         clspv_utils/kernel.cpp
         clspv_utils/module.cpp
         kernel_tests/copyimagetobuffer_kernel.cpp
+        kernel_tests/copybuffertobuffer_kernel.cpp
         kernel_tests/copybuffertoimage_kernel.cpp
         kernel_tests/fillarraystruct_kernel.cpp
         kernel_tests/fill_kernel.cpp

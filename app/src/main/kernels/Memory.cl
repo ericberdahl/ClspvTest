@@ -1,6 +1,16 @@
+typedef struct __attribute__ ((aligned (16)))
+{
+    float b, g, r, a;
+} PixelRGB;
+
 float saturate(float inX)
 {
     return clamp(inX, 0.0f, 1.0f);
+}
+
+uint2 KernelXYUnsigned()
+{
+    return (uint2)(get_global_id(0), get_global_id(1));
 }
 
 int KernelX()
@@ -16,6 +26,17 @@ int KernelY()
 int KernelZ()
 {
     return get_global_id(2);
+}
+
+float4 ConvertRGB_To_Components(PixelRGB inPixel)
+{
+    return (float4)(inPixel.b, inPixel.g, inPixel.r, inPixel.a);
+}
+
+PixelRGB ConvertComponents_To_RGB(float4 inPixel)
+{
+    PixelRGB val = { inPixel.x, inPixel.y, inPixel.z, inPixel.w };
+    return val;
 }
 
 unsigned int ReadUCharIndex(
@@ -38,6 +59,93 @@ void WriteUCharIndex(
     const int shift = 8 * (inIndex % 4);
     const uint mask = (*outPtr & (0x000000FF << shift)) ^ (inValue << shift);
     atomic_xor(outPtr, mask);
+}
+
+float4 ReadFloat4(
+    const __global float4*  inImage,
+    int                     inIndex,
+    bool                    is16Bit)
+{
+    if (is16Bit)
+    {
+        return vload_half4(inIndex, (const __global half*)inImage);
+    }
+    return inImage[inIndex];
+}
+
+void WriteFloat4(
+    float4              inPixel,
+    __global float4*    outImage,
+    int                 inIndex,
+    bool                is16Bit)
+{
+    if (is16Bit)
+    {
+        vstorea_half4_rtz(inPixel, inIndex, (__global half*)outImage);
+    }
+    else
+    {
+        outImage[inIndex] = inPixel;
+    }
+}
+
+float4 ReadPixelIndex(
+    __global float4 const*  inImage,
+    bool                    is16Bit,
+    int                     inIndex)
+{
+    return ReadFloat4(inImage, inIndex, is16Bit);
+}
+
+void WritePixelIndex(
+    float4              inPixel,
+    __global float4*    outImage,
+    bool                is16Bit,
+    int                 inIndex)
+{
+    WriteFloat4(inPixel, outImage, inIndex, is16Bit);
+}
+
+float4 ReadPixel(
+    const __global float4*  inImage,
+    int                     inPitch,
+    bool                    is16Bit,
+    int                     inX,
+    int                     inY)
+{
+    return ReadPixelIndex(inImage, is16Bit, mul24(inY, inPitch) + inX);
+}
+
+void WritePixel(
+    float4              inPixel,
+    __global float4*    outImage,
+    int                 inPitch,
+    bool                is16Bit,
+    int                 inX,
+    int                 inY)
+{
+    WritePixelIndex(inPixel, outImage, is16Bit, mul24(inY, inPitch) + inX);
+}
+
+PixelRGB ReadRGBPixel(
+    const __global float4*  inImage,
+    int                     inPitch,
+    bool                    is16Bit,
+    int                     inX,
+    int                     inY)
+{
+    return ConvertComponents_To_RGB(ReadPixel(inImage, inPitch, is16Bit, inX, inY));
+}
+
+void WriteRGBPixel(
+    PixelRGB            inPixel,
+    __global float4*    outImage,
+    int                 inPitch,
+    bool                is16Bit,
+    int                 inX,
+    int                 inY)
+{
+    WritePixel(ConvertRGB_To_Components(inPixel), outImage, inPitch, is16Bit, inX, inY);
 }
 
 __kernel void CopyBufferToImageKernel(
@@ -169,7 +277,7 @@ __kernel void CopyImageToBufferKernel(
             }
             else
             {
-                vstore_half4_rtz(pixel, dstIndex, ((__global half*)outDest) + inDestOffset/sizeof(half));
+                vstorea_half4_rtz(pixel, dstIndex, ((__global half*)outDest) + inDestOffset/sizeof(half));
             }
         }
         else
@@ -190,6 +298,32 @@ __kernel void CopyImageToBufferKernel(
     }
 }
 
+__kernel void CopyBufferToBufferKernel(const __global float4* inSrc,
+                                       __global float4*       outDest,
+                                       int                    inSrcPitch,
+                                       int                    inSrcOffset,
+                                       int                    inDestPitch,
+                                       int                    inDestOffset,
+                                       int                    inIs32BitBuffer,
+                                       int                    inWidth,
+                                       int                    inHeight)
+{
+    uint2 inXY = KernelXYUnsigned();
+
+    const __global float4*  pSrc  = inSrc   + inSrcOffset;
+    __global float4*        pDest = outDest + inDestOffset;
+
+    if ((int)inXY.x < inWidth && (int)inXY.y < inHeight)
+    {
+        WriteRGBPixel(
+            ReadRGBPixel(pSrc, inSrcPitch, !inIs32BitBuffer, inXY.x, inXY.y),
+            pDest,
+            inDestPitch,
+            !inIs32BitBuffer,
+            inXY.x,
+            inXY.y);
+    }
+}
 
 const sampler_t linearSampler = CLK_NORMALIZED_COORDS_TRUE | CLK_ADDRESS_CLAMP_TO_EDGE | CLK_FILTER_LINEAR;
 
