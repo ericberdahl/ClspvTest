@@ -48,7 +48,7 @@ namespace
                 std::make_pair("copyBufferToImage",    createGenerator(copybuffertoimage_kernel::getAllTestVariants)),
                 std::make_pair("copyImageToBuffer",    createGenerator(copyimagetobuffer_kernel::getAllTestVariants)),
                 std::make_pair("copyBufferToBuffer<float4>", createGenerator(copybuffertobuffer_kernel::getTestVariant<gpu_types::float4>)),
-                std::make_pair("copyBUfferToBuffer<half4>",  createGenerator(copybuffertobuffer_kernel::getTestVariant<gpu_types::half4>)),
+                std::make_pair("copyBufferToBuffer<half4>",  createGenerator(copybuffertobuffer_kernel::getTestVariant<gpu_types::half4>)),
                 std::make_pair("fillarraystruct",      createGenerator(fillarraystruct_kernel::getAllTestVariants)),
                 std::make_pair("fill",                 createGenerator(fill_kernel::getAllTestVariants)),
                 std::make_pair("fill<float4>",         createGenerator(fill_kernel::getTestVariant<gpu_types::float4>)),
