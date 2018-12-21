@@ -17,6 +17,7 @@ namespace clspv_utils {
             kind_pod,
             kind_pod_ubo,
             kind_buffer,
+            kind_buffer_ubo,
             kind_ro_image,
             kind_wo_image,
             kind_sampler,

@@ -31,22 +31,24 @@ namespace {
     };
 
     const auto kArgKind_DescriptorType_Map = {
-            std::make_pair(arg_spec_t::kind_pod_ubo,  vk::DescriptorType::eUniformBuffer),
-            std::make_pair(arg_spec_t::kind_pod,      vk::DescriptorType::eStorageBuffer),
-            std::make_pair(arg_spec_t::kind_buffer,   vk::DescriptorType::eStorageBuffer),
-            std::make_pair(arg_spec_t::kind_ro_image, vk::DescriptorType::eSampledImage),
-            std::make_pair(arg_spec_t::kind_wo_image, vk::DescriptorType::eStorageImage),
-            std::make_pair(arg_spec_t::kind_sampler,  vk::DescriptorType::eSampler)
+            std::make_pair(arg_spec_t::kind_pod_ubo,    vk::DescriptorType::eUniformBuffer),
+            std::make_pair(arg_spec_t::kind_pod,        vk::DescriptorType::eStorageBuffer),
+            std::make_pair(arg_spec_t::kind_buffer,     vk::DescriptorType::eStorageBuffer),
+            std::make_pair(arg_spec_t::kind_buffer_ubo, vk::DescriptorType::eUniformBuffer),
+            std::make_pair(arg_spec_t::kind_ro_image,   vk::DescriptorType::eSampledImage),
+            std::make_pair(arg_spec_t::kind_wo_image,   vk::DescriptorType::eStorageImage),
+            std::make_pair(arg_spec_t::kind_sampler,    vk::DescriptorType::eSampler)
     };
 
     const auto kSpvMapArgType_ArgKind_Map = {
-            std::make_pair("pod",      arg_spec_t::kind_pod),
-            std::make_pair("pod_ubo",  arg_spec_t::kind_pod_ubo),
-            std::make_pair("buffer",   arg_spec_t::kind_buffer),
-            std::make_pair("ro_image", arg_spec_t::kind_ro_image),
-            std::make_pair("wo_image", arg_spec_t::kind_wo_image),
-            std::make_pair("sampler",  arg_spec_t::kind_sampler),
-            std::make_pair("local",    arg_spec_t::kind_local)
+            std::make_pair("pod",        arg_spec_t::kind_pod),
+            std::make_pair("pod_ubo",    arg_spec_t::kind_pod_ubo),
+            std::make_pair("buffer",     arg_spec_t::kind_buffer),
+            std::make_pair("buffer_ubo", arg_spec_t::kind_buffer_ubo),
+            std::make_pair("ro_image",   arg_spec_t::kind_ro_image),
+            std::make_pair("wo_image",   arg_spec_t::kind_wo_image),
+            std::make_pair("sampler",    arg_spec_t::kind_sampler),
+            std::make_pair("local",      arg_spec_t::kind_local)
     };
 
     arg_spec_t::kind find_arg_kind(const string &argType) {
