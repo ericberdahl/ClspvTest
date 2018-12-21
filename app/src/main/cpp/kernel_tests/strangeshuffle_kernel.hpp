@@ -21,6 +21,22 @@ namespace strangeshuffle_kernel {
            vulkan_utils::storage_buffer&    destination_buffer,
            std::size_t                      num_elements);
 
+    struct Test
+    {
+        Test(const clspv_utils::device& device, const std::vector<std::string>& args);
+
+        void prepare();
+
+        void run(clspv_utils::kernel& kernel, test_utils::InvocationResult& invocationResult);
+
+        void checkResults(test_utils::InvocationResult& invocationResult, bool verbose);
+
+        int                             mBufferWidth;
+        vulkan_utils::storage_buffer    mSrcBuffer;
+        vulkan_utils::storage_buffer    mDstBuffer;
+        vulkan_utils::storage_buffer    mIndexBuffer;
+    };
+
     test_utils::InvocationResult test(clspv_utils::kernel&              kernel,
                                       const std::vector<std::string>&   args,
                                       bool                              verbose);
