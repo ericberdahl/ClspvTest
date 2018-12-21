@@ -47,48 +47,67 @@ namespace testgreaterthanorequalto_kernel {
         return invocation.run(num_workgroups);
     }
 
+    Test::Test(const clspv_utils::device& device, const std::vector<std::string>& args) :
+            mBufferExtent(64, 64, 1)
+    {
+        const std::size_t buffer_length = mBufferExtent.width * mBufferExtent.height * mBufferExtent.depth;
+        const std::size_t buffer_size = buffer_length * sizeof(float);
+
+        // allocate buffers and images
+        mDstBuffer = vulkan_utils::storage_buffer(device.getDevice(), device.getMemoryProperties(), buffer_size);
+
+        // set up expected results of the destination buffer
+        int index = 0;
+        mExpectedResults.resize(buffer_length);
+        std::generate(mExpectedResults.begin(), mExpectedResults.end(), [&index, this]() {
+            int x = index % this->mBufferExtent.width;
+            int y = index / this->mBufferExtent.width;
+
+            ++index;
+
+            return (x >= 0 && y >= 0 && x < this->mBufferExtent.width && y < this->mBufferExtent.height ? 1.0f : 0.0f);
+        });
+    }
+
+    void Test::prepare()
+    {
+        const std::size_t buffer_length = mBufferExtent.width * mBufferExtent.height * mBufferExtent.depth;
+
+        // initialize destination memory with unexpected value. the kernel should write either 0 or
+        // 1. so, initialize the destination with 2.
+        auto dstBufferMap = mDstBuffer.map<float>();
+        std::fill(dstBufferMap.get(), dstBufferMap.get() + buffer_length, 2.0f);
+        dstBufferMap.reset();
+    }
+
+    void Test::run(clspv_utils::kernel& kernel, test_utils::InvocationResult& invocationResult)
+    {
+        invocationResult.mExecutionTime = invoke(kernel,
+                                                 mDstBuffer,
+                                                 mBufferExtent);
+    }
+
+    void Test::checkResults(test_utils::InvocationResult& invocationResult, bool verbose)
+    {
+        auto dstBufferMap = mDstBuffer.map<float>();
+        test_utils::check_results(mExpectedResults.data(), dstBufferMap.get(),
+                                  mBufferExtent,
+                                  mBufferExtent.width,
+                                  verbose,
+                                  invocationResult);
+    }
+
     test_utils::InvocationResult test(clspv_utils::kernel&              kernel,
                                       const std::vector<std::string>&   args,
                                       bool                              verbose)
     {
         test_utils::InvocationResult invocationResult;
-        auto& device = kernel.getDevice();
 
-        const vk::Extent3D bufferExtent(64, 64, 1);
-        const std::size_t buffer_length = bufferExtent.width * bufferExtent.height * bufferExtent.depth;
-        const std::size_t buffer_size = buffer_length * sizeof(float);
+        Test t(kernel.getDevice(), args);
 
-        // allocate buffers and images
-        vulkan_utils::storage_buffer  dstBuffer(device.getDevice(), device.getMemoryProperties(), buffer_size);
-
-        // initialize destination memory with unexpected value. the kernel should write either 0 or
-        // 1. so, initialize thedestination with 2.
-        auto dstBufferMap = dstBuffer.map<float>();
-        std::fill(dstBufferMap.get(), dstBufferMap.get() + buffer_length, 2.0f);
-        dstBufferMap.reset();
-
-        // set up expected results of the destination buffer
-        int index = 0;
-        std::vector<float> expectedResults(buffer_length);
-        std::generate(expectedResults.begin(), expectedResults.end(), [&index, bufferExtent]() {
-            int x = index % bufferExtent.width;
-            int y = index / bufferExtent.width;
-
-            ++index;
-
-            return (x >= 0 && y >= 0 && x < bufferExtent.width && y < bufferExtent.height ? 1.0f : 0.0f);
-        });
-
-        invocationResult.mExecutionTime = invoke(kernel,
-                                                 dstBuffer,
-                                                 bufferExtent);
-
-        dstBufferMap = dstBuffer.map<float>();
-        test_utils::check_results(expectedResults.data(), dstBufferMap.get(),
-                                  bufferExtent,
-                                  bufferExtent.width,
-                                  verbose,
-                                  invocationResult);
+        t.prepare();
+        t.run(kernel, invocationResult);
+        t.checkResults(invocationResult, verbose);
 
         return invocationResult;
     }
