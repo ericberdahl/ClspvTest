@@ -73,4 +73,56 @@ namespace copybuffertobuffer_kernel {
         return test_utils::KernelTest::invocation_tests(test_variants);
     }
 
+    TestBase::TestBase(const clspv_utils::device& device, const std::vector<std::string>& args, std::size_t sizeofPixelComponent, unsigned int numComponents) :
+            mBufferExtent(64, 64, 1)
+    {
+        for (auto arg = args.begin(); arg != args.end(); arg = std::next(arg)) {
+            if (*arg == "-w") {
+                arg = std::next(arg);
+                if (arg == args.end()) throw std::runtime_error("badly formed arguments to copybuffertoboffer test");
+                mBufferExtent.width = std::atoi(arg->c_str());
+            }
+            else if (*arg == "-h") {
+                arg = std::next(arg);
+                if (arg == args.end()) throw std::runtime_error("badly formed arguments to copybuffertoboffer test");
+                mBufferExtent.height = std::atoi(arg->c_str());
+            }
+        }
+
+        const std::size_t buffer_length =
+                mBufferExtent.width * mBufferExtent.height * mBufferExtent.depth;
+        const std::size_t buffer_size = buffer_length * sizeofPixelComponent * numComponents;
+        mIs32Bit = (sizeofPixelComponent == 4);
+
+        // allocate buffers and images
+        mSrcBuffer = vulkan_utils::storage_buffer(device.getDevice(),
+                                                  device.getMemoryProperties(),
+                                                  buffer_size);
+        mDstBuffer = vulkan_utils::storage_buffer(device.getDevice(),
+                                                  device.getMemoryProperties(),
+                                                  buffer_size);
+
+
+    }
+
+    TestBase::~TestBase()
+    {
+
+    }
+
+    void TestBase::run(clspv_utils::kernel& kernel, test_utils::InvocationResult& invocationResult)
+    {
+        invocationResult.mExecutionTime = invoke(kernel,
+                                                 mSrcBuffer,
+                                                 mDstBuffer,
+                                                 mBufferExtent.width,  // src_pitch
+                                                 0,                    // src_offset
+                                                 mBufferExtent.width,  // dst_pitch
+                                                 0,                    // dst_offset
+                                                 mIs32Bit,             // is32Bit
+                                                 mBufferExtent.width,  // width
+                                                 mBufferExtent.height);// height
+    }
+
+
 }
