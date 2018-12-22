@@ -22,6 +22,26 @@ namespace resample3dimage_kernel {
            int height,
            int depth);
 
+    struct Test
+    {
+        typedef gpu_types::float4 BufferPixelType;
+        typedef gpu_types::float4 ImagePixelType;
+
+        Test(const clspv_utils::device& device, const std::vector<std::string>& args);
+
+        void prepare();
+
+        void run(clspv_utils::kernel& kernel, test_utils::InvocationResult& invocationResult);
+
+        void checkResults(test_utils::InvocationResult& invocationResult, bool verbose);
+
+        vk::Extent3D                    mBufferExtent;
+        vulkan_utils::image             mSrcImage;
+        vulkan_utils::staging_buffer    mSrcImageStaging;
+        vulkan_utils::storage_buffer    mDstBuffer;
+        std::vector<BufferPixelType>    mExpectedDstBuffer;
+    };
+
     test_utils::InvocationResult test(clspv_utils::kernel &kernel,
                                       const std::vector<std::string> &args,
                                       bool verbose);
