@@ -9,6 +9,8 @@
 
 #include <vulkan/vulkan.hpp>
 
+#include <util.hpp>
+
 namespace {
     float normalize_coord(int coord, int range)
     {
@@ -90,17 +92,9 @@ namespace resample2dimage_kernel {
         return invocation.run(num_workgroups);
     }
 
-    test_utils::InvocationResult test(clspv_utils::kernel &kernel,
-                                      const std::vector<std::string> &args,
-                                      bool verbose)
+    Test::Test(const clspv_utils::device& device, const std::vector<std::string>& args) :
+        mBufferExtent(64, 64, 1)
     {
-        typedef gpu_types::float4 BufferPixelType;
-        typedef gpu_types::float4 ImagePixelType;
-
-        test_utils::InvocationResult invocationResult;
-
-        auto &device = kernel.getDevice();
-
         const int image_height = 3;
         const int image_width = 3;
         const int image_buffer_length = image_width * image_height;
@@ -110,79 +104,97 @@ namespace resample2dimage_kernel {
                 { 0.0f, 1.0f, 0.0f, 0.0f }, { 0.5f, 1.0f, 0.0f, 0.0f }, { 1.0f, 1.0f, 0.0f, 0.0f }
         };
 
-        const vk::Extent3D bufferExtent(64, 64, 1);
-        const std::size_t buffer_length = bufferExtent.width * bufferExtent.height * bufferExtent.depth;
+        const std::size_t buffer_length = mBufferExtent.width * mBufferExtent.height * mBufferExtent.depth;
         const std::size_t buffer_size = buffer_length * sizeof(BufferPixelType);
 
         // allocate buffers and images
-        vulkan_utils::storage_buffer dst_buffer(device.getDevice(),
+        mDstBuffer = vulkan_utils::storage_buffer(device.getDevice(),
                                                 device.getMemoryProperties(),
                                                 buffer_size);
-        vulkan_utils::image srcImage(device.getDevice(),
+        mSrcImage = vulkan_utils::image(device.getDevice(),
                                      device.getMemoryProperties(),
                                      vk::Extent3D(image_width, image_height, 1),
                                      vk::Format(pixels::traits<ImagePixelType>::vk_pixel_type),
                                      vulkan_utils::image::kUsage_ReadOnly);
-        vulkan_utils::staging_buffer srcImageStaging = srcImage.createStagingBuffer();
+        mSrcImageStaging = mSrcImage.createStagingBuffer();
 
         // initialize source memory with random data
-        auto srcImageMap = srcImageStaging.map<ImagePixelType>();
+        auto srcImageMap = mSrcImageStaging.map<ImagePixelType>();
         std::copy(std::begin(image_buffer_data), std::end(image_buffer_data), srcImageMap.get());
+        srcImageMap.reset();
 
-        // initialize destination memory to zero
-        auto dstBufferMap = dst_buffer.map<BufferPixelType>();
-        std::fill(dstBufferMap.get(), dstBufferMap.get() + buffer_length, gpu_types::float4(0.0f, 0.0f, 0.0f, 0.0f));
-
-        std::vector<gpu_types::float4> expectedDstBuffer(buffer_length);
-        for (int row = 0; row < bufferExtent.height; ++row)
+        mExpectedDstBuffer.resize(buffer_length);
+        for (int row = 0; row < mBufferExtent.height; ++row)
         {
-            for (int col = 0; col < bufferExtent.width; ++col)
+            for (int col = 0; col < mBufferExtent.width; ++col)
             {
-                gpu_types::float2 normalizedCoordinate(((float)col + 0.5f) / ((float)bufferExtent.width),
-                                                       ((float)row + 0.5f) / ((float)bufferExtent.height));
+                gpu_types::float2 normalizedCoordinate(((float)col + 0.5f) / ((float)mBufferExtent.width),
+                                                       ((float)row + 0.5f) / ((float)mBufferExtent.height));
 
                 gpu_types::float2 sampledCoordinate(clampf(normalizedCoordinate.x*image_width - 0.5f, 0.0f, image_width - 1)/(image_width - 1),
                                                     clampf(normalizedCoordinate.y*image_height - 0.5f, 0.0f, image_height - 1)/(image_height - 1));
 
-                auto index = (row * bufferExtent.width) + col;
-                expectedDstBuffer[index] = gpu_types::float4(sampledCoordinate.x,
+                auto index = (row * mBufferExtent.width) + col;
+                mExpectedDstBuffer[index] = BufferPixelType(sampledCoordinate.x,
                                                              sampledCoordinate.y,
                                                              0.0f,
                                                              0.0f);
             }
         }
 
-
-        dstBufferMap.reset();
-        srcImageMap.reset();
-
         // complete setup of the image
-        vk::UniqueCommandBuffer setupCommand = vulkan_utils::allocate_command_buffer(device.getDevice(),
-                                                                                     device.getCommandPool());
-        setupCommand->begin(vk::CommandBufferBeginInfo());
-        srcImageStaging.copyToImage(*setupCommand);
-        setupCommand->end();
+        mSetupCommand = vulkan_utils::allocate_command_buffer(device.getDevice(), device.getCommandPool());
+        mSetupCommand->begin(vk::CommandBufferBeginInfo());
+        mSrcImageStaging.copyToImage(*mSetupCommand);
+        mSetupCommand->end();
 
-        vk::CommandBuffer rawCommand = *setupCommand;
+        vk::CommandBuffer rawCommand = *mSetupCommand;
         vk::SubmitInfo submitInfo;
         submitInfo.setCommandBufferCount(1)
                 .setPCommandBuffers(&rawCommand);
 
         device.getComputeQueue().submit(submitInfo, nullptr);
+    }
 
+    void Test::prepare()
+    {
+        const std::size_t buffer_length = mBufferExtent.width * mBufferExtent.height * mBufferExtent.depth;
+
+        // initialize destination memory to zero
+        auto dstBufferMap = mDstBuffer.map<BufferPixelType>();
+        std::fill(dstBufferMap.get(), dstBufferMap.get() + buffer_length, BufferPixelType(0.0f, 0.0f, 0.0f, 0.0f));
+    }
+
+    void Test::run(clspv_utils::kernel& kernel, test_utils::InvocationResult& invocationResult)
+    {
         invocationResult.mExecutionTime = invoke(kernel,
-                                                 srcImage,
-                                                 dst_buffer,
-                                                 bufferExtent);
+                                                 mSrcImage,
+                                                 mDstBuffer,
+                                                 mBufferExtent);
+    }
 
-        srcImageMap = srcImageStaging.map<ImagePixelType>();
-        dstBufferMap = dst_buffer.map<BufferPixelType>();
-        test_utils::check_results(expectedDstBuffer.data(),
+    void Test::checkResults(test_utils::InvocationResult& invocationResult, bool verbose)
+    {
+        auto dstBufferMap = mDstBuffer.map<BufferPixelType>();
+        test_utils::check_results(mExpectedDstBuffer.data(),
                                   dstBufferMap.get(),
-                                  bufferExtent,
-                                  bufferExtent.width,
+                                  mBufferExtent,
+                                  mBufferExtent.width,
                                   verbose,
                                   invocationResult);
+    }
+
+    test_utils::InvocationResult test(clspv_utils::kernel &kernel,
+                                      const std::vector<std::string> &args,
+                                      bool verbose)
+    {
+        test_utils::InvocationResult invocationResult;
+
+        Test t(kernel.getDevice(), args);
+
+        t.prepare();
+        t.run(kernel, invocationResult);
+        t.checkResults(invocationResult, verbose);
 
         return invocationResult;
     }
