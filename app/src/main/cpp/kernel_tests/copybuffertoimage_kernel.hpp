@@ -31,6 +31,106 @@ namespace copybuffertoimage_kernel {
     test_utils::KernelTest::invocation_tests getAllTestVariants();
 
     template <typename BufferPixelType, typename ImagePixelType>
+    struct Test
+    {
+        Test(const clspv_utils::device& device, const std::vector<std::string>& args) :
+                mBufferExtent(64, 64, 1)
+        {
+            const std::size_t buffer_length =
+                    mBufferExtent.width * mBufferExtent.height * mBufferExtent.depth;
+            const std::size_t buffer_size = buffer_length * sizeof(BufferPixelType);
+
+            // allocate buffers and images
+            mSrcBuffer = vulkan_utils::storage_buffer(device.getDevice(),
+                                                   device.getMemoryProperties(),
+                                                   buffer_size);
+            mDstImage = vulkan_utils::image(device.getDevice(),
+                                         device.getMemoryProperties(),
+                                         mBufferExtent,
+                                         vk::Format(pixels::traits<ImagePixelType>::vk_pixel_type),
+                                         vulkan_utils::image::kUsage_ReadWrite);
+            mDstImageStaging = mDstImage.createStagingBuffer();
+
+            // initialize source memory with random data
+            auto srcBufferMap = mSrcBuffer.map<BufferPixelType>();
+            test_utils::fill_random_pixels<BufferPixelType>(srcBufferMap.get(),
+                                                            srcBufferMap.get() + buffer_length);
+        }
+
+        void prepare()
+        {
+            const std::size_t buffer_length =
+                    mBufferExtent.width * mBufferExtent.height * mBufferExtent.depth;
+
+            // initialize destination memory (copy source and invert, thereby forcing the kernel to make the change back to the source value)
+            auto srcBufferMap = mSrcBuffer.map<BufferPixelType>();
+            auto dstImageMap = mDstImageStaging.map<ImagePixelType>();
+            test_utils::copy_pixel_buffer<BufferPixelType, ImagePixelType>(srcBufferMap.get(),
+                                                                           srcBufferMap.get() +
+                                                                           buffer_length,
+                                                                           dstImageMap.get());
+            test_utils::invert_pixel_buffer<ImagePixelType>(dstImageMap.get(),
+                                                            dstImageMap.get() + buffer_length);
+        }
+
+        void run(clspv_utils::kernel& kernel, test_utils::InvocationResult& invocationResult)
+        {
+            invocationResult.mExecutionTime = invoke(kernel,
+                                                     mSrcBuffer,
+                                                     mDstImage,
+                                                     0,
+                                                     mBufferExtent.width,
+                                                     pixels::traits<BufferPixelType>::cl_pixel_order,
+                                                     pixels::traits<BufferPixelType>::cl_pixel_type,
+                                                     false,
+                                                     false,
+                                                     mBufferExtent.width,
+                                                     mBufferExtent.height);
+        }
+
+        void checkResults(const clspv_utils::device& device, test_utils::InvocationResult& invocationResult, bool verbose)
+        {
+            // readback the image data
+            vk::UniqueCommandBuffer readbackCommand = vulkan_utils::allocate_command_buffer(
+                    device.getDevice(), device.getCommandPool());
+            readbackCommand->begin(vk::CommandBufferBeginInfo());
+            mDstImageStaging.copyFromImage(*readbackCommand);
+            readbackCommand->end();
+
+            vk::CommandBuffer rawCommand = *readbackCommand;
+            vk::SubmitInfo submitInfo;
+            submitInfo.setCommandBufferCount(1)
+                    .setPCommandBuffers(&rawCommand);
+
+            device.getComputeQueue().submit(submitInfo, nullptr);
+            device.getComputeQueue().waitIdle();
+
+            auto srcBufferMap = mSrcBuffer.map<BufferPixelType>();
+            auto dstImageMap = mDstImageStaging.map<ImagePixelType>();
+            test_utils::check_results(srcBufferMap.get(),
+                                      dstImageMap.get(),
+                                      mBufferExtent,
+                                      mBufferExtent.width,
+                                      verbose,
+                                      invocationResult);
+
+        }
+
+        static bool isSupported(clspv_utils::device& device)
+        {
+            vulkan_utils::image::supportsFormatUse(device.getPhysicalDevice(),
+                                                   vk::Format(pixels::traits<ImagePixelType>::vk_pixel_type),
+                                                   vulkan_utils::image::kUsage_ReadWrite);
+        }
+
+        vk::Extent3D                    mBufferExtent;
+        vulkan_utils::storage_buffer    mSrcBuffer;
+        vulkan_utils::image             mDstImage;
+        vulkan_utils::staging_buffer    mDstImageStaging;
+
+    };
+
+    template <typename BufferPixelType, typename ImagePixelType>
     test_utils::InvocationResult test(clspv_utils::kernel&              kernel,
                                       const std::vector<std::string>&   args,
                                       bool                              verbose)
@@ -42,74 +142,11 @@ namespace copybuffertoimage_kernel {
                                                    vk::Format(pixels::traits<ImagePixelType>::vk_pixel_type),
                                                    vulkan_utils::image::kUsage_ReadWrite))
         {
-            const vk::Extent3D bufferExtent(64, 64, 1);
-            const std::size_t buffer_length =
-                    bufferExtent.width * bufferExtent.height * bufferExtent.depth;
-            const std::size_t buffer_size = buffer_length * sizeof(BufferPixelType);
+            Test<BufferPixelType, ImagePixelType> t(kernel.getDevice(), args);
 
-            // allocate buffers and images
-            vulkan_utils::storage_buffer srcBuffer(device.getDevice(),
-                                                   device.getMemoryProperties(),
-                                                   buffer_size);
-            vulkan_utils::image dstImage(device.getDevice(),
-                                         device.getMemoryProperties(),
-                                         bufferExtent,
-                                         vk::Format(pixels::traits<ImagePixelType>::vk_pixel_type),
-                                         vulkan_utils::image::kUsage_ReadWrite);
-            vulkan_utils::staging_buffer dstImageStaging = dstImage.createStagingBuffer();
-
-            // initialize source memory with random data
-            auto srcBufferMap = srcBuffer.map<BufferPixelType>();
-            test_utils::fill_random_pixels<BufferPixelType>(srcBufferMap.get(),
-                                                            srcBufferMap.get() + buffer_length);
-
-            // initialize destination memory (copy source and invert, thereby forcing the kernel to make the change back to the source value)
-            auto dstImageMap = dstImageStaging.map<ImagePixelType>();
-            test_utils::copy_pixel_buffer<BufferPixelType, ImagePixelType>(srcBufferMap.get(),
-                                                                           srcBufferMap.get() +
-                                                                           buffer_length,
-                                                                           dstImageMap.get());
-            test_utils::invert_pixel_buffer<ImagePixelType>(dstImageMap.get(),
-                                                            dstImageMap.get() + buffer_length);
-
-            dstImageMap.reset();
-            srcBufferMap.reset();
-
-            invocationResult.mExecutionTime = invoke(kernel,
-                                                     srcBuffer,
-                                                     dstImage,
-                                                     0,
-                                                     bufferExtent.width,
-                                                     pixels::traits<BufferPixelType>::cl_pixel_order,
-                                                     pixels::traits<BufferPixelType>::cl_pixel_type,
-                                                     false,
-                                                     false,
-                                                     bufferExtent.width,
-                                                     bufferExtent.height);
-
-            // readback the image data
-            vk::UniqueCommandBuffer readbackCommand = vulkan_utils::allocate_command_buffer(
-                    device.getDevice(), device.getCommandPool());
-            readbackCommand->begin(vk::CommandBufferBeginInfo());
-            dstImageStaging.copyFromImage(*readbackCommand);
-            readbackCommand->end();
-
-            vk::CommandBuffer rawCommand = *readbackCommand;
-            vk::SubmitInfo submitInfo;
-            submitInfo.setCommandBufferCount(1)
-                    .setPCommandBuffers(&rawCommand);
-
-            device.getComputeQueue().submit(submitInfo, nullptr);
-            device.getComputeQueue().waitIdle();
-
-            srcBufferMap = srcBuffer.map<BufferPixelType>();
-            dstImageMap = dstImageStaging.map<ImagePixelType>();
-            test_utils::check_results(srcBufferMap.get(),
-                                      dstImageMap.get(),
-                                      bufferExtent,
-                                      bufferExtent.width,
-                                      verbose,
-                                      invocationResult);
+            t.prepare();
+            t.run(kernel, invocationResult);
+            t.checkResults(kernel.getDevice(), invocationResult, verbose);
         }
         else
         {
