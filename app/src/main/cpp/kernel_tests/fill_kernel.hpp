@@ -29,57 +29,82 @@ namespace fill_kernel {
     test_utils::KernelTest::invocation_tests getAllTestVariants();
 
     template <typename PixelType>
+    struct Test
+    {
+        Test(const clspv_utils::device& device, const std::vector<std::string>& args) :
+            mBufferExtent(64, 64, 1),
+            mFillColor(0.25f, 0.50f, 0.75f, 1.0f)
+        {
+            for (auto arg = args.begin(); arg != args.end(); arg = std::next(arg)) {
+                if (*arg == "-w") {
+                    arg = std::next(arg);
+                    if (arg == args.end()) throw std::runtime_error("badly formed arguments to fill test");
+                    mBufferExtent.width = std::atoi(arg->c_str());
+                }
+                else if (*arg == "-h") {
+                    arg = std::next(arg);
+                    if (arg == args.end()) throw std::runtime_error("badly formed arguments to fill test");
+                    mBufferExtent.height = std::atoi(arg->c_str());
+                }
+            }
+
+            // allocate image buffer
+            const std::size_t buffer_length = mBufferExtent.width * mBufferExtent.height * mBufferExtent.depth;
+            const std::size_t buffer_size = buffer_length * sizeof(PixelType);
+            mDstBuffer = vulkan_utils::storage_buffer(device.getDevice(), device.getMemoryProperties(), buffer_size);
+        }
+
+        void prepare()
+        {
+            const std::size_t buffer_length = mBufferExtent.width * mBufferExtent.height * mBufferExtent.depth;
+
+            const PixelType src_value = pixels::traits<PixelType>::translate((gpu_types::float4){ 0.0f, 0.0f, 0.0f, 0.0f });
+            auto dstBufferMap = mDstBuffer.map<PixelType>();
+            std::fill(dstBufferMap.get(), dstBufferMap.get() + buffer_length, src_value);
+        }
+
+        void run(clspv_utils::kernel& kernel, test_utils::InvocationResult& invocationResult)
+        {
+            std::ostringstream os;
+            os << "<w:" << mBufferExtent.width << " h:" << mBufferExtent.height << " d:" << mBufferExtent.depth << ">";
+            invocationResult.mParameters = os.str();
+
+            invocationResult.mExecutionTime = invoke(kernel,
+                                                     mDstBuffer, // dst_buffer
+                                                     mBufferExtent.width,   // pitch
+                                                     pixels::traits<PixelType>::device_pixel_format, // device_format
+                                                     0, 0, // offset_x, offset_y
+                                                     mBufferExtent.width, mBufferExtent.height, // width, height
+                                                     mFillColor); // color
+        }
+
+        void checkResults(test_utils::InvocationResult& invocationResult, bool verbose)
+        {
+            auto dstBufferMap = mDstBuffer.map<PixelType>();
+            test_utils::check_results(dstBufferMap.get(),
+                                      mBufferExtent,
+                                      mBufferExtent.width,
+                                      mFillColor,
+                                      verbose,
+                                      invocationResult);
+        }
+
+        vk::Extent3D                    mBufferExtent;
+        vulkan_utils::storage_buffer    mDstBuffer;
+        gpu_types::float4               mFillColor;
+    };
+
+    template <typename PixelType>
     test_utils::InvocationResult test(clspv_utils::kernel&              kernel,
                                       const std::vector<std::string>&   args,
                                       bool                              verbose) {
         test_utils::InvocationResult invocationResult;
-        auto& device = kernel.getDevice();
 
-        vk::Extent3D bufferExtent(64, 64, 1);
-        const gpu_types::float4 color = { 0.25f, 0.50f, 0.75f, 1.0f };
+        Test<PixelType> t(kernel.getDevice(), args);
 
-        for (auto arg = args.begin(); arg != args.end(); arg = std::next(arg)) {
-            if (*arg == "-w") {
-                arg = std::next(arg);
-                if (arg == args.end()) throw std::runtime_error("badly formed arguments to fill test");
-                bufferExtent.width = std::atoi(arg->c_str());
-            }
-            else if (*arg == "-h") {
-                arg = std::next(arg);
-                if (arg == args.end()) throw std::runtime_error("badly formed arguments to fill test");
-                bufferExtent.height = std::atoi(arg->c_str());
-            }
-        }
-
-        std::ostringstream os;
-        os << "<w:" << bufferExtent.width << " h:" << bufferExtent.height << " d:" << bufferExtent.depth << ">";
-        invocationResult.mParameters = os.str();
-
-        // allocate image buffer
-        const std::size_t buffer_length = bufferExtent.width * bufferExtent.height * bufferExtent.depth;
-        const std::size_t buffer_size = buffer_length * sizeof(PixelType);
-        vulkan_utils::storage_buffer dst_buffer(device.getDevice(), device.getMemoryProperties(), buffer_size);
-
-        const PixelType src_value = pixels::traits<PixelType>::translate((gpu_types::float4){ 0.0f, 0.0f, 0.0f, 0.0f });
-        auto dstBufferMap = dst_buffer.map<PixelType>();
-        std::fill(dstBufferMap.get(), dstBufferMap.get() + buffer_length, src_value);
-        dstBufferMap.reset();
-
-        invocationResult.mExecutionTime = invoke(kernel,
-                                                 dst_buffer, // dst_buffer
-                                                 bufferExtent.width,   // pitch
-                                                 pixels::traits<PixelType>::device_pixel_format, // device_format
-                                                 0, 0, // offset_x, offset_y
-                                                 bufferExtent.width, bufferExtent.height, // width, height
-                                                 color); // color
-
-        dstBufferMap = dst_buffer.map<PixelType>();
-        test_utils::check_results(dstBufferMap.get(),
-                                  bufferExtent,
-                                  bufferExtent.width,
-                                  color,
-                                  verbose,
-                                  invocationResult);
+        t.prepare();
+        t.run(kernel, invocationResult);
+        t.checkResults(invocationResult, verbose);
 
         return invocationResult;
     }
