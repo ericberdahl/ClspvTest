@@ -40,6 +40,7 @@ namespace resample3dimage_kernel {
         vulkan_utils::staging_buffer    mSrcImageStaging;
         vulkan_utils::storage_buffer    mDstBuffer;
         std::vector<BufferPixelType>    mExpectedDstBuffer;
+        vk::UniqueCommandBuffer         mSetupCommand;
     };
 
     test_utils::InvocationResult test(clspv_utils::kernel &kernel,

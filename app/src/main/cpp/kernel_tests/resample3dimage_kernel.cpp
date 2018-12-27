@@ -100,13 +100,13 @@ namespace resample3dimage_kernel {
         srcImageMap.reset();
 
         // complete setup of the image
-        vk::UniqueCommandBuffer setupCommand = vulkan_utils::allocate_command_buffer(device.getDevice(),
+        mSetupCommand = vulkan_utils::allocate_command_buffer(device.getDevice(),
                                                                                      device.getCommandPool());
-        setupCommand->begin(vk::CommandBufferBeginInfo());
-        mSrcImageStaging.copyToImage(*setupCommand);
-        setupCommand->end();
+        mSetupCommand->begin(vk::CommandBufferBeginInfo());
+        mSrcImageStaging.copyToImage(*mSetupCommand);
+        mSetupCommand->end();
 
-        vk::CommandBuffer rawCommand = *setupCommand;
+        vk::CommandBuffer rawCommand = *mSetupCommand;
         vk::SubmitInfo submitInfo;
         submitInfo.setCommandBufferCount(1)
                 .setPCommandBuffers(&rawCommand);
