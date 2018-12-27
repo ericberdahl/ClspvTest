@@ -19,6 +19,21 @@ namespace readconstantdata_kernel {
            vulkan_utils::storage_buffer&    dst_buffer,
            int                              width);
 
+    struct Test
+    {
+        Test(const clspv_utils::device& device, const std::vector<std::string>& args);
+
+        void prepare();
+
+        void run(clspv_utils::kernel& kernel, test_utils::InvocationResult& invocationResult);
+
+        void checkResults(test_utils::InvocationResult& invocationResult, bool verbose);
+
+        vk::Extent3D                    mBufferExtent;
+        vulkan_utils::storage_buffer    mDstBuffer;
+        std::vector<float>              mExpectedResults;
+    };
+
     test_utils::InvocationResult test(clspv_utils::kernel&              kernel,
                                       const std::vector< std::string>&   args,
                                       bool                              verbose);

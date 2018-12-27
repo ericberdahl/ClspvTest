@@ -39,32 +39,22 @@ namespace readconstantdata_kernel {
         return invocation.run(num_workgroups);
     }
 
-    test_utils::InvocationResult test(clspv_utils::kernel&              kernel,
-                                      const std::vector<std::string>&   args,
-                                      bool                              verbose)
+    Test::Test(const clspv_utils::device& device, const std::vector<std::string>& args) :
+        mBufferExtent(64, 1, 1)
     {
-        test_utils::InvocationResult invocationResult;
-        auto& device = kernel.getDevice();
-
-        const vk::Extent3D bufferExtent(64, 1, 1);
-        const std::size_t buffer_length = bufferExtent.width * bufferExtent.height * bufferExtent.depth;
+        const std::size_t buffer_length = mBufferExtent.width * mBufferExtent.height * mBufferExtent.depth;
         const std::size_t buffer_size = buffer_length * sizeof(float);
 
         // number of elements in the constant data array (in the kernel itself)
         const std::size_t constant_data_length = 12;
 
         // allocate buffers and images
-        vulkan_utils::storage_buffer  dstBuffer(device.getDevice(), device.getMemoryProperties(), buffer_size);
-
-        // initialize destination memory with random data
-        auto dstBufferMap = dstBuffer.map<float>();
-        test_utils::fill_random_pixels<float>(dstBufferMap.get(), dstBufferMap.get() + buffer_length);
-        dstBufferMap.reset();
+        mDstBuffer = vulkan_utils::storage_buffer(device.getDevice(), device.getMemoryProperties(), buffer_size);
 
         // set up expected results of the destination buffer
         int index = 0;
-        std::vector<float> expectedResults(buffer_length);
-        std::generate(expectedResults.begin(), expectedResults.end(), [&index, buffer_length, constant_data_length]() {
+        mExpectedResults.resize(buffer_length);
+        std::generate(mExpectedResults.begin(), mExpectedResults.end(), [&index, buffer_length, constant_data_length]() {
             float result = std::pow(2.0f, index);
             if (index >= std::min(buffer_length, constant_data_length)) {
                 result = -1.0f;
@@ -74,18 +64,46 @@ namespace readconstantdata_kernel {
 
             return result;
         });
+    }
 
+    void Test::prepare()
+    {
+        const std::size_t buffer_length = mBufferExtent.width * mBufferExtent.height * mBufferExtent.depth;
+
+        // initialize destination memory with random data
+        auto dstBufferMap = mDstBuffer.map<float>();
+        test_utils::fill_random_pixels<float>(dstBufferMap.get(), dstBufferMap.get() + buffer_length);
+    }
+
+    void Test::run(clspv_utils::kernel& kernel, test_utils::InvocationResult& invocationResult)
+    {
         invocationResult.mExecutionTime = invoke(kernel,
-                                                 dstBuffer,
-                                                 bufferExtent.width);
+                                                 mDstBuffer,
+                                                 mBufferExtent.width);
+    }
 
-        dstBufferMap = dstBuffer.map<float>();
-        test_utils::check_results(expectedResults.data(),
+    void Test::checkResults(test_utils::InvocationResult& invocationResult, bool verbose)
+    {
+        auto dstBufferMap = mDstBuffer.map<float>();
+        test_utils::check_results(mExpectedResults.data(),
                                   dstBufferMap.get(),
-                                  bufferExtent,
-                                  bufferExtent.width,
+                                  mBufferExtent,
+                                  mBufferExtent.width,
                                   verbose,
                                   invocationResult);
+    }
+
+    test_utils::InvocationResult test(clspv_utils::kernel&              kernel,
+                                      const std::vector<std::string>&   args,
+                                      bool                              verbose)
+    {
+        test_utils::InvocationResult invocationResult;
+
+        Test t(kernel.getDevice(), args);
+
+        t.prepare();
+        t.run(kernel, invocationResult);
+        t.checkResults(invocationResult, verbose);
 
         return invocationResult;
     }
