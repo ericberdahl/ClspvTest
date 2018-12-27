@@ -122,7 +122,6 @@ namespace copyimagetobuffer_kernel {
 
         Test<BufferPixelType, ImagePixelType> t(kernel.getDevice(), args);
 
-        auto& device = kernel.getDevice();
         t.prepare();
         t.run(kernel, invocationResult);
         t.checkResults(invocationResult, verbose);
