@@ -7,14 +7,11 @@
 #include "clspv_utils/kernel.hpp"
 
 namespace {
+    using namespace fillarraystruct_kernel;
 
-    const unsigned int kWrapperArraySize = 18;
+    const int num_floats_in_struct = sizeof(Test::FloatArrayWrapper) / sizeof(float);
 
-    typedef struct {
-        float arr[kWrapperArraySize];
-    } FloatArrayWrapper;
-
-    static_assert(sizeof(FloatArrayWrapper) == kWrapperArraySize*sizeof(float), "bad size for FloatArrayWrapper");
+    static_assert(sizeof(Test::FloatArrayWrapper) == Test::kWrapperArraySize*sizeof(float), "bad size for FloatArrayWrapper");
 }
 
 namespace fillarraystruct_kernel {
@@ -36,48 +33,69 @@ namespace fillarraystruct_kernel {
         return invocation.run(num_workgroups);
     }
 
-    test_utils::InvocationResult test(clspv_utils::kernel&              kernel,
-                                      const std::vector<std::string>&   args,
-                                      bool                              verbose) {
-        test_utils::InvocationResult invocationResult;
-        auto& device = kernel.getDevice();
-
-        const int buffer_width = 32;
-        const int num_floats_in_struct = sizeof(FloatArrayWrapper) / sizeof(float);
-
+    Test::Test(const clspv_utils::device& device, const std::vector<std::string>& args) :
+        mBufferWidth(32)
+    {
         // allocate destination buffer
-        const std::size_t buffer_size = buffer_width * sizeof(FloatArrayWrapper);
-        const int num_floats_in_buffer = num_floats_in_struct * buffer_width;
-        vulkan_utils::storage_buffer dst_buffer(device.getDevice(), device.getMemoryProperties(), buffer_size);
+        const std::size_t buffer_size = mBufferWidth * sizeof(FloatArrayWrapper);
+        const int num_floats_in_buffer = num_floats_in_struct * mBufferWidth;
+        mDstBuffer = vulkan_utils::storage_buffer(device.getDevice(), device.getMemoryProperties(), buffer_size);
 
-        auto dstBufferMap = dst_buffer.map<float>();
+        mExpectedResults.resize(mBufferWidth);
+    }
+
+    void Test::prepare()
+    {
+        const int num_floats_in_buffer = num_floats_in_struct * mBufferWidth;
+
+        auto dstBufferMap = mDstBuffer.map<float>();
         test_utils::fill_random_pixels<float>(dstBufferMap.get(), dstBufferMap.get() + num_floats_in_buffer);
         dstBufferMap.reset();
 
-        auto dstFloatArrayMap = dst_buffer.map<FloatArrayWrapper>();
-        std::vector<FloatArrayWrapper> expectedResults(dstFloatArrayMap.get(), dstFloatArrayMap.get() + buffer_width);
-        for (unsigned int wrapperIndex = 0; wrapperIndex < buffer_width; ++wrapperIndex) {
+        auto dstFloatArrayMap = mDstBuffer.map<FloatArrayWrapper>();
+        mExpectedResults.assign(dstFloatArrayMap.get(), dstFloatArrayMap.get() + mBufferWidth);
+        for (unsigned int wrapperIndex = 0; wrapperIndex < mBufferWidth; ++wrapperIndex) {
             for (unsigned int elementIndex = 0; elementIndex < kWrapperArraySize; ++elementIndex) {
-                expectedResults[wrapperIndex].arr[elementIndex] = sizeof(FloatArrayWrapper) * 10000.0f
-                                          + wrapperIndex * 100.0f
-                                          + (float) elementIndex;
+                mExpectedResults[wrapperIndex].arr[elementIndex] = sizeof(FloatArrayWrapper) * 10000.0f
+                                                                  + wrapperIndex * 100.0f
+                                                                  + (float) elementIndex;
 
             }
         }
         dstFloatArrayMap.reset();
-        assert(expectedResults.size() == buffer_width);
 
+        assert(mExpectedResults.size() == mBufferWidth);
+
+    }
+
+    void Test::run(clspv_utils::kernel& kernel, test_utils::InvocationResult& invocationResult)
+    {
         invocationResult.mExecutionTime = invoke(kernel,
-                                                 dst_buffer,
-                                                 buffer_width);
+                                                 mDstBuffer,
+                                                 mBufferWidth);
+    }
 
-        dstBufferMap = dst_buffer.map<float>();
-        test_utils::check_results(reinterpret_cast<float*>(expectedResults.data()),
+    void Test::checkResults(test_utils::InvocationResult& invocationResult, bool verbose)
+    {
+        auto dstBufferMap = mDstBuffer.map<float>();
+        test_utils::check_results(reinterpret_cast<float*>(mExpectedResults.data()),
                                   dstBufferMap.get(),
-                                  vk::Extent3D(num_floats_in_struct, buffer_width, 1),
+                                  vk::Extent3D(num_floats_in_struct, mBufferWidth, 1),
                                   num_floats_in_struct,
                                   verbose,
                                   invocationResult);
+    }
+
+    test_utils::InvocationResult test(clspv_utils::kernel&              kernel,
+                                      const std::vector<std::string>&   args,
+                                      bool                              verbose) {
+        test_utils::InvocationResult invocationResult;
+
+        Test t(kernel.getDevice(), args);
+
+        t.prepare();
+        t.run(kernel, invocationResult);
+        t.checkResults(invocationResult, verbose);
 
         return invocationResult;
     }
