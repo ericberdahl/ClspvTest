@@ -44,6 +44,22 @@ namespace readlocalsize_kernel {
            idtype_t                         inIdType);
 
 
+    struct Test
+    {
+        Test(clspv_utils::kernel& kernel, const std::vector<std::string>& args);
+
+        void prepare();
+
+        void run(clspv_utils::kernel& kernel, test_utils::InvocationResult& invocationResult);
+
+        void checkResults(test_utils::InvocationResult& invocationResult, bool verbose);
+
+        vk::Extent3D                    mBufferExtent;
+        vulkan_utils::storage_buffer    mDstBuffer;
+        std::vector<std::int32_t>       mExpectedResults;
+        idtype_t                        mIdType;
+    };
+
     test_utils::InvocationResult test(clspv_utils::kernel&              kernel,
                                       const std::vector<std::string>&   args,
                                       bool                              verbose);

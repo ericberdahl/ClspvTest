@@ -42,6 +42,17 @@ namespace {
         return found->second;
     }
 
+    std::string string_from_idtype(idtype_t id) {
+        auto found = std::find_if(idtype_string_map.begin(), idtype_string_map.end(),
+                                  [id](decltype(idtype_string_map)::const_reference item) {
+                                      return item.second == id;
+                                  });
+        if (found == idtype_string_map.end()) {
+            found = idtype_string_map.begin();
+        }
+        return found->first;
+    }
+
     std::vector<std::int32_t> compute_expected_global_id_x(int width, int height, int pitch) {
         std::vector<std::int32_t> expected(pitch * height);
 
@@ -350,46 +361,70 @@ namespace readlocalsize_kernel {
         return invocation.run(num_workgroups);
     }
 
+    Test::Test(clspv_utils::kernel& kernel, const std::vector<std::string>& args) :
+            mBufferExtent(64, 64, 1),
+            mIdType(idtype_globalid_x)
+    {
+        auto& device = kernel.getDevice();
+
+        if (!args.empty())
+        {
+            mIdType = idtype_from_string(args[0]);
+        }
+
+        // allocate data buffer
+        auto num_elements = mBufferExtent.width * mBufferExtent.height * mBufferExtent.depth;
+        const std::size_t buffer_size = num_elements * sizeof(std::int32_t);
+        mDstBuffer = vulkan_utils::storage_buffer(device.getDevice(), device.getMemoryProperties(), buffer_size);
+
+        mExpectedResults = compute_expected_results(mIdType,
+                                                        mBufferExtent.width,
+                                                        mBufferExtent.height,
+                                                        kernel.getWorkgroupSize());
+    }
+
+    void Test::prepare()
+    {
+        const auto num_elements = mBufferExtent.width * mBufferExtent.height * mBufferExtent.depth;
+
+        auto dstBufferMap = mDstBuffer.map<std::int32_t>();
+        test_utils::fill_random_pixels<std::int32_t>(dstBufferMap.get(), dstBufferMap.get() + num_elements);
+        dstBufferMap.reset();
+    }
+
+    void Test::run(clspv_utils::kernel& kernel, test_utils::InvocationResult& invocationResult)
+    {
+        invocationResult.mParameters = string_from_idtype(mIdType);
+        invocationResult.mExecutionTime = invoke(kernel,
+                                                 mDstBuffer,
+                                                 mBufferExtent.width,
+                                                 mBufferExtent.height,
+                                                 mBufferExtent.width,
+                                                 mIdType);
+    }
+
+    void Test::checkResults(test_utils::InvocationResult& invocationResult, bool verbose)
+    {
+        auto dstBufferMap = mDstBuffer.map<std::int32_t>();
+        test_utils::check_results(mExpectedResults.data(),
+                                  dstBufferMap.get(),
+                                  mBufferExtent,
+                                  mBufferExtent.width,
+                                  verbose,
+                                  invocationResult);
+    }
+
     test_utils::InvocationResult test(clspv_utils::kernel&              kernel,
                                       const std::vector<std::string>&   args,
                                       bool                              verbose)
     {
         test_utils::InvocationResult    invocationResult;
-        auto& device = kernel.getDevice();
 
-        invocationResult.mParameters = (args.empty() ? std::string("global_id_x") : args[0]);
+        Test t(kernel, args);
 
-        const idtype_t idtype = idtype_from_string(invocationResult.mParameters);
-        const vk::Extent3D bufferExtent(64, 64, 1);
-
-        // allocate data buffer
-        auto num_elements = bufferExtent.width * bufferExtent.height * bufferExtent.depth;
-        const std::size_t buffer_size = num_elements * sizeof(std::int32_t);
-        vulkan_utils::storage_buffer dst_buffer(device.getDevice(), device.getMemoryProperties(), buffer_size);
-
-        auto dstBufferMap = dst_buffer.map<std::int32_t>();
-        test_utils::fill_random_pixels<std::int32_t>(dstBufferMap.get(), dstBufferMap.get() + num_elements);
-        dstBufferMap.reset();
-
-        auto expectedResults = compute_expected_results(idtype,
-                                                        bufferExtent.width,
-                                                        bufferExtent.height,
-                                                        kernel.getWorkgroupSize());
-
-        invocationResult.mExecutionTime = invoke(kernel,
-                                                 dst_buffer,
-                                                 bufferExtent.width,
-                                                 bufferExtent.height,
-                                                 bufferExtent.width,
-                                                 idtype);
-
-        dstBufferMap = dst_buffer.map<std::int32_t>();
-        test_utils::check_results(expectedResults.data(),
-                                  dstBufferMap.get(),
-                                  bufferExtent,
-                                  bufferExtent.width,
-                                  verbose,
-                                  invocationResult);
+        t.prepare();
+        t.run(kernel, invocationResult);
+        t.checkResults(invocationResult, verbose);
 
         return invocationResult;
     }
