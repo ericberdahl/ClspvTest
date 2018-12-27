@@ -30,74 +30,102 @@ namespace copyimagetobuffer_kernel {
     test_utils::KernelTest::invocation_tests getAllTestVariants();
 
     template <typename BufferPixelType, typename ImagePixelType>
+    struct Test
+    {
+        Test(const clspv_utils::device& device, const std::vector<std::string>& args) :
+            mBufferExtent(64, 64, 1)
+        {
+            const std::size_t buffer_length = mBufferExtent.width * mBufferExtent.height * mBufferExtent.depth;
+            const std::size_t buffer_size = buffer_length * sizeof(BufferPixelType);
+
+            // allocate buffers and images
+            mDstBuffer = vulkan_utils::storage_buffer(device.getDevice(),
+                                                       device.getMemoryProperties(),
+                                                       buffer_size);
+            mSrcImage = vulkan_utils::image(device.getDevice(),
+                                                     device.getMemoryProperties(),
+                                                     mBufferExtent,
+                                                     vk::Format(pixels::traits<ImagePixelType>::vk_pixel_type),
+                                                     vulkan_utils::image::kUsage_ReadOnly);
+            mSrcImageStaging = mSrcImage.createStagingBuffer();
+
+            // initialize source memory with random data
+            auto srcImageMap = mSrcImageStaging.map<ImagePixelType>();
+            test_utils::fill_random_pixels<ImagePixelType>(srcImageMap.get(), srcImageMap.get() + buffer_length);
+            srcImageMap.reset();
+
+            // complete setup of the image
+            mSetupCommand = vulkan_utils::allocate_command_buffer(device.getDevice(),
+                                                                                         device.getCommandPool());
+            mSetupCommand->begin(vk::CommandBufferBeginInfo());
+            mSrcImageStaging.copyToImage(*mSetupCommand);
+            mSetupCommand->end();
+
+            vk::CommandBuffer rawCommand = *mSetupCommand;
+            vk::SubmitInfo submitInfo;
+            submitInfo.setCommandBufferCount(1)
+                    .setPCommandBuffers(&rawCommand);
+
+            device.getComputeQueue().submit(submitInfo, nullptr);
+        }
+
+        void prepare()
+        {
+            const std::size_t buffer_length = mBufferExtent.width * mBufferExtent.height * mBufferExtent.depth;
+
+            // initialize destination memory (copy source and invert, thereby forcing the kernel to make the change back to the source value)
+            auto srcImageMap = mSrcImageStaging.map<ImagePixelType>();
+            auto dstBufferMap = mDstBuffer.map<BufferPixelType>();
+            test_utils::copy_pixel_buffer<ImagePixelType, BufferPixelType>(srcImageMap.get(), srcImageMap.get() + buffer_length, dstBufferMap.get());
+            test_utils::invert_pixel_buffer<BufferPixelType>(dstBufferMap.get(), dstBufferMap.get() + buffer_length);
+        }
+
+        void run(clspv_utils::kernel& kernel, test_utils::InvocationResult& invocationResult)
+        {
+            invocationResult.mExecutionTime = invoke(kernel,
+                                                     mSrcImage,
+                                                     mDstBuffer,
+                                                     0,
+                                                     mBufferExtent.width,
+                                                     pixels::traits<BufferPixelType>::cl_pixel_order,
+                                                     pixels::traits<BufferPixelType>::cl_pixel_type,
+                                                     false,
+                                                     mBufferExtent.width,
+                                                     mBufferExtent.height);
+        }
+
+        void checkResults(test_utils::InvocationResult& invocationResult, bool verbose)
+        {
+            auto srcImageMap = mSrcImageStaging.map<ImagePixelType>();
+            auto dstBufferMap = mDstBuffer.map<BufferPixelType>();
+            test_utils::check_results(srcImageMap.get(),
+                                      dstBufferMap.get(),
+                                      mBufferExtent,
+                                      mBufferExtent.width,
+                                      verbose,
+                                      invocationResult);
+        }
+
+        vk::Extent3D                    mBufferExtent;
+        vulkan_utils::storage_buffer    mDstBuffer;
+        vulkan_utils::image             mSrcImage;
+        vulkan_utils::staging_buffer    mSrcImageStaging;
+        vk::UniqueCommandBuffer         mSetupCommand;
+    };
+
+    template <typename BufferPixelType, typename ImagePixelType>
     test_utils::InvocationResult test(clspv_utils::kernel&              kernel,
                                       const std::vector<std::string>&   args,
                                       bool                              verbose)
     {
         test_utils::InvocationResult invocationResult;
 
+        Test<BufferPixelType, ImagePixelType> t(kernel.getDevice(), args);
+
         auto& device = kernel.getDevice();
-
-        const vk::Extent3D bufferExtent(64, 64, 1);
-        const std::size_t buffer_length = bufferExtent.width * bufferExtent.height * bufferExtent.depth;
-        const std::size_t buffer_size = buffer_length * sizeof(BufferPixelType);
-
-        // allocate buffers and images
-        vulkan_utils::storage_buffer    dst_buffer(device.getDevice(),
-                                                   device.getMemoryProperties(),
-                                                   buffer_size);
-        vulkan_utils::image             srcImage(device.getDevice(),
-                                                 device.getMemoryProperties(),
-                                                 bufferExtent,
-                                                 vk::Format(pixels::traits<ImagePixelType>::vk_pixel_type),
-                                                 vulkan_utils::image::kUsage_ReadOnly);
-        vulkan_utils::staging_buffer    srcImageStaging = srcImage.createStagingBuffer();
-
-        // initialize source memory with random data
-        auto srcImageMap = srcImageStaging.map<ImagePixelType>();
-        test_utils::fill_random_pixels<ImagePixelType>(srcImageMap.get(), srcImageMap.get() + buffer_length);
-
-        // initialize destination memory (copy source and invert, thereby forcing the kernel to make the change back to the source value)
-        auto dstBufferMap = dst_buffer.map<BufferPixelType>();
-        test_utils::copy_pixel_buffer<ImagePixelType, BufferPixelType>(srcImageMap.get(), srcImageMap.get() + buffer_length, dstBufferMap.get());
-        test_utils::invert_pixel_buffer<BufferPixelType>(dstBufferMap.get(), dstBufferMap.get() + buffer_length);
-
-        dstBufferMap.reset();
-        srcImageMap.reset();
-
-        // complete setup of the image
-        vk::UniqueCommandBuffer setupCommand = vulkan_utils::allocate_command_buffer(device.getDevice(),
-                                                                                     device.getCommandPool());
-        setupCommand->begin(vk::CommandBufferBeginInfo());
-        srcImageStaging.copyToImage(*setupCommand);
-        setupCommand->end();
-
-        vk::CommandBuffer rawCommand = *setupCommand;
-        vk::SubmitInfo submitInfo;
-        submitInfo.setCommandBufferCount(1)
-                .setPCommandBuffers(&rawCommand);
-
-        device.getComputeQueue().submit(submitInfo, nullptr);
-
-        invocationResult.mExecutionTime = invoke(kernel,
-                                                 srcImage,
-                                                 dst_buffer,
-                                                 0,
-                                                 bufferExtent.width,
-                                                 pixels::traits<BufferPixelType>::cl_pixel_order,
-                                                 pixels::traits<BufferPixelType>::cl_pixel_type,
-                                                 false,
-                                                 bufferExtent.width,
-                                                 bufferExtent.height);
-
-        srcImageMap = srcImageStaging.map<ImagePixelType>();
-        dstBufferMap = dst_buffer.map<BufferPixelType>();
-        test_utils::check_results(srcImageMap.get(),
-                                  dstBufferMap.get(),
-                                  bufferExtent,
-                                  bufferExtent.width,
-                                  verbose,
-                                  invocationResult);
+        t.prepare();
+        t.run(kernel, invocationResult);
+        t.checkResults(invocationResult, verbose);
 
         return invocationResult;
     }
