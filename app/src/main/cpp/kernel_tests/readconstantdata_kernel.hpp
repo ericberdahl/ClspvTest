@@ -25,9 +25,9 @@ namespace readconstantdata_kernel {
 
         void prepare();
 
-        void run(clspv_utils::kernel& kernel, test_utils::InvocationResult& invocationResult);
+        clspv_utils::execution_time_t run(clspv_utils::kernel& kernel);
 
-        void checkResults(test_utils::InvocationResult& invocationResult, bool verbose);
+        test_utils::Evaluation checkResults(bool verbose);
 
         vk::Extent3D                    mBufferExtent;
         vulkan_utils::storage_buffer    mDstBuffer;

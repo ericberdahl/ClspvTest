@@ -58,26 +58,24 @@ namespace strangeshuffle_kernel {
         test_utils::fill_random_pixels<gpu_types::float4>(dstBufferMap.get(), dstBufferMap.get() + mBufferWidth);
     }
 
-    void Test::run(clspv_utils::kernel& kernel, test_utils::InvocationResult& invocationResult)
+    clspv_utils::execution_time_t Test::run(clspv_utils::kernel& kernel)
     {
-        invocationResult.mExecutionTime = invoke(kernel,
-                                                 mIndexBuffer,
-                                                 mSrcBuffer,
-                                                 mDstBuffer,
-                                                 mBufferWidth);
-
+        return invoke(kernel,
+                      mIndexBuffer,
+                      mSrcBuffer,
+                      mDstBuffer,
+                      mBufferWidth);
     }
 
-    void Test::checkResults(test_utils::InvocationResult& invocationResult, bool verbose)
+    test_utils::Evaluation Test::checkResults(bool verbose)
     {
         auto srcBufferMap = mSrcBuffer.map<gpu_types::float4>();
         auto dstBufferMap = mDstBuffer.map<gpu_types::float4>();
-        test_utils::check_results(srcBufferMap.get(),
-                                  dstBufferMap.get(),
-                                  vk::Extent3D(mBufferWidth, 1, 1),
-                                  mBufferWidth,
-                                  verbose,
-                                  invocationResult);
+        return test_utils::check_results(srcBufferMap.get(),
+                                         dstBufferMap.get(),
+                                         vk::Extent3D(mBufferWidth, 1, 1),
+                                         mBufferWidth,
+                                         verbose);
     }
 
 
@@ -89,8 +87,8 @@ namespace strangeshuffle_kernel {
         Test t(kernel.getDevice(), args);
 
         t.prepare();
-        t.run(kernel, invocationResult);
-        t.checkResults(invocationResult, verbose);
+        invocationResult.mExecutionTime = t.run(kernel);
+        invocationResult.mEvaluation = t.checkResults(verbose);
 
         return invocationResult;
     }

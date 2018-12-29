@@ -63,30 +63,33 @@ namespace fill_kernel {
             std::fill(dstBufferMap.get(), dstBufferMap.get() + buffer_length, src_value);
         }
 
-        void run(clspv_utils::kernel& kernel, test_utils::InvocationResult& invocationResult)
+        std::string getParameterString() const
         {
             std::ostringstream os;
             os << "<w:" << mBufferExtent.width << " h:" << mBufferExtent.height << " d:" << mBufferExtent.depth << ">";
-            invocationResult.mParameters = os.str();
-
-            invocationResult.mExecutionTime = invoke(kernel,
-                                                     mDstBuffer, // dst_buffer
-                                                     mBufferExtent.width,   // pitch
-                                                     pixels::traits<PixelType>::device_pixel_format, // device_format
-                                                     0, 0, // offset_x, offset_y
-                                                     mBufferExtent.width, mBufferExtent.height, // width, height
-                                                     mFillColor); // color
+            return os.str();
         }
 
-        void checkResults(test_utils::InvocationResult& invocationResult, bool verbose)
+        clspv_utils::execution_time_t run(clspv_utils::kernel& kernel)
+        {
+
+            return invoke(kernel,
+                          mDstBuffer, // dst_buffer
+                          mBufferExtent.width,   // pitch
+                          pixels::traits<PixelType>::device_pixel_format, // device_format
+                          0, 0, // offset_x, offset_y
+                          mBufferExtent.width, mBufferExtent.height, // width, height
+                          mFillColor); // color
+        }
+
+        test_utils::Evaluation checkResults(bool verbose)
         {
             auto dstBufferMap = mDstBuffer.map<PixelType>();
-            test_utils::check_results(dstBufferMap.get(),
-                                      mBufferExtent,
-                                      mBufferExtent.width,
-                                      mFillColor,
-                                      verbose,
-                                      invocationResult);
+            return test_utils::check_results(dstBufferMap.get(),
+                                             mBufferExtent,
+                                             mBufferExtent.width,
+                                             mFillColor,
+                                             verbose);
         }
 
         vk::Extent3D                    mBufferExtent;
@@ -102,9 +105,10 @@ namespace fill_kernel {
 
         Test<PixelType> t(kernel.getDevice(), args);
 
+        invocationResult.mParameters = t.getParameterString();
         t.prepare();
-        t.run(kernel, invocationResult);
-        t.checkResults(invocationResult, verbose);
+        invocationResult.mExecutionTime = t.run(kernel);
+        invocationResult.mEvaluation = t.checkResults(verbose);
 
         return invocationResult;
     }

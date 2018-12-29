@@ -47,8 +47,8 @@ namespace {
                                           bool verbose)
     {
         InvocationResult result;
-        result.mNumCorrect = 1;
-        result.mMessages.push_back("kernel compiled but intentionally not invoked");
+        result.mEvaluation.mNumCorrect = 1;
+        result.mEvaluation.mMessages.push_back("kernel compiled but intentionally not invoked");
         return result;
     }
 
@@ -57,7 +57,7 @@ namespace {
                                 bool                             verbose)
     {
         InvocationResult result;
-        result.mMessages.push_back("kernel failed to compile");
+        result.mEvaluation.mMessages.push_back("kernel failed to compile");
         return result;
     }
 
@@ -174,6 +174,51 @@ namespace test_utils {
         result.mVariation = "compile-only";
         result.mTestFn = null_invocation_test;
         return result;
+    }
+
+    StopWatch::StopWatch()
+    {
+        restart();
+    }
+
+    void StopWatch::restart()
+    {
+        mStartTime = clock::now();
+    }
+
+    StopWatch::duration StopWatch::split() const
+    {
+        const auto endTime = clock::now();
+        return endTime - mStartTime;
+    }
+
+    Evaluation& Evaluation::operator+=(const Evaluation& other)
+    {
+        mSkipped |= other.mSkipped;
+
+        mNumCorrect += other.mNumCorrect;
+        mNumErrors += other.mNumErrors;
+        mMessages.insert(mMessages.end(), other.mMessages.begin(), other.mMessages.end());
+
+        return *this;
+    }
+
+    InvocationResult run_test(clspv_utils::kernel&              kernel,
+                              const std::vector<std::string>&   args,
+                              bool                              verbose,
+                              Test&                             test)
+    {
+        InvocationResult invocationResult;
+
+        invocationResult.mParameters = test.getParameterString();
+        test.prepare();
+        invocationResult.mExecutionTime = test.run(kernel);
+
+        StopWatch watch;
+        invocationResult.mEvaluation = test.checkResults(verbose);
+        invocationResult.mEvalTime = watch.split();
+
+        return invocationResult;
     }
 
 } // namespace test_utils

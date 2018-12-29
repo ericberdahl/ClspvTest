@@ -68,22 +68,21 @@ namespace fillarraystruct_kernel {
 
     }
 
-    void Test::run(clspv_utils::kernel& kernel, test_utils::InvocationResult& invocationResult)
+    clspv_utils::execution_time_t Test::run(clspv_utils::kernel& kernel)
     {
-        invocationResult.mExecutionTime = invoke(kernel,
-                                                 mDstBuffer,
-                                                 mBufferWidth);
+        return invoke(kernel,
+                      mDstBuffer,
+                      mBufferWidth);
     }
 
-    void Test::checkResults(test_utils::InvocationResult& invocationResult, bool verbose)
+    test_utils::Evaluation Test::checkResults(bool verbose)
     {
         auto dstBufferMap = mDstBuffer.map<float>();
-        test_utils::check_results(reinterpret_cast<float*>(mExpectedResults.data()),
-                                  dstBufferMap.get(),
-                                  vk::Extent3D(num_floats_in_struct, mBufferWidth, 1),
-                                  num_floats_in_struct,
-                                  verbose,
-                                  invocationResult);
+        return test_utils::check_results(reinterpret_cast<float*>(mExpectedResults.data()),
+                                         dstBufferMap.get(),
+                                         vk::Extent3D(num_floats_in_struct, mBufferWidth, 1),
+                                         num_floats_in_struct,
+                                         verbose);
     }
 
     test_utils::InvocationResult test(clspv_utils::kernel&              kernel,
@@ -94,8 +93,8 @@ namespace fillarraystruct_kernel {
         Test t(kernel.getDevice(), args);
 
         t.prepare();
-        t.run(kernel, invocationResult);
-        t.checkResults(invocationResult, verbose);
+        invocationResult.mExecutionTime = t.run(kernel);
+        invocationResult.mEvaluation = t.checkResults(verbose);
 
         return invocationResult;
     }

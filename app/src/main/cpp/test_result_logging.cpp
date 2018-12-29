@@ -58,7 +58,7 @@ namespace {
     };
 
     struct InvocationSummary {
-        typedef decltype(test_utils::InvocationResult::mMessages)::const_iterator   message_iterator;
+        typedef decltype(test_utils::Evaluation::mMessages)::const_iterator   message_iterator;
         typedef iter_pair_range<message_iterator>   messages_t;
 
         ResultCounts        mCounts     = ResultCounts::null();
@@ -193,20 +193,20 @@ namespace {
     InvocationSummary summarizeInvocation(const sample_info &info, const test_utils::InvocationTest::result& ir) {
         InvocationSummary result;
         result.mTimes = measureInvocationTime(info, ir.second);
-        result.mTestTime_s = ir.second.mTestTime.count();
-        result.mNumCorrect = ir.second.mNumCorrect;
-        result.mNumErrors = ir.second.mNumErrors;
-        result.mMessages = std::make_pair(ir.second.mMessages.begin(), ir.second.mMessages.end());
+        result.mTestTime_s = ir.second.mEvalTime.count();
+        result.mNumCorrect = ir.second.mEvaluation.mNumCorrect;
+        result.mNumErrors = ir.second.mEvaluation.mNumErrors;
+        result.mMessages = std::make_pair(ir.second.mEvaluation.mMessages.begin(), ir.second.mEvaluation.mMessages.end());
 
         if (!ir.first->mVariation.empty()) result.mVariation = &ir.first->mVariation;
         if (!ir.second.mParameters.empty()) result.mParameters = &ir.second.mParameters;
 
-        if (ir.second.mSkipped) {
+        if (ir.second.mEvaluation.mSkipped) {
             result.mCounts = ResultCounts::skip();
         }
         else {
             // an invocation passes if it generates at least one correct value and no incorrect values
-            result.mCounts = (ir.second.mNumCorrect > 0 && ir.second.mNumErrors == 0 ? ResultCounts::pass() : ResultCounts::fail());
+            result.mCounts = (ir.second.mEvaluation.mNumCorrect > 0 && ir.second.mEvaluation.mNumErrors == 0 ? ResultCounts::pass() : ResultCounts::fail());
         }
 
         return result;

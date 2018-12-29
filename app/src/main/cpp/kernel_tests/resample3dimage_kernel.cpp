@@ -147,25 +147,24 @@ namespace resample3dimage_kernel {
         std::fill(dstBufferMap.get(), dstBufferMap.get() + buffer_length, gpu_types::float4(0.0f, 0.0f, 0.0f, 0.0f));
     }
 
-    void Test::run(clspv_utils::kernel& kernel, test_utils::InvocationResult& invocationResult)
+    clspv_utils::execution_time_t Test::run(clspv_utils::kernel& kernel)
     {
-        invocationResult.mExecutionTime = invoke(kernel,
-                                                 mSrcImage,
-                                                 mDstBuffer,
-                                                 mBufferExtent.width,
-                                                 mBufferExtent.height,
-                                                 mBufferExtent.depth);
+        return invoke(kernel,
+                      mSrcImage,
+                      mDstBuffer,
+                      mBufferExtent.width,
+                      mBufferExtent.height,
+                      mBufferExtent.depth);
     }
 
-    void Test::checkResults(test_utils::InvocationResult& invocationResult, bool verbose)
+    test_utils::Evaluation Test::checkResults(bool verbose)
     {
         auto dstBufferMap = mDstBuffer.map<BufferPixelType>();
-        test_utils::check_results(mExpectedDstBuffer.data(),
-                                  dstBufferMap.get(),
-                                  mBufferExtent,
-                                  mBufferExtent.width,
-                                  verbose,
-                                  invocationResult);
+        return test_utils::check_results(mExpectedDstBuffer.data(),
+                                         dstBufferMap.get(),
+                                         mBufferExtent,
+                                         mBufferExtent.width,
+                                         verbose);
     }
 
     test_utils::InvocationResult test(clspv_utils::kernel &kernel,
@@ -177,8 +176,8 @@ namespace resample3dimage_kernel {
         Test t(kernel.getDevice(), args);
 
         t.prepare();
-        t.run(kernel, invocationResult);
-        t.checkResults(invocationResult, verbose);
+        invocationResult.mExecutionTime = t.run(kernel);
+        invocationResult.mEvaluation = t.checkResults(verbose);
 
         return invocationResult;
     }

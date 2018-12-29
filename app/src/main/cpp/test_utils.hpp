@@ -99,16 +99,37 @@ namespace test_utils {
         };
     }
 
-    struct InvocationResult {
-        InvocationResult() : mTestTime(0.0) {}
+    class StopWatch
+    {
+    public:
+        typedef std::chrono::high_resolution_clock  clock;
+        typedef std::chrono::duration<double>       duration;
 
-        std::string                     mParameters;
+        StopWatch();
+
+        void        restart();
+        duration    split() const;
+
+    private:
+        clock::time_point   mStartTime;
+    };
+
+    struct Evaluation {
         bool                            mSkipped    = false;
         unsigned int                    mNumCorrect = 0;
         unsigned int                    mNumErrors  = 0;
         std::vector<std::string>        mMessages;
+
+        Evaluation& operator+=(const Evaluation& other);
+    };
+
+    struct InvocationResult {
+        InvocationResult() : mEvalTime(0.0) {}
+
+        std::string                     mParameters;
         clspv_utils::execution_time_t   mExecutionTime;
-        std::chrono::duration<double>   mTestTime;
+        Evaluation                      mEvaluation;
+        std::chrono::duration<double>   mEvalTime;
     };
 
     struct InvocationTest {
@@ -162,6 +183,17 @@ namespace test_utils {
         kernel_tests    mKernelTests;
     };
 
+    class Test {
+    public:
+                Test();
+        virtual ~Test();
+
+        virtual std::string getParameterString();
+        virtual void        prepare();
+        virtual clspv_utils::execution_time_t   run(clspv_utils::kernel& kernel) = 0;
+        virtual Evaluation  checkResults(bool verbose);
+    };
+
     template<typename T>
     bool pixel_compare(const T &l, const T &r) {
         return details::pixel_comparator<T>::is_equal(l, r);
@@ -200,14 +232,13 @@ namespace test_utils {
     }
 
     template<typename ExpectedPixelType, typename ObservedPixelType>
-    void check_result(ExpectedPixelType expected_pixel,
-                      ObservedPixelType observed_pixel,
-                      vk::Extent3D      coord,
-                      bool              verbose,
-                      InvocationResult& result) {
-        typedef typename details::pixel_promotion<ExpectedPixelType, ObservedPixelType>::promotion_type promotion_type;
+    Evaluation evaluate_result(ExpectedPixelType expected_pixel,
+                               ObservedPixelType observed_pixel,
+                               vk::Extent3D      coord,
+                               bool              verbose) {
+        Evaluation result;
 
-        auto startTime = std::chrono::high_resolution_clock::now();
+        typedef typename details::pixel_promotion<ExpectedPixelType, ObservedPixelType>::promotion_type promotion_type;
 
         auto expected = pixels::traits<promotion_type>::translate(expected_pixel);
         auto observed = pixels::traits<promotion_type>::translate(observed_pixel);
@@ -239,41 +270,37 @@ namespace test_utils {
             }
         }
 
-        auto endTime = std::chrono::high_resolution_clock::now();
-        result.mTestTime = endTime - startTime;
+        return result;
     }
 
     template<typename ObservedPixelType, typename ExpectedPixelType>
-    void check_results(const ObservedPixelType* observed_pixels,
-                       vk::Extent3D             extent,
-                       int                      pitch,
-                       ExpectedPixelType        expected,
-                       bool                     verbose,
-                       InvocationResult&        result) {
-        auto startTime = std::chrono::high_resolution_clock::now();
+    Evaluation check_results(const ObservedPixelType* observed_pixels,
+                             vk::Extent3D             extent,
+                             int                      pitch,
+                             ExpectedPixelType        expected,
+                             bool                     verbose) {
+        Evaluation result;
 
         auto row = observed_pixels;
         for (vk::Extent3D coord; coord.depth < extent.depth; ++coord.depth) {
             for (coord.height = 0; coord.height < extent.height; ++coord.height, row += pitch) {
                 auto p = row;
                 for (coord.width = 0; coord.width < extent.width; ++coord.width, ++p) {
-                    check_result(expected, *p, coord, verbose, result);
+                    result += evaluate_result(expected, *p, coord, verbose);
                 }
             }
         }
 
-        auto endTime = std::chrono::high_resolution_clock::now();
-        result.mTestTime = endTime - startTime;
+        return result;
     }
 
     template<typename ExpectedPixelType, typename ObservedPixelType>
-    void check_results(const ExpectedPixelType* expected_pixels,
-                       const ObservedPixelType* observed_pixels,
-                       vk::Extent3D             extent,
-                       int                      pitch,
-                       bool                     verbose,
-                       InvocationResult&        result) {
-        auto startTime = std::chrono::high_resolution_clock::now();
+    Evaluation check_results(const ExpectedPixelType* expected_pixels,
+                             const ObservedPixelType* observed_pixels,
+                             vk::Extent3D             extent,
+                             int                      pitch,
+                             bool                     verbose) {
+        Evaluation result;
 
         auto expected_row = expected_pixels;
         auto observed_row = observed_pixels;
@@ -282,14 +309,18 @@ namespace test_utils {
                 auto expected_p = expected_row;
                 auto observed_p = observed_row;
                 for (coord.width = 0; coord.width < extent.width; ++coord.width, ++expected_p, ++observed_p) {
-                    check_result(*expected_p, *observed_p, coord, verbose, result);
+                    result += evaluate_result(*expected_p, *observed_p, coord, verbose);
                 }
             }
         }
 
-        auto endTime = std::chrono::high_resolution_clock::now();
-        result.mTestTime = endTime - startTime;
+        return result;
     }
+
+    InvocationResult run_test(clspv_utils::kernel&              kernel,
+                              const std::vector<std::string>&   args,
+                              bool                              verbose,
+                              Test&                             test);
 
     KernelTest::result test_kernel(clspv_utils::module& module,
                                    const KernelTest&    kernelTest);

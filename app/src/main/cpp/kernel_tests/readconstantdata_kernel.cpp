@@ -75,22 +75,21 @@ namespace readconstantdata_kernel {
         test_utils::fill_random_pixels<float>(dstBufferMap.get(), dstBufferMap.get() + buffer_length);
     }
 
-    void Test::run(clspv_utils::kernel& kernel, test_utils::InvocationResult& invocationResult)
+    clspv_utils::execution_time_t Test::run(clspv_utils::kernel& kernel)
     {
-        invocationResult.mExecutionTime = invoke(kernel,
-                                                 mDstBuffer,
-                                                 mBufferExtent.width);
+        return invoke(kernel,
+                      mDstBuffer,
+                      mBufferExtent.width);
     }
 
-    void Test::checkResults(test_utils::InvocationResult& invocationResult, bool verbose)
+    test_utils::Evaluation Test::checkResults(bool verbose)
     {
         auto dstBufferMap = mDstBuffer.map<float>();
-        test_utils::check_results(mExpectedResults.data(),
-                                  dstBufferMap.get(),
-                                  mBufferExtent,
-                                  mBufferExtent.width,
-                                  verbose,
-                                  invocationResult);
+        return test_utils::check_results(mExpectedResults.data(),
+                                         dstBufferMap.get(),
+                                         mBufferExtent,
+                                         mBufferExtent.width,
+                                         verbose);
     }
 
     test_utils::InvocationResult test(clspv_utils::kernel&              kernel,
@@ -102,8 +101,8 @@ namespace readconstantdata_kernel {
         Test t(kernel.getDevice(), args);
 
         t.prepare();
-        t.run(kernel, invocationResult);
-        t.checkResults(invocationResult, verbose);
+        invocationResult.mExecutionTime = t.run(kernel);
+        invocationResult.mEvaluation = t.checkResults(verbose);
 
         return invocationResult;
     }

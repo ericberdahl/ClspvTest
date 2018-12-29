@@ -392,26 +392,29 @@ namespace readlocalsize_kernel {
         dstBufferMap.reset();
     }
 
-    void Test::run(clspv_utils::kernel& kernel, test_utils::InvocationResult& invocationResult)
+    std::string Test::getParameterString()
     {
-        invocationResult.mParameters = string_from_idtype(mIdType);
-        invocationResult.mExecutionTime = invoke(kernel,
-                                                 mDstBuffer,
-                                                 mBufferExtent.width,
-                                                 mBufferExtent.height,
-                                                 mBufferExtent.width,
-                                                 mIdType);
+        return string_from_idtype(mIdType);
     }
 
-    void Test::checkResults(test_utils::InvocationResult& invocationResult, bool verbose)
+    clspv_utils::execution_time_t Test::run(clspv_utils::kernel& kernel)
+    {
+        return invoke(kernel,
+                      mDstBuffer,
+                      mBufferExtent.width,
+                      mBufferExtent.height,
+                      mBufferExtent.width,
+                      mIdType);
+    }
+
+    test_utils::Evaluation Test::checkResults(bool verbose)
     {
         auto dstBufferMap = mDstBuffer.map<std::int32_t>();
-        test_utils::check_results(mExpectedResults.data(),
-                                  dstBufferMap.get(),
-                                  mBufferExtent,
-                                  mBufferExtent.width,
-                                  verbose,
-                                  invocationResult);
+        return test_utils::check_results(mExpectedResults.data(),
+                                         dstBufferMap.get(),
+                                         mBufferExtent,
+                                         mBufferExtent.width,
+                                         verbose);
     }
 
     test_utils::InvocationResult test(clspv_utils::kernel&              kernel,
@@ -423,8 +426,9 @@ namespace readlocalsize_kernel {
         Test t(kernel, args);
 
         t.prepare();
-        t.run(kernel, invocationResult);
-        t.checkResults(invocationResult, verbose);
+        invocationResult.mParameters = t.getParameterString();
+        invocationResult.mExecutionTime = t.run(kernel);
+        invocationResult.mEvaluation = t.checkResults(verbose);
 
         return invocationResult;
     }

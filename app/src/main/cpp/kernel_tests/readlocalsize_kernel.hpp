@@ -50,9 +50,11 @@ namespace readlocalsize_kernel {
 
         void prepare();
 
-        void run(clspv_utils::kernel& kernel, test_utils::InvocationResult& invocationResult);
+        std::string             getParameterString();
 
-        void checkResults(test_utils::InvocationResult& invocationResult, bool verbose);
+        clspv_utils::execution_time_t run(clspv_utils::kernel& kernel);
+
+        test_utils::Evaluation  checkResults(bool verbose);
 
         vk::Extent3D                    mBufferExtent;
         vulkan_utils::storage_buffer    mDstBuffer;

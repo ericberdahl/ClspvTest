@@ -80,30 +80,29 @@ namespace copyimagetobuffer_kernel {
             test_utils::invert_pixel_buffer<BufferPixelType>(dstBufferMap.get(), dstBufferMap.get() + buffer_length);
         }
 
-        void run(clspv_utils::kernel& kernel, test_utils::InvocationResult& invocationResult)
+        clspv_utils::execution_time_t run(clspv_utils::kernel& kernel)
         {
-            invocationResult.mExecutionTime = invoke(kernel,
-                                                     mSrcImage,
-                                                     mDstBuffer,
-                                                     0,
-                                                     mBufferExtent.width,
-                                                     pixels::traits<BufferPixelType>::cl_pixel_order,
-                                                     pixels::traits<BufferPixelType>::cl_pixel_type,
-                                                     false,
-                                                     mBufferExtent.width,
-                                                     mBufferExtent.height);
+            return invoke(kernel,
+                          mSrcImage,
+                          mDstBuffer,
+                          0,
+                          mBufferExtent.width,
+                          pixels::traits<BufferPixelType>::cl_pixel_order,
+                          pixels::traits<BufferPixelType>::cl_pixel_type,
+                          false,
+                          mBufferExtent.width,
+                          mBufferExtent.height);
         }
 
-        void checkResults(test_utils::InvocationResult& invocationResult, bool verbose)
+        test_utils::Evaluation checkResults(bool verbose)
         {
             auto srcImageMap = mSrcImageStaging.map<ImagePixelType>();
             auto dstBufferMap = mDstBuffer.map<BufferPixelType>();
-            test_utils::check_results(srcImageMap.get(),
-                                      dstBufferMap.get(),
-                                      mBufferExtent,
-                                      mBufferExtent.width,
-                                      verbose,
-                                      invocationResult);
+            return test_utils::check_results(srcImageMap.get(),
+                                             dstBufferMap.get(),
+                                             mBufferExtent,
+                                             mBufferExtent.width,
+                                             verbose);
         }
 
         vk::Extent3D                    mBufferExtent;
@@ -123,8 +122,8 @@ namespace copyimagetobuffer_kernel {
         Test<BufferPixelType, ImagePixelType> t(kernel.getDevice(), args);
 
         t.prepare();
-        t.run(kernel, invocationResult);
-        t.checkResults(invocationResult, verbose);
+        invocationResult.mExecutionTime = t.run(kernel);
+        invocationResult.mEvaluation = t.checkResults(verbose);
 
         return invocationResult;
     }

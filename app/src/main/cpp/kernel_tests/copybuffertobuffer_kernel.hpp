@@ -35,7 +35,7 @@ namespace copybuffertobuffer_kernel {
 
         ~TestBase();
 
-        void run(clspv_utils::kernel& kernel, test_utils::InvocationResult& invocationResult);
+        clspv_utils::execution_time_t run(clspv_utils::kernel& kernel);
 
         vk::Extent3D                    mBufferExtent;
         vulkan_utils::storage_buffer    mSrcBuffer;
@@ -80,16 +80,15 @@ namespace copybuffertobuffer_kernel {
 
         using TestBase::run;
 
-        void checkResults(test_utils::InvocationResult& invocationResult, bool verbose)
+        test_utils::Evaluation checkResults(bool verbose)
         {
             auto srcBufferMap = mSrcBuffer.map<PixelType>();
             auto dstBufferMap = mDstBuffer.map<PixelType>();
-            test_utils::check_results(srcBufferMap.get(),
-                                      dstBufferMap.get(),
-                                      mBufferExtent,
-                                      mBufferExtent.width,
-                                      verbose,
-                                      invocationResult);
+            return test_utils::check_results(srcBufferMap.get(),
+                                             dstBufferMap.get(),
+                                             mBufferExtent,
+                                             mBufferExtent.width,
+                                             verbose);
         }
     };
 
@@ -103,8 +102,8 @@ namespace copybuffertobuffer_kernel {
         Test<PixelType> t(kernel.getDevice(), args);
 
         t.prepare();
-        t.run(kernel, invocationResult);
-        t.checkResults(invocationResult, verbose);
+        invocationResult.mExecutionTime = t.run(kernel);
+        invocationResult.mEvaluation = t.checkResults(verbose);
 
         return invocationResult;
     }

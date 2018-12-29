@@ -110,18 +110,18 @@ namespace copybuffertobuffer_kernel {
 
     }
 
-    void TestBase::run(clspv_utils::kernel& kernel, test_utils::InvocationResult& invocationResult)
+    clspv_utils::execution_time_t TestBase::run(clspv_utils::kernel& kernel)
     {
-        invocationResult.mExecutionTime = invoke(kernel,
-                                                 mSrcBuffer,
-                                                 mDstBuffer,
-                                                 mBufferExtent.width,  // src_pitch
-                                                 0,                    // src_offset
-                                                 mBufferExtent.width,  // dst_pitch
-                                                 0,                    // dst_offset
-                                                 mIs32Bit,             // is32Bit
-                                                 mBufferExtent.width,  // width
-                                                 mBufferExtent.height);// height
+        return invoke(kernel,
+                      mSrcBuffer,
+                      mDstBuffer,
+                      mBufferExtent.width,  // src_pitch
+                      0,                    // src_offset
+                      mBufferExtent.width,  // dst_pitch
+                      0,                    // dst_offset
+                      mIs32Bit,             // is32Bit
+                      mBufferExtent.width,  // width
+                      mBufferExtent.height);// height
     }
 
 

@@ -73,22 +73,22 @@ namespace copybuffertoimage_kernel {
                                                             dstImageMap.get() + buffer_length);
         }
 
-        void run(clspv_utils::kernel& kernel, test_utils::InvocationResult& invocationResult)
+        clspv_utils::execution_time_t run(clspv_utils::kernel& kernel)
         {
-            invocationResult.mExecutionTime = invoke(kernel,
-                                                     mSrcBuffer,
-                                                     mDstImage,
-                                                     0,
-                                                     mBufferExtent.width,
-                                                     pixels::traits<BufferPixelType>::cl_pixel_order,
-                                                     pixels::traits<BufferPixelType>::cl_pixel_type,
-                                                     false,
-                                                     false,
-                                                     mBufferExtent.width,
-                                                     mBufferExtent.height);
+            return invoke(kernel,
+                          mSrcBuffer,
+                          mDstImage,
+                          0,
+                          mBufferExtent.width,
+                          pixels::traits<BufferPixelType>::cl_pixel_order,
+                          pixels::traits<BufferPixelType>::cl_pixel_type,
+                          false,
+                          false,
+                          mBufferExtent.width,
+                          mBufferExtent.height);
         }
 
-        void checkResults(const clspv_utils::device& device, test_utils::InvocationResult& invocationResult, bool verbose)
+        test_utils::Evaluation checkResults(const clspv_utils::device& device, bool verbose)
         {
             // readback the image data
             vk::UniqueCommandBuffer readbackCommand = vulkan_utils::allocate_command_buffer(
@@ -107,12 +107,11 @@ namespace copybuffertoimage_kernel {
 
             auto srcBufferMap = mSrcBuffer.map<BufferPixelType>();
             auto dstImageMap = mDstImageStaging.map<ImagePixelType>();
-            test_utils::check_results(srcBufferMap.get(),
-                                      dstImageMap.get(),
-                                      mBufferExtent,
-                                      mBufferExtent.width,
-                                      verbose,
-                                      invocationResult);
+            return test_utils::check_results(srcBufferMap.get(),
+                                             dstImageMap.get(),
+                                             mBufferExtent,
+                                             mBufferExtent.width,
+                                             verbose);
 
         }
 
@@ -145,13 +144,13 @@ namespace copybuffertoimage_kernel {
             Test<BufferPixelType, ImagePixelType> t(kernel.getDevice(), args);
 
             t.prepare();
-            t.run(kernel, invocationResult);
-            t.checkResults(kernel.getDevice(), invocationResult, verbose);
+            invocationResult.mExecutionTime = t.run(kernel);
+            invocationResult.mEvaluation = t.checkResults(kernel.getDevice(), verbose);
         }
         else
         {
-            invocationResult.mSkipped = true;
-            invocationResult.mMessages.push_back("Format not supported for storage");
+            invocationResult.mEvaluation.mSkipped = true;
+            invocationResult.mEvaluation.mMessages.push_back("Format not supported for storage");
         }
 
         return invocationResult;
