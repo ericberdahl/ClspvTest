@@ -39,9 +39,11 @@ namespace readconstantdata_kernel {
         return invocation.run(num_workgroups);
     }
 
-    Test::Test(const clspv_utils::device& device, const std::vector<std::string>& args) :
+    Test::Test(clspv_utils::kernel& kernel, const std::vector<std::string>& args) :
         mBufferExtent(64, 1, 1)
     {
+        auto& device = kernel.getDevice();
+
         const std::size_t buffer_length = mBufferExtent.width * mBufferExtent.height * mBufferExtent.depth;
         const std::size_t buffer_size = buffer_length * sizeof(float);
 
@@ -82,7 +84,7 @@ namespace readconstantdata_kernel {
                       mBufferExtent.width);
     }
 
-    test_utils::Evaluation Test::checkResults(bool verbose)
+    test_utils::Evaluation Test::evaluate(bool verbose)
     {
         auto dstBufferMap = mDstBuffer.map<float>();
         return test_utils::check_results(mExpectedResults.data(),
@@ -92,24 +94,9 @@ namespace readconstantdata_kernel {
                                          verbose);
     }
 
-    test_utils::InvocationResult test(clspv_utils::kernel&              kernel,
-                                      const std::vector<std::string>&   args,
-                                      bool                              verbose)
-    {
-        test_utils::InvocationResult invocationResult;
-
-        Test t(kernel.getDevice(), args);
-
-        t.prepare();
-        invocationResult.mExecutionTime = t.run(kernel);
-        invocationResult.mEvaluation = t.checkResults(verbose);
-
-        return invocationResult;
-    }
-
     test_utils::KernelTest::invocation_tests getAllTestVariants()
     {
-        test_utils::InvocationTest t({ "", test });
+        test_utils::InvocationTest t({ "", test_utils::run_test<Test> });
         return test_utils::KernelTest::invocation_tests({ t });
     }
 

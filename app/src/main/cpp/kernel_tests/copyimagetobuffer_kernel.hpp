@@ -30,11 +30,13 @@ namespace copyimagetobuffer_kernel {
     test_utils::KernelTest::invocation_tests getAllTestVariants();
 
     template <typename BufferPixelType, typename ImagePixelType>
-    struct Test
+    struct Test : public test_utils::Test
     {
-        Test(const clspv_utils::device& device, const std::vector<std::string>& args) :
+        Test(clspv_utils::kernel& kernel, const std::vector<std::string>& args) :
             mBufferExtent(64, 64, 1)
         {
+            auto& device = kernel.getDevice();
+
             const std::size_t buffer_length = mBufferExtent.width * mBufferExtent.height * mBufferExtent.depth;
             const std::size_t buffer_size = buffer_length * sizeof(BufferPixelType);
 
@@ -69,7 +71,7 @@ namespace copyimagetobuffer_kernel {
             device.getComputeQueue().submit(submitInfo, nullptr);
         }
 
-        void prepare()
+        virtual void prepare() override
         {
             const std::size_t buffer_length = mBufferExtent.width * mBufferExtent.height * mBufferExtent.depth;
 
@@ -80,7 +82,7 @@ namespace copyimagetobuffer_kernel {
             test_utils::invert_pixel_buffer<BufferPixelType>(dstBufferMap.get(), dstBufferMap.get() + buffer_length);
         }
 
-        clspv_utils::execution_time_t run(clspv_utils::kernel& kernel)
+        virtual clspv_utils::execution_time_t run(clspv_utils::kernel& kernel) override
         {
             return invoke(kernel,
                           mSrcImage,
@@ -94,7 +96,7 @@ namespace copyimagetobuffer_kernel {
                           mBufferExtent.height);
         }
 
-        test_utils::Evaluation checkResults(bool verbose)
+        virtual test_utils::Evaluation evaluate(bool verbose) override
         {
             auto srcImageMap = mSrcImageStaging.map<ImagePixelType>();
             auto dstBufferMap = mDstBuffer.map<BufferPixelType>();
@@ -113,22 +115,6 @@ namespace copyimagetobuffer_kernel {
     };
 
     template <typename BufferPixelType, typename ImagePixelType>
-    test_utils::InvocationResult test(clspv_utils::kernel&              kernel,
-                                      const std::vector<std::string>&   args,
-                                      bool                              verbose)
-    {
-        test_utils::InvocationResult invocationResult;
-
-        Test<BufferPixelType, ImagePixelType> t(kernel.getDevice(), args);
-
-        t.prepare();
-        invocationResult.mExecutionTime = t.run(kernel);
-        invocationResult.mEvaluation = t.checkResults(verbose);
-
-        return invocationResult;
-    }
-
-    template <typename BufferPixelType, typename ImagePixelType>
     test_utils::InvocationTest getTestVariant()
     {
         test_utils::InvocationTest result;
@@ -137,7 +123,7 @@ namespace copyimagetobuffer_kernel {
         os << "<src:" << pixels::traits<BufferPixelType>::type_name << " dst:" << pixels::traits<ImagePixelType>::type_name << ">";
         result.mVariation = os.str();
 
-        result.mTestFn = test<BufferPixelType, ImagePixelType>;
+        result.mTestFn = test_utils::run_test<Test<BufferPixelType, ImagePixelType>>;
 
         return result;
     }

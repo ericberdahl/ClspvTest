@@ -31,11 +31,17 @@ namespace copybuffertoimage_kernel {
     test_utils::KernelTest::invocation_tests getAllTestVariants();
 
     template <typename BufferPixelType, typename ImagePixelType>
-    struct Test
+    struct Test : public test_utils::Test
     {
-        Test(const clspv_utils::device& device, const std::vector<std::string>& args) :
+        Test(clspv_utils::kernel& kernel, const std::vector<std::string>& args) :
                 mBufferExtent(64, 64, 1)
         {
+            auto& device = kernel.getDevice();
+
+            mDevice = device.getDevice();
+            mComputeQueue = device.getComputeQueue();
+            mCommandPool = device.getCommandPool();
+
             const std::size_t buffer_length =
                     mBufferExtent.width * mBufferExtent.height * mBufferExtent.depth;
             const std::size_t buffer_size = buffer_length * sizeof(BufferPixelType);
@@ -57,7 +63,7 @@ namespace copybuffertoimage_kernel {
                                                             srcBufferMap.get() + buffer_length);
         }
 
-        void prepare()
+        virtual void prepare() override
         {
             const std::size_t buffer_length =
                     mBufferExtent.width * mBufferExtent.height * mBufferExtent.depth;
@@ -73,7 +79,7 @@ namespace copybuffertoimage_kernel {
                                                             dstImageMap.get() + buffer_length);
         }
 
-        clspv_utils::execution_time_t run(clspv_utils::kernel& kernel)
+        virtual clspv_utils::execution_time_t run(clspv_utils::kernel& kernel) override
         {
             return invoke(kernel,
                           mSrcBuffer,
@@ -88,11 +94,11 @@ namespace copybuffertoimage_kernel {
                           mBufferExtent.height);
         }
 
-        test_utils::Evaluation checkResults(const clspv_utils::device& device, bool verbose)
+        virtual test_utils::Evaluation evaluate(bool verbose) override
         {
             // readback the image data
             vk::UniqueCommandBuffer readbackCommand = vulkan_utils::allocate_command_buffer(
-                    device.getDevice(), device.getCommandPool());
+                    mDevice, mCommandPool);
             readbackCommand->begin(vk::CommandBufferBeginInfo());
             mDstImageStaging.copyFromImage(*readbackCommand);
             readbackCommand->end();
@@ -102,8 +108,8 @@ namespace copybuffertoimage_kernel {
             submitInfo.setCommandBufferCount(1)
                     .setPCommandBuffers(&rawCommand);
 
-            device.getComputeQueue().submit(submitInfo, nullptr);
-            device.getComputeQueue().waitIdle();
+            mComputeQueue.submit(submitInfo, nullptr);
+            mComputeQueue.waitIdle();
 
             auto srcBufferMap = mSrcBuffer.map<BufferPixelType>();
             auto dstImageMap = mDstImageStaging.map<ImagePixelType>();
@@ -122,6 +128,9 @@ namespace copybuffertoimage_kernel {
                                                    vulkan_utils::image::kUsage_ReadWrite);
         }
 
+        vk::Device                      mDevice;
+        vk::CommandPool                 mCommandPool;
+        vk::Queue                       mComputeQueue;
         vk::Extent3D                    mBufferExtent;
         vulkan_utils::storage_buffer    mSrcBuffer;
         vulkan_utils::image             mDstImage;
@@ -134,6 +143,8 @@ namespace copybuffertoimage_kernel {
                                       const std::vector<std::string>&   args,
                                       bool                              verbose)
     {
+        // TODO: normalize this pattern with the generic pattern
+
         test_utils::InvocationResult invocationResult;
         auto& device = kernel.getDevice();
 
@@ -141,11 +152,11 @@ namespace copybuffertoimage_kernel {
                                                    vk::Format(pixels::traits<ImagePixelType>::vk_pixel_type),
                                                    vulkan_utils::image::kUsage_ReadWrite))
         {
-            Test<BufferPixelType, ImagePixelType> t(kernel.getDevice(), args);
+            Test<BufferPixelType, ImagePixelType> t(kernel, args);
 
             t.prepare();
             invocationResult.mExecutionTime = t.run(kernel);
-            invocationResult.mEvaluation = t.checkResults(kernel.getDevice(), verbose);
+            invocationResult.mEvaluation = t.evaluate(verbose);
         }
         else
         {

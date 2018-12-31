@@ -20,18 +20,18 @@ namespace resample2dimage_kernel {
            vulkan_utils::storage_buffer&    dst_buffer,
            vk::Extent3D                     extent);
 
-    struct Test
+    struct Test : public test_utils::Test
     {
         typedef gpu_types::float4 BufferPixelType;
         typedef gpu_types::float4 ImagePixelType;
 
-        Test(const clspv_utils::device& device, const std::vector<std::string>& args);
+        Test(clspv_utils::kernel& kernel, const std::vector<std::string>& args);
 
-        void prepare();
+        virtual void prepare() override;
 
-        clspv_utils::execution_time_t run(clspv_utils::kernel& kernel);
+        virtual clspv_utils::execution_time_t run(clspv_utils::kernel& kernel) override;
 
-        test_utils::Evaluation checkResults(bool verbose);
+        virtual test_utils::Evaluation evaluate(bool verbose) override;
 
         vk::Extent3D                    mBufferExtent;
         vulkan_utils::image             mSrcImage;
@@ -40,10 +40,6 @@ namespace resample2dimage_kernel {
         std::vector<BufferPixelType>    mExpectedDstBuffer;
         vk::UniqueCommandBuffer         mSetupCommand;
     };
-
-    test_utils::InvocationResult test(clspv_utils::kernel &kernel,
-                                      const std::vector<std::string> &args,
-                                      bool verbose);
 
     test_utils::KernelTest::invocation_tests getAllTestVariants();
 

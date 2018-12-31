@@ -6,6 +6,7 @@
 #define CLSPVTEST_TEST_UTILS_HPP
 
 #include "clspv_utils/invocation.hpp"
+#include "clspv_utils/kernel.hpp"
 #include "fp_utils.hpp"
 #include "gpu_types.hpp"
 #include "pixels.hpp"
@@ -108,7 +109,7 @@ namespace test_utils {
         StopWatch();
 
         void        restart();
-        duration    split() const;
+        duration    getSplitTime() const;
 
     private:
         clock::time_point   mStartTime;
@@ -188,10 +189,10 @@ namespace test_utils {
                 Test();
         virtual ~Test();
 
-        virtual std::string getParameterString();
+        virtual std::string getParameterString() const;
         virtual void        prepare();
         virtual clspv_utils::execution_time_t   run(clspv_utils::kernel& kernel) = 0;
-        virtual Evaluation  checkResults(bool verbose);
+        virtual Evaluation  evaluate(bool verbose);
     };
 
     template<typename T>
@@ -321,6 +322,15 @@ namespace test_utils {
                               const std::vector<std::string>&   args,
                               bool                              verbose,
                               Test&                             test);
+
+    template <typename Test>
+    InvocationResult run_test(clspv_utils::kernel&              kernel,
+                              const std::vector<std::string>&   args,
+                              bool                              verbose)
+    {
+        Test test(kernel, args);
+        return run_test(kernel, args, verbose, test);
+    }
 
     KernelTest::result test_kernel(clspv_utils::module& module,
                                    const KernelTest&    kernelTest);

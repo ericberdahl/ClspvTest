@@ -92,9 +92,11 @@ namespace resample2dimage_kernel {
         return invocation.run(num_workgroups);
     }
 
-    Test::Test(const clspv_utils::device& device, const std::vector<std::string>& args) :
+    Test::Test(clspv_utils::kernel& kernel, const std::vector<std::string>& args) :
         mBufferExtent(64, 64, 1)
     {
+        auto& device = kernel.getDevice();
+
         const int image_height = 3;
         const int image_width = 3;
         const int image_buffer_length = image_width * image_height;
@@ -173,7 +175,7 @@ namespace resample2dimage_kernel {
                       mBufferExtent);
     }
 
-    test_utils::Evaluation Test::checkResults(bool verbose)
+    test_utils::Evaluation Test::evaluate(bool verbose)
     {
         auto dstBufferMap = mDstBuffer.map<BufferPixelType>();
         return test_utils::check_results(mExpectedDstBuffer.data(),
@@ -183,24 +185,9 @@ namespace resample2dimage_kernel {
                                          verbose);
     }
 
-    test_utils::InvocationResult test(clspv_utils::kernel &kernel,
-                                      const std::vector<std::string> &args,
-                                      bool verbose)
-    {
-        test_utils::InvocationResult invocationResult;
-
-        Test t(kernel.getDevice(), args);
-
-        t.prepare();
-        invocationResult.mExecutionTime = t.run(kernel);
-        invocationResult.mEvaluation = t.checkResults(verbose);
-
-        return invocationResult;
-    }
-
     test_utils::KernelTest::invocation_tests getAllTestVariants()
     {
-        test_utils::InvocationTest t({ "", test });
+        test_utils::InvocationTest t({ "", test_utils::run_test<Test> });
         return test_utils::KernelTest::invocation_tests({ t });
     }
 

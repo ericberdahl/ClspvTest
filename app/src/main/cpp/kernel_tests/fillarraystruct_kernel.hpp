@@ -19,15 +19,15 @@ namespace fillarraystruct_kernel {
            vulkan_utils::storage_buffer&    destination_buffer,
            unsigned int                     num_elements);
 
-    struct Test
+    struct Test : public test_utils::Test
     {
-        Test(const clspv_utils::device& device, const std::vector<std::string>& args);
+        Test(clspv_utils::kernel& kernel, const std::vector<std::string>& args);
 
-        void prepare();
+        virtual void prepare() override;
 
-        clspv_utils::execution_time_t run(clspv_utils::kernel& kernel);
+        virtual clspv_utils::execution_time_t run(clspv_utils::kernel& kernel) override;
 
-        test_utils::Evaluation checkResults(bool verbose);
+        virtual test_utils::Evaluation evaluate(bool verbose) override;
 
         static const unsigned int kWrapperArraySize = 18;
 
@@ -39,10 +39,6 @@ namespace fillarraystruct_kernel {
         vulkan_utils::storage_buffer    mDstBuffer;
         std::vector<FloatArrayWrapper>  mExpectedResults;
     };
-
-    test_utils::InvocationResult test(clspv_utils::kernel&              kernel,
-                                      const std::vector<std::string>&   args,
-                                      bool                              verbose);
 
     test_utils::KernelTest::invocation_tests getAllTestVariants();
 }

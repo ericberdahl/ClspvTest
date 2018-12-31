@@ -29,13 +29,13 @@ namespace copybuffertobuffer_kernel {
 
     test_utils::KernelTest::invocation_tests getAllTestVariants();
 
-    struct TestBase
+    struct TestBase : public test_utils::Test
     {
-        TestBase(const clspv_utils::device& device, const std::vector<std::string>& args, std::size_t sizeofPixelComponent, unsigned int numComponents);
+        TestBase(clspv_utils::kernel& kernel, const std::vector<std::string>& args, std::size_t sizeofPixelComponent, unsigned int numComponents);
 
         ~TestBase();
 
-        clspv_utils::execution_time_t run(clspv_utils::kernel& kernel);
+        virtual clspv_utils::execution_time_t run(clspv_utils::kernel& kernel) override;
 
         vk::Extent3D                    mBufferExtent;
         vulkan_utils::storage_buffer    mSrcBuffer;
@@ -44,11 +44,13 @@ namespace copybuffertobuffer_kernel {
     };
 
     template <typename PixelType>
-    struct Test : private TestBase
+    struct Test : public TestBase
     {
-        Test(const clspv_utils::device& device, const std::vector<std::string>& args) :
-            TestBase(device, args, sizeof(typename PixelType::component_type), PixelType::num_components)
+        Test(clspv_utils::kernel& kernel, const std::vector<std::string>& args) :
+            TestBase(kernel, args, sizeof(typename PixelType::component_type), PixelType::num_components)
         {
+            auto& device = kernel.getDevice();
+
             static_assert(std::is_floating_point<typename PixelType::component_type>::value, "copybuffertoboffer_kernel requires floating point pixels");
             static_assert(4 == PixelType::num_components, "copybuffertoboffer_kernel requires 4-vector pixels");
             static_assert(2 == sizeof(typename PixelType::component_type) || 4 == sizeof(typename PixelType::component_type), "copybuffertoboffer_kernel requires half4 or float4 pixels");
@@ -62,7 +64,7 @@ namespace copybuffertobuffer_kernel {
                                                       srcBufferMap.get() + buffer_length);
         }
 
-        void prepare()
+        virtual void prepare() override
         {
             const std::size_t buffer_length =
                     mBufferExtent.width * mBufferExtent.height * mBufferExtent.depth;
@@ -80,7 +82,7 @@ namespace copybuffertobuffer_kernel {
 
         using TestBase::run;
 
-        test_utils::Evaluation checkResults(bool verbose)
+        virtual test_utils::Evaluation evaluate(bool verbose) override
         {
             auto srcBufferMap = mSrcBuffer.map<PixelType>();
             auto dstBufferMap = mDstBuffer.map<PixelType>();
@@ -93,22 +95,6 @@ namespace copybuffertobuffer_kernel {
     };
 
     template <typename PixelType>
-    test_utils::InvocationResult test(clspv_utils::kernel&              kernel,
-                                      const std::vector<std::string>&   args,
-                                      bool                              verbose)
-    {
-        test_utils::InvocationResult invocationResult;
-
-        Test<PixelType> t(kernel.getDevice(), args);
-
-        t.prepare();
-        invocationResult.mExecutionTime = t.run(kernel);
-        invocationResult.mEvaluation = t.checkResults(verbose);
-
-        return invocationResult;
-    }
-
-    template <typename PixelType>
     test_utils::InvocationTest getTestVariant()
     {
         test_utils::InvocationTest result;
@@ -117,7 +103,7 @@ namespace copybuffertobuffer_kernel {
         os << "<pixelType:" << pixels::traits<PixelType>::type_name << ">";
         result.mVariation = os.str();
 
-        result.mTestFn = test<PixelType>;
+        result.mTestFn = test_utils::run_test<Test<PixelType>>;
 
         return result;
     }

@@ -73,9 +73,11 @@ namespace copybuffertobuffer_kernel {
         return test_utils::KernelTest::invocation_tests(test_variants);
     }
 
-    TestBase::TestBase(const clspv_utils::device& device, const std::vector<std::string>& args, std::size_t sizeofPixelComponent, unsigned int numComponents) :
+    TestBase::TestBase(clspv_utils::kernel& kernel, const std::vector<std::string>& args, std::size_t sizeofPixelComponent, unsigned int numComponents) :
             mBufferExtent(64, 64, 1)
     {
+        auto& device = kernel.getDevice();
+
         for (auto arg = args.begin(); arg != args.end(); arg = std::next(arg)) {
             if (*arg == "-w") {
                 arg = std::next(arg);

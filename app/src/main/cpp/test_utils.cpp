@@ -186,7 +186,7 @@ namespace test_utils {
         mStartTime = clock::now();
     }
 
-    StopWatch::duration StopWatch::split() const
+    StopWatch::duration StopWatch::getSplitTime() const
     {
         const auto endTime = clock::now();
         return endTime - mStartTime;
@@ -211,14 +211,41 @@ namespace test_utils {
         InvocationResult invocationResult;
 
         invocationResult.mParameters = test.getParameterString();
+
         test.prepare();
+
         invocationResult.mExecutionTime = test.run(kernel);
 
         StopWatch watch;
-        invocationResult.mEvaluation = test.checkResults(verbose);
-        invocationResult.mEvalTime = watch.split();
+        invocationResult.mEvaluation = test.evaluate(verbose);
+        invocationResult.mEvalTime = watch.getSplitTime();
 
         return invocationResult;
+    }
+
+    Test::Test()
+    {
+
+    }
+
+    Test::~Test()
+    {
+
+    }
+
+    std::string Test::getParameterString() const
+    {
+        return std::string();
+    }
+
+    void Test::prepare()
+    {
+
+    }
+
+    Evaluation Test::evaluate(bool verbose)
+    {
+        return Evaluation();
     }
 
 } // namespace test_utils

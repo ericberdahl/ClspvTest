@@ -33,9 +33,11 @@ namespace fillarraystruct_kernel {
         return invocation.run(num_workgroups);
     }
 
-    Test::Test(const clspv_utils::device& device, const std::vector<std::string>& args) :
+    Test::Test(clspv_utils::kernel& kernel, const std::vector<std::string>& args) :
         mBufferWidth(32)
     {
+        auto& device = kernel.getDevice();
+
         // allocate destination buffer
         const std::size_t buffer_size = mBufferWidth * sizeof(FloatArrayWrapper);
         const int num_floats_in_buffer = num_floats_in_struct * mBufferWidth;
@@ -75,7 +77,7 @@ namespace fillarraystruct_kernel {
                       mBufferWidth);
     }
 
-    test_utils::Evaluation Test::checkResults(bool verbose)
+    test_utils::Evaluation Test::evaluate(bool verbose)
     {
         auto dstBufferMap = mDstBuffer.map<float>();
         return test_utils::check_results(reinterpret_cast<float*>(mExpectedResults.data()),
@@ -85,23 +87,9 @@ namespace fillarraystruct_kernel {
                                          verbose);
     }
 
-    test_utils::InvocationResult test(clspv_utils::kernel&              kernel,
-                                      const std::vector<std::string>&   args,
-                                      bool                              verbose) {
-        test_utils::InvocationResult invocationResult;
-
-        Test t(kernel.getDevice(), args);
-
-        t.prepare();
-        invocationResult.mExecutionTime = t.run(kernel);
-        invocationResult.mEvaluation = t.checkResults(verbose);
-
-        return invocationResult;
-    }
-
     test_utils::KernelTest::invocation_tests getAllTestVariants()
     {
-        test_utils::InvocationTest t({ "", test });
+        test_utils::InvocationTest t({ "", test_utils::run_test<Test> });
         return test_utils::KernelTest::invocation_tests({ t });
     }
 }

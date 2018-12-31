@@ -29,12 +29,14 @@ namespace fill_kernel {
     test_utils::KernelTest::invocation_tests getAllTestVariants();
 
     template <typename PixelType>
-    struct Test
+    struct Test : public test_utils::Test
     {
-        Test(const clspv_utils::device& device, const std::vector<std::string>& args) :
+        Test(clspv_utils::kernel& kernel, const std::vector<std::string>& args) :
             mBufferExtent(64, 64, 1),
             mFillColor(0.25f, 0.50f, 0.75f, 1.0f)
         {
+            auto& device = kernel.getDevice();
+
             for (auto arg = args.begin(); arg != args.end(); arg = std::next(arg)) {
                 if (*arg == "-w") {
                     arg = std::next(arg);
@@ -54,7 +56,7 @@ namespace fill_kernel {
             mDstBuffer = vulkan_utils::storage_buffer(device.getDevice(), device.getMemoryProperties(), buffer_size);
         }
 
-        void prepare()
+        virtual void prepare() override
         {
             const std::size_t buffer_length = mBufferExtent.width * mBufferExtent.height * mBufferExtent.depth;
 
@@ -63,14 +65,14 @@ namespace fill_kernel {
             std::fill(dstBufferMap.get(), dstBufferMap.get() + buffer_length, src_value);
         }
 
-        std::string getParameterString() const
+        virtual std::string getParameterString() const override
         {
             std::ostringstream os;
             os << "<w:" << mBufferExtent.width << " h:" << mBufferExtent.height << " d:" << mBufferExtent.depth << ">";
             return os.str();
         }
 
-        clspv_utils::execution_time_t run(clspv_utils::kernel& kernel)
+        virtual clspv_utils::execution_time_t run(clspv_utils::kernel& kernel) override
         {
 
             return invoke(kernel,
@@ -82,7 +84,7 @@ namespace fill_kernel {
                           mFillColor); // color
         }
 
-        test_utils::Evaluation checkResults(bool verbose)
+        virtual test_utils::Evaluation evaluate(bool verbose) override
         {
             auto dstBufferMap = mDstBuffer.map<PixelType>();
             return test_utils::check_results(dstBufferMap.get(),
@@ -98,22 +100,6 @@ namespace fill_kernel {
     };
 
     template <typename PixelType>
-    test_utils::InvocationResult test(clspv_utils::kernel&              kernel,
-                                      const std::vector<std::string>&   args,
-                                      bool                              verbose) {
-        test_utils::InvocationResult invocationResult;
-
-        Test<PixelType> t(kernel.getDevice(), args);
-
-        invocationResult.mParameters = t.getParameterString();
-        t.prepare();
-        invocationResult.mExecutionTime = t.run(kernel);
-        invocationResult.mEvaluation = t.checkResults(verbose);
-
-        return invocationResult;
-    }
-
-    template <typename PixelType>
     test_utils::InvocationTest getTestVariant()
     {
         test_utils::InvocationTest result;
@@ -122,7 +108,7 @@ namespace fill_kernel {
         os << "<dst:" << pixels::traits<PixelType>::type_name << ">";
         result.mVariation = os.str();
 
-        result.mTestFn = test<PixelType>;
+        result.mTestFn = test_utils::run_test<Test<PixelType>>;
 
         return result;
     }

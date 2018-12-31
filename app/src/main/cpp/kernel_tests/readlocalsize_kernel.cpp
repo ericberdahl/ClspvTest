@@ -392,7 +392,7 @@ namespace readlocalsize_kernel {
         dstBufferMap.reset();
     }
 
-    std::string Test::getParameterString()
+    std::string Test::getParameterString() const
     {
         return string_from_idtype(mIdType);
     }
@@ -407,7 +407,7 @@ namespace readlocalsize_kernel {
                       mIdType);
     }
 
-    test_utils::Evaluation Test::checkResults(bool verbose)
+    test_utils::Evaluation Test::evaluate(bool verbose)
     {
         auto dstBufferMap = mDstBuffer.map<std::int32_t>();
         return test_utils::check_results(mExpectedResults.data(),
@@ -417,25 +417,9 @@ namespace readlocalsize_kernel {
                                          verbose);
     }
 
-    test_utils::InvocationResult test(clspv_utils::kernel&              kernel,
-                                      const std::vector<std::string>&   args,
-                                      bool                              verbose)
-    {
-        test_utils::InvocationResult    invocationResult;
-
-        Test t(kernel, args);
-
-        t.prepare();
-        invocationResult.mParameters = t.getParameterString();
-        invocationResult.mExecutionTime = t.run(kernel);
-        invocationResult.mEvaluation = t.checkResults(verbose);
-
-        return invocationResult;
-    }
-
     test_utils::KernelTest::invocation_tests getAllTestVariants()
     {
-        test_utils::InvocationTest t({ "", test });
+        test_utils::InvocationTest t({ "", test_utils::run_test<Test> });
         return test_utils::KernelTest::invocation_tests({ t });
     }
 

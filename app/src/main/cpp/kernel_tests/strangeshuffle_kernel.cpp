@@ -33,9 +33,11 @@ namespace strangeshuffle_kernel {
         return invocation.run(num_workgroups);
     }
 
-    Test::Test(const clspv_utils::device& device, const std::vector<std::string>& args) :
+    Test::Test(clspv_utils::kernel& kernel, const std::vector<std::string>& args) :
         mBufferWidth(4096)
     {
+        auto& device = kernel.getDevice();
+
         // allocate source and destination buffers
         const std::size_t pixel_buffer_size = mBufferWidth * sizeof(gpu_types::float4);
         mSrcBuffer = vulkan_utils::storage_buffer(device.getDevice(), device.getMemoryProperties(), pixel_buffer_size);
@@ -67,7 +69,7 @@ namespace strangeshuffle_kernel {
                       mBufferWidth);
     }
 
-    test_utils::Evaluation Test::checkResults(bool verbose)
+    test_utils::Evaluation Test::evaluate(bool verbose)
     {
         auto srcBufferMap = mSrcBuffer.map<gpu_types::float4>();
         auto dstBufferMap = mDstBuffer.map<gpu_types::float4>();
@@ -79,23 +81,9 @@ namespace strangeshuffle_kernel {
     }
 
 
-    test_utils::InvocationResult test(clspv_utils::kernel&              kernel,
-                                      const std::vector<std::string>&   args,
-                                      bool                              verbose) {
-        test_utils::InvocationResult invocationResult;
-
-        Test t(kernel.getDevice(), args);
-
-        t.prepare();
-        invocationResult.mExecutionTime = t.run(kernel);
-        invocationResult.mEvaluation = t.checkResults(verbose);
-
-        return invocationResult;
-    }
-
     test_utils::KernelTest::invocation_tests getAllTestVariants()
     {
-        test_utils::InvocationTest t({ "", test });
+        test_utils::InvocationTest t({ "", test_utils::run_test<Test> });
         return test_utils::KernelTest::invocation_tests({ t });
     }
 }
