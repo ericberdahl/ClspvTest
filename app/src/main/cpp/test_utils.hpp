@@ -142,8 +142,16 @@ namespace test_utils {
 
         typedef std::function<test_fn_signature> test_fn;
 
+        typedef InvocationResult (time_fn_signature)(clspv_utils::kernel&             kernel,
+                                                     const std::vector<std::string>&  args,
+                                                     unsigned int                     iterations,
+                                                     bool                             verbose);
+
+        typedef std::function<time_fn_signature> time_fn;
+
         std::string mVariation;
         test_fn     mTestFn;
+        time_fn     mTimeFn;
     };
 
     struct KernelResult {
@@ -323,13 +331,52 @@ namespace test_utils {
                               bool                              verbose,
                               Test&                             test);
 
+    InvocationResult time_test(clspv_utils::kernel&             kernel,
+                               const std::vector<std::string>&  args,
+                               unsigned int                     iterations,
+                               bool                             verbose,
+                               Test&                            test);
+
     template <typename Test>
     InvocationResult run_test(clspv_utils::kernel&              kernel,
                               const std::vector<std::string>&   args,
                               bool                              verbose)
     {
+        InvocationResult result;
+
+        try
+        {
+            Test test(kernel, args);
+            result = run_test(kernel, args, verbose, test);
+        }
+        catch(const std::exception& e)
+        {
+            result.mEvaluation.mSkipped = true;
+            result.mEvaluation.mMessages.push_back(e.what());
+        }
+        catch(...)
+        {
+            result.mEvaluation.mSkipped = true;
+            result.mEvaluation.mMessages.push_back("Unknown exception running test");
+        }
+
+        return result;
+    }
+
+    template <typename Test>
+    InvocationResult time_test(clspv_utils::kernel&             kernel,
+                               const std::vector<std::string>&  args,
+                               unsigned int                     iterations,
+                               bool                             verbose)
+    {
         Test test(kernel, args);
-        return run_test(kernel, args, verbose, test);
+        return time_test(kernel, args, iterations, verbose, test);
+    }
+
+    template <typename Test>
+    InvocationTest make_invocation_test(std::string variation)
+    {
+        return InvocationTest{ variation, run_test<Test>, time_test<Test> };
     }
 
     KernelTest::result test_kernel(clspv_utils::module& module,

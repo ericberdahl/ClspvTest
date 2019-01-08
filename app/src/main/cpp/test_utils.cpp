@@ -223,6 +223,22 @@ namespace test_utils {
         return invocationResult;
     }
 
+    InvocationResult time_test(clspv_utils::kernel&             kernel,
+                               const std::vector<std::string>&  args,
+                               unsigned int                     iterations,
+                               bool                             verbose,
+                               Test&                            test)
+    {
+        // TODO: time_test not yet implemented
+
+        InvocationResult result;
+
+        result.mEvaluation.mSkipped = true;
+        result.mEvaluation.mMessages.push_back("test_test not yet implemented");
+
+        return result;
+    }
+
     Test::Test()
     {
 

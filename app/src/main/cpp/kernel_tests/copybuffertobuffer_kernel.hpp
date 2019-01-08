@@ -97,15 +97,10 @@ namespace copybuffertobuffer_kernel {
     template <typename PixelType>
     test_utils::InvocationTest getTestVariant()
     {
-        test_utils::InvocationTest result;
-
         std::ostringstream os;
         os << "<pixelType:" << pixels::traits<PixelType>::type_name << ">";
-        result.mVariation = os.str();
 
-        result.mTestFn = test_utils::run_test<Test<PixelType>>;
-
-        return result;
+        return test_utils::make_invocation_test< Test<PixelType> >(os.str());
     }
 }
 

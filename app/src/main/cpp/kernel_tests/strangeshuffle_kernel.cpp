@@ -83,7 +83,6 @@ namespace strangeshuffle_kernel {
 
     test_utils::KernelTest::invocation_tests getAllTestVariants()
     {
-        test_utils::InvocationTest t({ "", test_utils::run_test<Test> });
-        return test_utils::KernelTest::invocation_tests({ t });
+        return test_utils::KernelTest::invocation_tests({ test_utils::make_invocation_test<Test>("") });
     }
 }

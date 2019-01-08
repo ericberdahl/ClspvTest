@@ -13,6 +13,8 @@
 
 #include <vulkan/vulkan.hpp>
 
+#include <stdexcept>
+
 namespace copybuffertoimage_kernel {
 
     clspv_utils::execution_time_t
@@ -38,7 +40,14 @@ namespace copybuffertoimage_kernel {
         {
             auto& device = kernel.getDevice();
 
-            mDevice = device.getDevice();
+            if (!vulkan_utils::image::supportsFormatUse(device.getPhysicalDevice(),
+                                                        vk::Format(pixels::traits<ImagePixelType>::vk_pixel_type),
+                                                        vulkan_utils::image::kUsage_ReadWrite))
+            {
+                throw std::runtime_error("Format not supported for storage");
+            }
+
+                mDevice = device.getDevice();
             mComputeQueue = device.getComputeQueue();
             mCommandPool = device.getCommandPool();
 
@@ -139,46 +148,13 @@ namespace copybuffertoimage_kernel {
     };
 
     template <typename BufferPixelType, typename ImagePixelType>
-    test_utils::InvocationResult test(clspv_utils::kernel&              kernel,
-                                      const std::vector<std::string>&   args,
-                                      bool                              verbose)
-    {
-        // TODO: normalize this pattern with the generic pattern
-
-        test_utils::InvocationResult invocationResult;
-        auto& device = kernel.getDevice();
-
-        if (vulkan_utils::image::supportsFormatUse(device.getPhysicalDevice(),
-                                                   vk::Format(pixels::traits<ImagePixelType>::vk_pixel_type),
-                                                   vulkan_utils::image::kUsage_ReadWrite))
-        {
-            Test<BufferPixelType, ImagePixelType> t(kernel, args);
-
-            t.prepare();
-            invocationResult.mExecutionTime = t.run(kernel);
-            invocationResult.mEvaluation = t.evaluate(verbose);
-        }
-        else
-        {
-            invocationResult.mEvaluation.mSkipped = true;
-            invocationResult.mEvaluation.mMessages.push_back("Format not supported for storage");
-        }
-
-        return invocationResult;
-    }
-
-    template <typename BufferPixelType, typename ImagePixelType>
     test_utils::InvocationTest getTestVariant()
     {
-        test_utils::InvocationTest result;
 
         std::ostringstream os;
         os << "<src:" << pixels::traits<BufferPixelType>::type_name << " dst:" << pixels::traits<ImagePixelType>::type_name << ">";
-        result.mVariation = os.str();
 
-        result.mTestFn = test<BufferPixelType, ImagePixelType>;
-
-        return result;
+        return test_utils::make_invocation_test< Test<BufferPixelType, ImagePixelType> >(os.str());
     }
 }
 

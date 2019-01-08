@@ -117,15 +117,10 @@ namespace copyimagetobuffer_kernel {
     template <typename BufferPixelType, typename ImagePixelType>
     test_utils::InvocationTest getTestVariant()
     {
-        test_utils::InvocationTest result;
-
         std::ostringstream os;
         os << "<src:" << pixels::traits<BufferPixelType>::type_name << " dst:" << pixels::traits<ImagePixelType>::type_name << ">";
-        result.mVariation = os.str();
 
-        result.mTestFn = test_utils::run_test<Test<BufferPixelType, ImagePixelType>>;
-
-        return result;
+        return test_utils::make_invocation_test< Test<BufferPixelType, ImagePixelType> >(os.str());
     }
 }
 
