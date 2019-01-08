@@ -11,24 +11,25 @@
 # can be useful to work around driver bugs whereby compiling a given entry point has undesirable
 # side effects (e.g. crashes the app).
 #
-# test2d entry-point test2d-entry workgroup-size-x workgroup-size-y (test2d-arg...)
-# test3d entry-point test2d-entry workgroup-size-x workgroup-size-y workgroup-size-z (test2d-arg...)
-# Run a test2d, specified by the test2d-entry name, against the entry-point (found in the most recently
-# loaded module). test2d-entry is matched by a table internal to the application to look up the actual
-# test2d function executed. The test2d is executed with the indicated workgroup size. Any additional
-# test2d arguments are collected and passed (as a list of strings) to the test2d function itself. test2d
-# arguments are, therefore, specific to each test2d function.
+# test2d entry-point test-fn workgroup-size-x workgroup-size-y (test-arg...)
+# test3d entry-point test-fn workgroup-size-x workgroup-size-y workgroup-size-z (test-arg...)
+# Run a test, specified by the test-fn name, against the entry-point (found in the most recently
+# loaded module). test-fn is matched by a table internal to the application to look up the actual
+# test function executed. The test is executed with the indicated workgroup size. Any additional
+# test arguments are collected and passed (as a list of strings) to the test function itself. test
+# arguments are, therefore, specific to each test function.
+#
+# time entry-point test-fn num-iterations workgroup-size-x workgroup-size-y workgroup-size-z (test-arg ...)
+# Run a test, specified by the test-fn name, against the entry-point (found in the most recently
+# loaded module). test-fn is matched by a table internal to the application to look up the actual
+# test function executed. The test is executed with the indicated workgroup size for the indicated
+# number of iterations, but without checking for correctness (thereby making the timing test execute
+# in significantly shorter real-world time).
 #
 # verbosity [full|silent]
 # Change the amount of output subsequent tests will emit.
 # full - (default) instruct tests to emit as much detail about their results as they can
 # silent - instruct tests to emit as little detail about their results as practical
-#
-# iterations num-iterations
-# Change the number of times subsequent tests will run. The default number of iterations is 1.
-# num-iterations must be positive. This could be useful for exploring timing of individual kernel
-# execution (e.g. allowing one to run a test2d multiple times in rapid succession without having to
-# launch ClspvTest multiple times.
 #
 # vkValidation [all|none]
 # Instruct the test2d harness how to set up Vulkan validations layers for this test2d run. Note that

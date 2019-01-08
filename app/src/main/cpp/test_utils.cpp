@@ -44,23 +44,20 @@ namespace {
 
     InvocationResult null_invocation_test(clspv_utils::kernel &kernel,
                                           const std::vector<std::string> &args,
-                                          bool verbose)
-    {
+                                          bool verbose) {
         InvocationResult result;
         result.mEvaluation.mNumCorrect = 1;
         result.mEvaluation.mMessages.push_back("kernel compiled but intentionally not invoked");
         return result;
     }
 
-    InvocationResult failTestFn(clspv_utils::kernel&             kernel,
-                                const std::vector<std::string>&  args,
-                                bool                             verbose)
-    {
+    InvocationResult failTestFn(clspv_utils::kernel &kernel,
+                                const std::vector<std::string> &args,
+                                bool verbose) {
         InvocationResult result;
         result.mEvaluation.mMessages.push_back("kernel failed to compile");
         return result;
     }
-
 }
 
 namespace test_utils {
@@ -83,14 +80,23 @@ namespace test_utils {
 
         if (!kernelTest.mInvocationTests.empty()) {
             try {
-                for (unsigned int i = kernelTest.mIterations; i > 0; --i) {
-                    for (auto &oneTest : kernelTest.mInvocationTests) {
-                        InvocationTest::test_fn testFn = (result.second.mCompiledCorrectly ? oneTest.mTestFn : failTestFn);
-                        result.second.mInvocationResults.push_back(
-                                InvocationTest::result(&oneTest,
-                                                       testFn(kernel,
-                                                              kernelTest.mArguments,
-                                                              kernelTest.mIsVerbose)));
+                for (auto &oneTest : kernelTest.mInvocationTests) {
+                    std::vector<InvocationResult> invocationResults;
+                    if (!result.second.mCompiledCorrectly)
+                    {
+                        invocationResults.push_back(failTestFn(kernel, kernelTest.mArguments, kernelTest.mIsVerbose));
+                    }
+                    else if (0 == kernelTest.mTimingIterations)
+                    {
+                        invocationResults.push_back(oneTest.mTestFn(kernel, kernelTest.mArguments, kernelTest.mIsVerbose));
+                    }
+                    else
+                    {
+                        invocationResults = oneTest.mTimeFn(kernel, kernelTest.mArguments, kernelTest.mTimingIterations, kernelTest.mIsVerbose);
+                    }
+
+                    for (auto& oneResult : invocationResults) {
+                        result.second.mInvocationResults.push_back(InvocationTest::result(&oneTest, oneResult));
                     }
                 }
             }
@@ -223,20 +229,27 @@ namespace test_utils {
         return invocationResult;
     }
 
-    InvocationResult time_test(clspv_utils::kernel&             kernel,
-                               const std::vector<std::string>&  args,
-                               unsigned int                     iterations,
-                               bool                             verbose,
-                               Test&                            test)
+    std::vector<InvocationResult> time_test(clspv_utils::kernel&             kernel,
+                                            const std::vector<std::string>&  args,
+                                            unsigned int                     iterations,
+                                            bool                             verbose,
+                                            Test&                            test)
     {
-        // TODO: time_test not yet implemented
+        std::vector<InvocationResult> results;
 
-        InvocationResult result;
+        InvocationResult oneResult;
+        oneResult.mParameters = test.getParameterString();
+        oneResult.mEvaluation.mNumCorrect = 1;  // timing tests always succeed trivially
 
-        result.mEvaluation.mSkipped = true;
-        result.mEvaluation.mMessages.push_back("test_test not yet implemented");
+        for (unsigned int i = iterations; i > 0; --i)
+        {
+            test.prepare();
+            oneResult.mExecutionTime = test.run(kernel);
 
-        return result;
+            results.push_back(oneResult);
+        }
+
+        return results;
     }
 
     Test::Test()

@@ -144,25 +144,48 @@ namespace
         return result;
     }
 
-    unsigned int read_itereations_op(std::istream& is)
+    test_utils::KernelTest::test_arguments read_test_args(std::istream& is)
     {
-        // set number of iterations for tests
-        int iterations_requested;
-        is >> iterations_requested;
+        test_utils::KernelTest::test_arguments result;
 
-        if (0 >= iterations_requested)
+        while (!is.eof())
         {
-            throw std::runtime_error("illegal iteration count requested");
+            std::string arg;
+            is >> arg;
+
+            // comment delimiter halts collection of test arguments
+            if (arg[0] == '#') break;
+
+            result.push_back(arg);
         }
 
-        return iterations_requested;
+        return result;
+    }
+
+    void validate_kernel_test(const test_utils::KernelTest& testEntry, const std::string& testName)
+    {
+        if (testEntry.mInvocationTests.empty())
+        {
+            throw std::runtime_error("cannot find tests " + testName);
+        }
+
+        if (1 > testEntry.mWorkgroupSize.width || 1 > testEntry.mWorkgroupSize.height || 1 > testEntry.mWorkgroupSize.depth)
+        {
+            std::ostringstream os;
+            os << "bad workgroup dimensions {"
+               << testEntry.mWorkgroupSize.width
+               << ',' << testEntry.mWorkgroupSize.height
+               << ',' << testEntry.mWorkgroupSize.depth
+               << '}';
+
+            throw std::runtime_error(os.str());
+        }
     }
 
     void read_test_op(std::istream&         is,
                       const std::string&    op,
                       manifest_t&           manifest,
-                      bool                  verbose,
-                      unsigned int          iterations)
+                      bool                  verbose)
     {
         if (manifest.tests.empty())
         {
@@ -171,7 +194,6 @@ namespace
 
         test_utils::KernelTest testEntry;
         testEntry.mIsVerbose = verbose;
-        testEntry.mIterations = iterations;
 
         std::string testName;
         is >> testEntry.mEntryName
@@ -187,33 +209,42 @@ namespace
             testEntry.mWorkgroupSize.depth = 1;
         }
 
-        while (!is.eof())
-        {
-            std::string arg;
-            is >> arg;
-
-            // comment delimiter halts collection of test arguments
-            if (arg[0] == '#') break;
-
-            testEntry.mArguments.push_back(arg);
-        }
-
+        testEntry.mArguments = read_test_args(is);
         testEntry.mInvocationTests = lookup_test_series(testName);
 
-        if (testEntry.mInvocationTests.empty())
-        {
-            throw std::runtime_error("cannot find tests " + testName);
-        }
-        if (1 > testEntry.mWorkgroupSize.width || 1 > testEntry.mWorkgroupSize.height || 1 > testEntry.mWorkgroupSize.depth)
-        {
-            std::ostringstream os;
-            os << "bad workgroup dimensions {"
-                  << testEntry.mWorkgroupSize.width
-               << ',' << testEntry.mWorkgroupSize.height
-               << ',' << testEntry.mWorkgroupSize.depth
-               << '}';
+        validate_kernel_test(testEntry, testName);
 
-            throw std::runtime_error(os.str());
+        manifest.tests.back().mKernelTests.push_back(testEntry);
+    }
+
+    void read_time_op(std::istream&         is,
+                      const std::string&    op,
+                      manifest_t&           manifest,
+                      bool                  verbose)
+    {
+        if (manifest.tests.empty())
+        {
+            throw std::runtime_error("no module for test");
+        }
+
+        test_utils::KernelTest testEntry;
+        testEntry.mIsVerbose = verbose;
+
+        std::string testName;
+        is >> testEntry.mEntryName
+           >> testName
+           >> testEntry.mTimingIterations
+           >> testEntry.mWorkgroupSize.width
+           >> testEntry.mWorkgroupSize.height
+           >> testEntry.mWorkgroupSize.depth;
+
+        testEntry.mArguments = read_test_args(is);
+        testEntry.mInvocationTests = lookup_test_series(testName);
+
+        validate_kernel_test(testEntry, testName);
+        if (0 >= testEntry.mTimingIterations)
+        {
+            throw std::runtime_error("illegal iteration count requested");
         }
 
         manifest.tests.back().mKernelTests.push_back(testEntry);
@@ -305,7 +336,11 @@ namespace test_manifest
                 }
                 else if (op == "test" || op == "test2d" || op == "test3d")
                 {
-                    read_test_op(in_line, op, result, verbose, iterations);
+                    read_test_op(in_line, op, result, verbose);
+                }
+                else if (op == "time")
+                {
+                    read_time_op(in_line, op, result, verbose);
                 }
                 else if (op == "skip")
                 {
@@ -319,10 +354,6 @@ namespace test_manifest
                 {
                     verbose = read_verbosity_op(in_line);
                 }
-                else if (op == "iterations")
-                {
-                    iterations = read_itereations_op(in_line);
-                }
                 else if (op == "end")
                 {
                     // terminate reading the manifest
@@ -330,7 +361,10 @@ namespace test_manifest
                 }
                 else
                 {
-                    throw std::runtime_error("ill-formed line");
+                    LOGE("%s: Error '%s' from command '%s'",
+                         __func__,
+                         "Unknown operation",
+                         line.c_str());
                 }
             }
             catch (const std::exception& e)

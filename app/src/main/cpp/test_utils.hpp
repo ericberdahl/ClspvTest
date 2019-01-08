@@ -142,7 +142,8 @@ namespace test_utils {
 
         typedef std::function<test_fn_signature> test_fn;
 
-        typedef InvocationResult (time_fn_signature)(clspv_utils::kernel&             kernel,
+        typedef std::vector<InvocationResult> (time_fn_signature)(
+                                                     clspv_utils::kernel&             kernel,
                                                      const std::vector<std::string>&  args,
                                                      unsigned int                     iterations,
                                                      bool                             verbose);
@@ -166,13 +167,14 @@ namespace test_utils {
     struct KernelTest {
         typedef std::pair<const KernelTest*,KernelResult>   result;
         typedef std::vector<InvocationTest>                 invocation_tests;
+        typedef std::vector<std::string>                    test_arguments;
 
-        std::string                 mEntryName;
-        vk::Extent3D                mWorkgroupSize;
-        std::vector<std::string>    mArguments;
-        unsigned int                mIterations     = 1;
-        bool                        mIsVerbose      = false;
-        invocation_tests            mInvocationTests;
+        std::string         mEntryName;
+        vk::Extent3D        mWorkgroupSize;
+        test_arguments      mArguments;
+        unsigned int        mTimingIterations   = 0;
+        bool                mIsVerbose          = false;
+        invocation_tests    mInvocationTests;
     };
 
     struct ModuleResult {
@@ -331,11 +333,11 @@ namespace test_utils {
                               bool                              verbose,
                               Test&                             test);
 
-    InvocationResult time_test(clspv_utils::kernel&             kernel,
-                               const std::vector<std::string>&  args,
-                               unsigned int                     iterations,
-                               bool                             verbose,
-                               Test&                            test);
+    std::vector<InvocationResult> time_test(clspv_utils::kernel&             kernel,
+                                            const std::vector<std::string>&  args,
+                                            unsigned int                     iterations,
+                                            bool                             verbose,
+                                            Test&                            test);
 
     template <typename Test>
     InvocationResult run_test(clspv_utils::kernel&              kernel,
@@ -364,10 +366,10 @@ namespace test_utils {
     }
 
     template <typename Test>
-    InvocationResult time_test(clspv_utils::kernel&             kernel,
-                               const std::vector<std::string>&  args,
-                               unsigned int                     iterations,
-                               bool                             verbose)
+    std::vector<InvocationResult> time_test(clspv_utils::kernel&             kernel,
+                                            const std::vector<std::string>&  args,
+                                            unsigned int                     iterations,
+                                            bool                             verbose)
     {
         Test test(kernel, args);
         return time_test(kernel, args, iterations, verbose, test);

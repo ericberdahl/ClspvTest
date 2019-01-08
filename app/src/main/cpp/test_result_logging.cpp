@@ -77,7 +77,7 @@ namespace {
         std::vector<InvocationSummary>  mInvocationSummaries;
         const std::string*              mExceptionMessage   = nullptr;
 
-        unsigned int                    mIterations         = 0;
+        unsigned int                    mTimingIterations   = 0;
         execution_times                 mMeanTimes;
         execution_times                 mVarianceTimes;
     };
@@ -215,7 +215,7 @@ namespace {
     KernelSummary summarizeKernel(const sample_info &info, const test_utils::KernelTest::result& kr) {
         KernelSummary result;
         result.mEntryPoint = kr.first->mEntryName;
-        result.mIterations = kr.first->mIterations;
+        result.mTimingIterations = kr.first->mTimingIterations;
 
         if (!kr.second.mExceptionString.empty()) result.mExceptionMessage = &kr.second.mExceptionString;
 
@@ -228,7 +228,7 @@ namespace {
                                          ResultCounts::null(),
                                          [](ResultCounts r, const InvocationSummary& is) { return r + is.mCounts; });
 
-        if (result.mIterations > 1) {
+        if (result.mTimingIterations > 0) {
             std::tie(result.mMeanTimes, result.mVarianceTimes) = computeSummaryStats(info, kr.second.mInvocationResults);
         }
 
@@ -271,7 +271,7 @@ namespace {
         return result;
     }
 
-    void logInvocationSummary(const InvocationSummary& summary, unsigned int indent = 0) {
+    std::string composeBasicInvocationSummary(const InvocationSummary& summary) {
         std::ostringstream os;
         os << (summary.mCounts.mSkip > 0 ? "SKIP" : (summary.mCounts.mFail > 0 ? "FAIL" : "PASS"));
 
@@ -282,6 +282,13 @@ namespace {
         if (summary.mParameters) {
             os << " parameters:" << *summary.mParameters;
         }
+
+        return os.str();
+    }
+
+    void logInvocationSummary(const InvocationSummary& summary, unsigned int indent = 0) {
+        std::ostringstream os;
+        os << composeBasicInvocationSummary(summary);
 
         if (0 == summary.mCounts.mSkip) {
             os << " correctValues:" << summary.mNumCorrect
@@ -312,28 +319,44 @@ namespace {
             logInfo(os.str(), indent + 1);
         }
 
-        std::for_each(summary.mInvocationSummaries.begin(), summary.mInvocationSummaries.end(),
-                      std::bind(logInvocationSummary, std::placeholders::_1, indent + 1));
+        if (0 == summary.mTimingIterations) {
+            std::for_each(summary.mInvocationSummaries.begin(), summary.mInvocationSummaries.end(),
+                          std::bind(logInvocationSummary, std::placeholders::_1, indent + 1));
+        } else {
+            assert(!summary.mInvocationSummaries.empty());
+            logInfo(composeBasicInvocationSummary(summary.mInvocationSummaries[0]), indent + 1);
 
-        if (summary.mIterations > 1) {
-            std::ostringstream os;
-            os << "AVERAGE "
-               << " wallClockTime:" << summary.mMeanTimes.wallClockTime_s * 1000.0f << "ms"
-               << " executionTime:" << summary.mMeanTimes.executionTime_ns / 1000.0f << "µs"
-               << " hostBarrierTime:" << summary.mMeanTimes.hostBarrierTime_ns / 1000.0f << "µs"
-               << " gpuBarrierTime:" << summary.mMeanTimes.gpuBarrierTime_ns / 1000.0f << "µs";
-            logInfo(os.str(), indent + 1);
-        }
+            {
+                std::ostringstream os;
+                os << "NUMBER ITERATIONS = " << summary.mTimingIterations;
+                logInfo(os.str(), indent + 1);
+            }
 
-        if (summary.mIterations > 1 && summary.mInvocationSummaries.size() > 1) {
-            std::ostringstream os;
-            os << "STD_DEVIATION "
-               << " wallClockTime:" << sqrt(summary.mVarianceTimes.wallClockTime_s) * 1000.0f << "ms"
-               << " executionTime:" << sqrt(summary.mVarianceTimes.executionTime_ns) / 1000.0f << "µs"
-               << " hostBarrierTime:" << sqrt(summary.mVarianceTimes.hostBarrierTime_ns) / 1000.0f << "µs"
-               << " gpuBarrierTime:" << sqrt(summary.mVarianceTimes.gpuBarrierTime_ns) / 1000.0f << "µs";
+            {
+                std::ostringstream os;
+                os << "AVERAGE "
+                   << " wallClockTime:" << summary.mMeanTimes.wallClockTime_s * 1000.0f << "ms"
+                   << " executionTime:" << summary.mMeanTimes.executionTime_ns / 1000.0f << "µs"
+                   << " hostBarrierTime:" << summary.mMeanTimes.hostBarrierTime_ns / 1000.0f << "µs"
+                   << " gpuBarrierTime:" << summary.mMeanTimes.gpuBarrierTime_ns / 1000.0f << "µs";
+                logInfo(os.str(), indent + 1);
+            }
 
-            logInfo(os.str(), indent + 1);
+            if (summary.mInvocationSummaries.size() > 1) {
+                std::ostringstream os;
+                os << "STD_DEVIATION "
+                   << " wallClockTime:" << sqrt(summary.mVarianceTimes.wallClockTime_s) * 1000.0f
+                   << "ms"
+                   << " executionTime:" << sqrt(summary.mVarianceTimes.executionTime_ns) / 1000.0f
+                   << "µs"
+                   << " hostBarrierTime:"
+                   << sqrt(summary.mVarianceTimes.hostBarrierTime_ns) / 1000.0f
+                   << "µs"
+                   << " gpuBarrierTime:" << sqrt(summary.mVarianceTimes.gpuBarrierTime_ns) / 1000.0f
+                   << "µs";
+
+                logInfo(os.str(), indent + 1);
+            }
         }
     }
 
