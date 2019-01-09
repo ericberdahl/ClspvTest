@@ -11,6 +11,7 @@
 #include "kernel_tests/copybuffertobuffer_kernel.hpp"
 #include "kernel_tests/fillarraystruct_kernel.hpp"
 #include "kernel_tests/fill_kernel.hpp"
+#include "kernel_tests/generic_kernel.hpp"
 #include "kernel_tests/readconstantdata_kernel.hpp"
 #include "kernel_tests/readlocalsize_kernel.hpp"
 #include "kernel_tests/resample2dimage_kernel.hpp"
@@ -53,6 +54,7 @@ namespace
                 std::make_pair("fill",                 createGenerator(fill_kernel::getAllTestVariants)),
                 std::make_pair("fill<float4>",         createGenerator(fill_kernel::getTestVariant<gpu_types::float4>)),
                 std::make_pair("fill<half4>",          createGenerator(fill_kernel::getTestVariant<gpu_types::half4>)),
+                std::make_pair("generic",              createGenerator(generic_kernel::getAllTestVariants)),
                 std::make_pair("resample2dimage",      createGenerator(resample2dimage_kernel::getAllTestVariants)),
                 std::make_pair("resample3dimage",      createGenerator(resample3dimage_kernel::getAllTestVariants)),
                 std::make_pair("readLocalSize",        createGenerator(readlocalsize_kernel::getAllTestVariants)),

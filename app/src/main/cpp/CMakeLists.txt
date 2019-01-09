@@ -59,6 +59,7 @@ add_library(native-activity SHARED
         kernel_tests/copybuffertoimage_kernel.cpp
         kernel_tests/fillarraystruct_kernel.cpp
         kernel_tests/fill_kernel.cpp
+        kernel_tests/generic_kernel.cpp
         kernel_tests/readconstantdata_kernel.cpp
         kernel_tests/readlocalsize_kernel.cpp
         kernel_tests/resample2dimage_kernel.cpp
