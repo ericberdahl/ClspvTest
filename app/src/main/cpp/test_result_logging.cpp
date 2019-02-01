@@ -357,6 +357,22 @@ namespace {
 
                 logInfo(os.str(), indent + 1);
             }
+
+            if (summary.mInvocationSummaries.size() > 1) {
+                std::ostringstream os;
+                os << "VARIANCE "
+                   << " wallClockTime:" << summary.mVarianceTimes.wallClockTime_s * 1000000.0f
+                   << "ms^2"
+                   << " executionTime:" << summary.mVarianceTimes.executionTime_ns / 1000000.0f
+                   << "µs^2"
+                   << " hostBarrierTime:"
+                   << summary.mVarianceTimes.hostBarrierTime_ns / 1000000.0f
+                   << "µs^2"
+                   << " gpuBarrierTime:" << summary.mVarianceTimes.gpuBarrierTime_ns / 1000000.0f
+                   << "µs^2";
+
+                logInfo(os.str(), indent + 1);
+            }
         }
     }
 
