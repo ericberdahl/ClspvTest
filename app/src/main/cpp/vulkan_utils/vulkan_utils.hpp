@@ -272,15 +272,14 @@ namespace vulkan_utils {
         template <typename T>
         inline mapped_ptr<T> map()
         {
-            return mDeviceMemory.map<T>();
+            return mStorageBuffer.map<T>();
         }
 
     private:
         vk::Device              mDevice;
         image*                  mImage;
+        storage_buffer          mStorageBuffer;
         vk::Extent3D            mExtent;
-        device_memory           mDeviceMemory;
-        vk::UniqueBuffer        mBuffer;
     };
 
     inline void swap(staging_buffer & lhs, staging_buffer & rhs)

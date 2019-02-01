@@ -261,7 +261,7 @@ namespace {
         vk::BufferMemoryBarrier result;
 
         result.setSrcAccessMask(vk::AccessFlagBits::eHostWrite | vk::AccessFlagBits::eTransferWrite | vk::AccessFlagBits::eShaderWrite)
-                .setDstAccessMask(vk::AccessFlagBits::eShaderRead)
+                .setDstAccessMask(vk::AccessFlagBits::eShaderRead | vk::AccessFlagBits::eTransferRead)
                 .setSize(VK_WHOLE_SIZE)
                 .setBuffer(buf);
 
@@ -273,7 +273,7 @@ namespace {
         vk::BufferMemoryBarrier result;
 
         result.setSrcAccessMask(vk::AccessFlagBits::eHostRead | vk::AccessFlagBits::eTransferRead | vk::AccessFlagBits::eShaderRead)
-                .setDstAccessMask(vk::AccessFlagBits::eShaderWrite)
+                .setDstAccessMask(vk::AccessFlagBits::eShaderWrite | vk::AccessFlagBits::eTransferWrite)
                 .setSize(VK_WHOLE_SIZE)
                 .setBuffer(buf);
 
@@ -691,9 +691,8 @@ namespace vulkan_utils {
     staging_buffer::staging_buffer()
             : mDevice(),
               mImage(),
-              mExtent(0),
-              mDeviceMemory(),
-              mBuffer()
+              mStorageBuffer(),
+              mExtent(0)
     {
         // this space intentionally left blank
     }
@@ -704,9 +703,8 @@ namespace vulkan_utils {
 
         swap(mDevice, other.mDevice);
         swap(mImage, other.mImage);
+        swap(mStorageBuffer, other.mStorageBuffer);
         swap(mExtent, other.mExtent);
-        swap(mDeviceMemory, other.mDeviceMemory);
-        swap(mBuffer, other.mBuffer);
     }
 
 
@@ -721,22 +719,10 @@ namespace vulkan_utils {
         mImage = image;
         mExtent = extent;
 
+
         const std::size_t num_bytes = pixelSize * mExtent.width * mExtent.height * mExtent.depth;
 
-        // Allocate the buffer
-        vk::BufferCreateInfo buf_info;
-        buf_info.setUsage(vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eTransferSrc)
-                .setSize(num_bytes)
-                .setSharingMode(vk::SharingMode::eExclusive);
-
-        mBuffer = mDevice.createBufferUnique(buf_info);
-
-        mDeviceMemory = device_memory(device,
-                                      device.getBufferMemoryRequirements(*mBuffer),
-                                      memoryProperties);
-
-        // Bind the memory to the buffer object
-        mDeviceMemory.bind(*mBuffer, 0);
+        mStorageBuffer = storage_buffer(device, memoryProperties, num_bytes);
     }
 
     staging_buffer::staging_buffer(staging_buffer&& other)
@@ -756,12 +742,7 @@ namespace vulkan_utils {
 
     void staging_buffer::copyToImage(vk::CommandBuffer commandBuffer)
     {
-        vk::BufferMemoryBarrier bufferBarrier;
-        bufferBarrier.setSrcAccessMask(vk::AccessFlagBits::eHostWrite)
-                .setDstAccessMask(vk::AccessFlagBits::eTransferRead)
-                .setBuffer(*mBuffer)
-                .setSize(VK_WHOLE_SIZE);
-
+        vk::BufferMemoryBarrier bufferBarrier = mStorageBuffer.prepareForRead();
         vk::ImageMemoryBarrier imageBarrier = mImage->prepare(vk::ImageLayout::eTransferDstOptimal);
 
         vk::BufferImageCopy copyRegion;
@@ -778,17 +759,12 @@ namespace vulkan_utils {
                                       bufferBarrier,   // buffer memory barriers
                                       imageBarrier);   // image memory barriers
 
-        commandBuffer.copyBufferToImage(*mBuffer, imageBarrier.image, imageBarrier.newLayout, copyRegion);
+        commandBuffer.copyBufferToImage(bufferBarrier.buffer, imageBarrier.image, imageBarrier.newLayout, copyRegion);
     }
 
     void staging_buffer::copyFromImage(vk::CommandBuffer commandBuffer)
     {
-        vk::BufferMemoryBarrier bufferBarrier;
-        bufferBarrier.setSrcAccessMask(vk::AccessFlagBits::eTransferRead | vk::AccessFlagBits::eHostRead | vk::AccessFlagBits::eShaderRead)
-                .setDstAccessMask(vk::AccessFlagBits::eTransferWrite)
-                .setBuffer(*mBuffer)
-                .setSize(VK_WHOLE_SIZE);
-
+        vk::BufferMemoryBarrier bufferBarrier = mStorageBuffer.prepareForWrite();
         vk::ImageMemoryBarrier imageBarrier = mImage->prepare(vk::ImageLayout::eTransferSrcOptimal);
 
         vk::BufferImageCopy copyRegion;
@@ -805,7 +781,7 @@ namespace vulkan_utils {
                                       bufferBarrier,   // buffer memory barriers
                                       imageBarrier);   // image memory barriers
 
-        commandBuffer.copyImageToBuffer(imageBarrier.image, imageBarrier.newLayout, *mBuffer, copyRegion);
+        commandBuffer.copyImageToBuffer(imageBarrier.image, imageBarrier.newLayout, bufferBarrier.buffer, copyRegion);
     }
 
     double timestamp_delta_ns(std::uint64_t                         startTimestamp,
