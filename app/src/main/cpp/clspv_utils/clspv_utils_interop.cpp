@@ -13,4 +13,9 @@ namespace clspv_utils {
         throw std::runtime_error(what);
     }
 
+    void fail_runtime_error(const string& what)
+    {
+        throw std::runtime_error(what);
+    }
+
 }

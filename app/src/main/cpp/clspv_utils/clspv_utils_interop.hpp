@@ -22,6 +22,8 @@ namespace clspv_utils {
     template <typename T>
     using vector = std::vector<T>;
 
+    void fail_runtime_error(const string& what);
+
     void fail_runtime_error(const char* what);
 
 }
