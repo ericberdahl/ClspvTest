@@ -280,6 +280,10 @@ namespace {
         return result;
     }
 
+    void fail_runtime_error(const char* what)
+    {
+        throw std::runtime_error(what);
+    }
 }
 
 namespace vulkan_utils {
@@ -293,7 +297,7 @@ namespace vulkan_utils {
         auto found = find_compatible_memory(mem_props.memoryTypes, last, mem_reqs.memoryTypeBits, property_flags);
         if (found == last)
         {
-            throw std::runtime_error("No mappable device memory");
+            fail_runtime_error("No mappable device memory");
         }
 
         // Allocate memory for the buffer
@@ -361,7 +365,7 @@ namespace vulkan_utils {
     std::unique_ptr<void, device_memory::unmapper_t> device_memory::map()
     {
         if (mMapped) {
-            throw std::runtime_error("device_memory is already mapped");
+            fail_runtime_error("device_memory is already mapped");
         }
 
         void* memMap = mDevice.mapMemory(*mMemory, 0, VK_WHOLE_SIZE, vk::MemoryMapFlags());
@@ -376,7 +380,7 @@ namespace vulkan_utils {
     void device_memory::unmap()
     {
         if (!mMapped) {
-            throw std::runtime_error("device_memory is not mapped");
+            fail_runtime_error("device_memory is not mapped");
         }
 
         const vk::MappedMemoryRange mappedRange(*mMemory, 0, VK_WHOLE_SIZE);
@@ -546,7 +550,7 @@ namespace vulkan_utils {
     {
         if (extent.width < 1 || extent.height < 1 || extent.depth < 1)
         {
-            throw std::runtime_error("Invalid extent for image -- at least one dimension is 0");
+            fail_runtime_error("Invalid extent for image -- at least one dimension is 0");
         }
 
         const bool is3D = (extent.depth > 1);
@@ -618,10 +622,10 @@ namespace vulkan_utils {
     {
         auto found = kFormatSizeTable.find((VkFormat)mFormat);
         if (found == kFormatSizeTable.end()) {
-            throw std::runtime_error("cannot map image format to pixel size");
+            fail_runtime_error("cannot map image format to pixel size");
         }
         if (0 == found->second) {
-            throw std::runtime_error("image format pixels are not a knowable size");
+            fail_runtime_error("image format pixels are not a knowable size");
         }
 
         return staging_buffer(mDevice,
@@ -643,7 +647,7 @@ namespace vulkan_utils {
     {
         if (newLayout == vk::ImageLayout::eUndefined)
         {
-            throw std::runtime_error("images cannot be transitioned to undefined layout");
+            fail_runtime_error("images cannot be transitioned to undefined layout");
         }
 
         // TODO: if the layout isn't changing, no barrier is needed
@@ -666,7 +670,7 @@ namespace vulkan_utils {
         auto newAccess = std::find_if(accessMap.begin(), accessMap.end(), std::bind(layoutFinder, std::placeholders::_1, newLayout));
         if (newAccess == accessMap.end())
         {
-            throw std::runtime_error("new image layout is unsupported");
+            fail_runtime_error("new image layout is unsupported");
         }
 
         vk::ImageMemoryBarrier result;
