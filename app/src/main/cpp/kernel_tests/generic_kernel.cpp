@@ -99,6 +99,13 @@ namespace generic_kernel {
                 // TODO: support write only images
                 clspv_utils::fail_runtime_error("generic does not yet support write-only images");
             }
+            else if (*arg == "-label") {
+                // record a label for the test
+                arg = std::next(arg);
+                if (arg == args.end()) clspv_utils::fail_runtime_error("badly formed arguments to generic test");
+
+                mParameterString = *arg;
+            }
         }
     }
 
@@ -142,6 +149,11 @@ namespace generic_kernel {
         }
 
         return invocation.run(mNumWorkgroups);
+    }
+
+    std::string Test::getParameterString() const
+    {
+        return mParameterString;
     }
 
     test_utils::Evaluation Test::evaluate(bool verbose)

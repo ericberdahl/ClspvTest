@@ -28,11 +28,15 @@ namespace generic_kernel {
 
         Test(clspv_utils::kernel& kernel, const std::vector<std::string>& args);
 
+        virtual std::string getParameterString() const override;
+
         virtual void prepare() override;
 
         virtual clspv_utils::execution_time_t run(clspv_utils::kernel& kernel) override;
 
         virtual test_utils::Evaluation evaluate(bool verbose) override;
+
+        std::string             mParameterString;
 
         storage_list            mStorageBuffers;
         uniform_list            mUniformBuffers;
