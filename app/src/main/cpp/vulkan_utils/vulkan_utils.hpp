@@ -43,16 +43,8 @@ namespace vulkan_utils {
 
     class device_memory {
     public:
-        struct unmapper_t {
-            unmapper_t(device_memory* s) : self(s) {}
-
-            void    operator()(const void* ptr) { self->unmap(); }
-
-            device_memory*  self;
-        };
-
         template <typename T>
-        using mapped_ptr = std::unique_ptr<T, unmapper_t>;
+        using mapped_ptr = std::unique_ptr<T, std::function<void (void*)> >;
 
     public:
         device_memory() {}
@@ -83,7 +75,7 @@ namespace vulkan_utils {
         inline mapped_ptr<T> map()
         {
             auto basicMap = map();
-            return std::unique_ptr<T, unmapper_t>(static_cast<T*>(basicMap.release()), basicMap.get_deleter());
+            return mapped_ptr<T>(static_cast<T*>(basicMap.release()), basicMap.get_deleter());
         }
 
         mapped_ptr<void> map();
