@@ -149,6 +149,30 @@ void my_init_descriptor_pool(struct sample_info &info) {
     info.desc_pool = info.device->createDescriptorPoolUnique(createInfo);
 }
 
+void dumpInstanceExtensions()
+{
+    auto properties = vk::enumerateInstanceExtensionProperties();
+
+    LOGI("instanceExtensionProperties {");
+    for (const auto& p : properties)
+    {
+        LOGI("   %s", p.extensionName);
+    }
+    LOGI("}");
+}
+
+void dumpDeviceExtensions(vk::PhysicalDevice device)
+{
+    auto properties = device.enumerateDeviceExtensionProperties();
+
+    LOGI("deviceExtensionProperties {");
+    for (const auto& p : properties)
+    {
+        LOGI("   %s", p.extensionName);
+    }
+    LOGI("}");
+}
+
 /* ============================================================================================== */
 
 int sample_main(int argc, char *argv[]) {
@@ -175,6 +199,9 @@ int sample_main(int argc, char *argv[]) {
 
     init_command_pool(info);
     my_init_descriptor_pool(info);
+
+    dumpInstanceExtensions();
+    dumpDeviceExtensions(info.gpu);
 
     clspv_utils::device device(info.gpu,
                                *info.device,
