@@ -900,55 +900,14 @@ namespace vulkan_utils {
 
 } // namespace vulkan_utils
 
-std::ostream& operator<<(std::ostream& os, vk::MemoryPropertyFlags vkFlags) {
-    const VkMemoryPropertyFlags flags = (VkMemoryPropertyFlags) vkFlags;
-    if (0 == flags) {
-        os << "0";
-    }
-    else {
-        std::vector<const char*> bits;
-        bits.reserve(5);
-        if (0 != (flags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)) {
-            bits.push_back("eDeviceLocal");
-        }
-        if (0 != (flags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)) {
-            bits.push_back("eHostVisible");
-        }
-        if (0 != (flags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)) {
-            bits.push_back("eHostCoherent");
-        }
-        if (0 != (flags & VK_MEMORY_PROPERTY_HOST_CACHED_BIT)) {
-            bits.push_back("eHostCached");
-        }
-        if (0 != (flags & VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT)) {
-            bits.push_back("eLazilyAllocated");
-        }
-        os << std::hex << std::showbase << (int)flags << '(';
-        std::copy(bits.begin(), bits.end(), std::ostream_iterator<const char*>(os, " | "));
-        os << ')';
-    }
+std::ostream& operator<<(std::ostream& os, vk::MemoryPropertyFlags flags) {
+    os << std::hex << std::showbase << (VkMemoryPropertyFlags)flags << vk::to_string(flags);
 
     return os;
 }
 
-std::ostream& operator<<(std::ostream& os, vk::MemoryHeapFlags vkFlags) {
-    const VkMemoryHeapFlags flags = (VkMemoryHeapFlags) vkFlags;
-    if (0 == flags) {
-        os << "0";
-    }
-    else {
-        std::vector<const char*> bits;
-        bits.reserve(2);
-        if (0 != (flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)) {
-            bits.push_back("eDeviceLocal");
-        }
-        if (0 != (flags & VK_MEMORY_HEAP_MULTI_INSTANCE_BIT_KHX)) {
-            bits.push_back("eMultiInstanceKHX");
-        }
-        os << std::hex << std::showbase << (int)flags << '(';
-        std::copy(bits.begin(), bits.end(), std::ostream_iterator<const char*>(os, " | "));
-        os << ')';
-    }
+std::ostream& operator<<(std::ostream& os, vk::MemoryHeapFlags flags) {
+    os << std::hex << std::showbase << (VkMemoryHeapFlags)flags << vk::to_string(flags);
 
     return os;
 }
