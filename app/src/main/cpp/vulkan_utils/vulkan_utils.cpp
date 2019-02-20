@@ -256,30 +256,6 @@ namespace {
         return last;
     }
 
-    vk::BufferMemoryBarrier prepare_buffer_for_read(vk::Buffer buf)
-    {
-        vk::BufferMemoryBarrier result;
-
-        result.setSrcAccessMask(vk::AccessFlagBits::eHostWrite | vk::AccessFlagBits::eTransferWrite | vk::AccessFlagBits::eShaderWrite)
-                .setDstAccessMask(vk::AccessFlagBits::eShaderRead | vk::AccessFlagBits::eTransferRead)
-                .setSize(VK_WHOLE_SIZE)
-                .setBuffer(buf);
-
-        return result;
-    }
-
-    vk::BufferMemoryBarrier prepare_buffer_for_write(vk::Buffer buf)
-    {
-        vk::BufferMemoryBarrier result;
-
-        result.setSrcAccessMask(vk::AccessFlagBits::eHostRead | vk::AccessFlagBits::eTransferRead | vk::AccessFlagBits::eShaderRead)
-                .setDstAccessMask(vk::AccessFlagBits::eShaderWrite | vk::AccessFlagBits::eTransferWrite)
-                .setSize(VK_WHOLE_SIZE)
-                .setBuffer(buf);
-
-        return result;
-    }
-
     void fail_runtime_error(const char* what)
     {
         throw std::runtime_error(what);
@@ -430,9 +406,40 @@ namespace vulkan_utils {
         swap(buf, other.buf);
     }
 
-    vk::BufferMemoryBarrier uniform_buffer::prepareForRead()
+    vk::BufferMemoryBarrier uniform_buffer::prepareForComputeRead()
     {
-        return prepare_buffer_for_read(*buf);
+        vk::BufferMemoryBarrier result;
+
+        result.setSrcAccessMask(vk::AccessFlagBits::eHostWrite | vk::AccessFlagBits::eTransferWrite)
+                .setDstAccessMask(vk::AccessFlagBits::eUniformRead)
+                .setSize(VK_WHOLE_SIZE)
+                .setBuffer(*buf);
+
+        return result;
+    }
+
+    vk::BufferMemoryBarrier uniform_buffer::prepareForTransferSrc()
+    {
+        vk::BufferMemoryBarrier result;
+
+        result.setSrcAccessMask(vk::AccessFlagBits::eHostWrite | vk::AccessFlagBits::eTransferWrite)
+                .setDstAccessMask(vk::AccessFlagBits::eTransferRead)
+                .setSize(VK_WHOLE_SIZE)
+                .setBuffer(*buf);
+
+        return result;
+    }
+
+    vk::BufferMemoryBarrier uniform_buffer::prepareForTransferDst()
+    {
+        vk::BufferMemoryBarrier result;
+
+        result.setSrcAccessMask(vk::AccessFlagBits::eHostRead | vk::AccessFlagBits::eTransferRead | vk::AccessFlagBits::eShaderRead)
+                .setDstAccessMask(vk::AccessFlagBits::eTransferWrite)
+                .setSize(VK_WHOLE_SIZE)
+                .setBuffer(*buf);
+
+        return result;
     }
 
     vk::DescriptorBufferInfo uniform_buffer::use()
@@ -483,14 +490,52 @@ namespace vulkan_utils {
         swap(buf, other.buf);
     }
 
-    vk::BufferMemoryBarrier storage_buffer::prepareForRead()
+    vk::BufferMemoryBarrier storage_buffer::prepareForComputeRead()
     {
-        return prepare_buffer_for_read(*buf);
+        vk::BufferMemoryBarrier result;
+
+        result.setSrcAccessMask(vk::AccessFlagBits::eHostWrite | vk::AccessFlagBits::eTransferWrite | vk::AccessFlagBits::eShaderWrite)
+                .setDstAccessMask(vk::AccessFlagBits::eShaderRead)
+                .setSize(VK_WHOLE_SIZE)
+                .setBuffer(*buf);
+
+        return result;
     }
 
-    vk::BufferMemoryBarrier storage_buffer::prepareForWrite()
+    vk::BufferMemoryBarrier storage_buffer::prepareForComputeWrite()
     {
-        return prepare_buffer_for_write(*buf);
+        vk::BufferMemoryBarrier result;
+
+        result.setSrcAccessMask(vk::AccessFlagBits::eHostRead | vk::AccessFlagBits::eTransferRead | vk::AccessFlagBits::eShaderRead)
+                .setDstAccessMask(vk::AccessFlagBits::eShaderWrite)
+                .setSize(VK_WHOLE_SIZE)
+                .setBuffer(*buf);
+
+        return result;
+    }
+
+    vk::BufferMemoryBarrier storage_buffer::prepareForTransferSrc()
+    {
+        vk::BufferMemoryBarrier result;
+
+        result.setSrcAccessMask(vk::AccessFlagBits::eHostWrite | vk::AccessFlagBits::eTransferWrite | vk::AccessFlagBits::eShaderWrite)
+                .setDstAccessMask(vk::AccessFlagBits::eTransferRead)
+                .setSize(VK_WHOLE_SIZE)
+                .setBuffer(*buf);
+
+        return result;
+    }
+
+    vk::BufferMemoryBarrier storage_buffer::prepareForTransferDst()
+    {
+        vk::BufferMemoryBarrier result;
+
+        result.setSrcAccessMask(vk::AccessFlagBits::eHostRead | vk::AccessFlagBits::eTransferRead | vk::AccessFlagBits::eShaderRead)
+                .setDstAccessMask(vk::AccessFlagBits::eTransferWrite)
+                .setSize(VK_WHOLE_SIZE)
+                .setBuffer(*buf);
+
+        return result;
     }
 
     vk::DescriptorBufferInfo storage_buffer::use()
@@ -742,7 +787,7 @@ namespace vulkan_utils {
 
     void staging_buffer::copyToImage(vk::CommandBuffer commandBuffer)
     {
-        vk::BufferMemoryBarrier bufferBarrier = mStorageBuffer.prepareForRead();
+        vk::BufferMemoryBarrier bufferBarrier = mStorageBuffer.prepareForTransferSrc();
         vk::ImageMemoryBarrier imageBarrier = mImage->prepare(vk::ImageLayout::eTransferDstOptimal);
 
         vk::BufferImageCopy copyRegion;
@@ -764,7 +809,7 @@ namespace vulkan_utils {
 
     void staging_buffer::copyFromImage(vk::CommandBuffer commandBuffer)
     {
-        vk::BufferMemoryBarrier bufferBarrier = mStorageBuffer.prepareForWrite();
+        vk::BufferMemoryBarrier bufferBarrier = mStorageBuffer.prepareForTransferDst();
         vk::ImageMemoryBarrier imageBarrier = mImage->prepare(vk::ImageLayout::eTransferSrcOptimal);
 
         vk::BufferImageCopy copyRegion;
@@ -798,6 +843,59 @@ namespace vulkan_utils {
         }
 
         return timestampDelta * deviceProperties.limits.timestampPeriod;
+    }
+
+    vk::Extent3D computeNumberWorkgroups(const vk::Extent3D& workgroupSize, const vk::Extent3D& dataSize)
+    {
+        const vk::Extent3D result(
+                (dataSize.width + workgroupSize.width - 1) / workgroupSize.width,
+                (dataSize.height + workgroupSize.height - 1) / workgroupSize.height,
+                (dataSize.depth + workgroupSize.depth - 1) / workgroupSize.depth);
+        return result;
+    }
+
+    void copyBufferToImage(vk::CommandBuffer commandBuffer,
+            storage_buffer& buffer,
+            image& image)
+    {
+        vk::BufferMemoryBarrier bufferBarrier = buffer.prepareForTransferSrc();
+        vk::ImageMemoryBarrier imageBarrier = image.prepare(vk::ImageLayout::eTransferDstOptimal);
+
+        vk::BufferImageCopy copyRegion;
+        copyRegion.setImageExtent(image.getExtent());
+        copyRegion.imageSubresource.setAspectMask(vk::ImageAspectFlagBits::eColor)
+                .setLayerCount(1);
+
+        commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eHost | vk::PipelineStageFlagBits::eComputeShader | vk::PipelineStageFlagBits::eTransfer,
+                                      vk::PipelineStageFlagBits::eTransfer,
+                                      vk::DependencyFlags(),
+                                      nullptr,         // memory barriers
+                                      bufferBarrier,   // buffer memory barriers
+                                      imageBarrier);   // image memory barriers
+
+        commandBuffer.copyBufferToImage(bufferBarrier.buffer, imageBarrier.image, imageBarrier.newLayout, copyRegion);
+    }
+
+    void copyImageToBuffer(vk::CommandBuffer commandBuffer,
+            image& image,
+            storage_buffer& buffer)
+    {
+        vk::BufferMemoryBarrier bufferBarrier = buffer.prepareForTransferDst();
+        vk::ImageMemoryBarrier imageBarrier = image.prepare(vk::ImageLayout::eTransferSrcOptimal);
+
+        vk::BufferImageCopy copyRegion;
+        copyRegion.setImageExtent(image.getExtent());
+        copyRegion.imageSubresource.setAspectMask(vk::ImageAspectFlagBits::eColor)
+                .setLayerCount(1);
+
+        commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eHost | vk::PipelineStageFlagBits::eComputeShader | vk::PipelineStageFlagBits::eTransfer,
+                                      vk::PipelineStageFlagBits::eTransfer,
+                                      vk::DependencyFlags(),
+                                      nullptr,         // memory barriers
+                                      bufferBarrier,   // buffer memory barriers
+                                      imageBarrier);   // image memory barriers
+
+        commandBuffer.copyImageToBuffer(imageBarrier.image, imageBarrier.newLayout, bufferBarrier.buffer, copyRegion);
     }
 
 } // namespace vulkan_utils

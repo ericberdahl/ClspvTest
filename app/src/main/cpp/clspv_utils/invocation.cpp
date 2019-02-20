@@ -96,8 +96,8 @@ namespace clspv_utils {
     }
 
     void invocation::addStorageBufferArgument(vulkan_utils::storage_buffer& buffer) {
-        mBufferMemoryBarriers.push_back(buffer.prepareForRead());
-        mBufferMemoryBarriers.push_back(buffer.prepareForWrite());
+        mBufferMemoryBarriers.push_back(buffer.prepareForComputeRead());
+        mBufferMemoryBarriers.push_back(buffer.prepareForComputeWrite());
         mBufferArgumentInfo.push_back(buffer.use());
 
         vk::WriteDescriptorSet argSet;
@@ -109,7 +109,7 @@ namespace clspv_utils {
     }
 
     void invocation::addUniformBufferArgument(vulkan_utils::uniform_buffer& buffer) {
-        mBufferMemoryBarriers.push_back(buffer.prepareForRead());
+        mBufferMemoryBarriers.push_back(buffer.prepareForComputeRead());
         mBufferArgumentInfo.push_back(buffer.use());
 
         vk::WriteDescriptorSet argSet;

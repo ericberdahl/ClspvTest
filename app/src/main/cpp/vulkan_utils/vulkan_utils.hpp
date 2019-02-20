@@ -124,7 +124,9 @@ namespace vulkan_utils {
 
         void    swap(uniform_buffer& other);
 
-        vk::BufferMemoryBarrier  prepareForRead();
+        vk::BufferMemoryBarrier  prepareForComputeRead();
+        vk::BufferMemoryBarrier  prepareForTransferSrc();
+        vk::BufferMemoryBarrier  prepareForTransferDst();
         vk::DescriptorBufferInfo use();
 
     public:
@@ -166,8 +168,10 @@ namespace vulkan_utils {
 
         void    swap(storage_buffer & other);
 
-        vk::BufferMemoryBarrier  prepareForRead();
-        vk::BufferMemoryBarrier  prepareForWrite();
+        vk::BufferMemoryBarrier  prepareForComputeRead();
+        vk::BufferMemoryBarrier  prepareForComputeWrite();
+        vk::BufferMemoryBarrier  prepareForTransferSrc();
+        vk::BufferMemoryBarrier  prepareForTransferDst();
         vk::DescriptorBufferInfo use();
 
     public:
@@ -223,6 +227,8 @@ namespace vulkan_utils {
 
         vk::DescriptorImageInfo use();
         vk::ImageMemoryBarrier  prepare(vk::ImageLayout newLayout);
+
+        vk::Extent3D getExtent() const { return mExtent; }
 
     private:
         vk::Device                          mDevice;
@@ -291,6 +297,16 @@ namespace vulkan_utils {
                               std::uint64_t                         endTimestamp,
                               const vk::PhysicalDeviceProperties&   deviceProperties,
                               const vk::QueueFamilyProperties&      queueFamilyProperties);
+
+    vk::Extent3D computeNumberWorkgroups(const vk::Extent3D& workgroupSize, const vk::Extent3D& dataSize);
+
+    void copyBufferToImage(vk::CommandBuffer    commandBuffer,
+                           storage_buffer&      buffer,
+                           image&               image);
+
+    void copyImageToBuffer(vk::CommandBuffer    commandBuffer,
+                           image&               image,
+                           storage_buffer&      buffer);
 }
 
 std::ostream& operator<<(std::ostream& os, vk::MemoryPropertyFlags vkFlags);
