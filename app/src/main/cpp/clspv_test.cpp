@@ -173,6 +173,33 @@ void dumpDeviceExtensions(vk::PhysicalDevice device)
     LOGI("}");
 }
 
+void dumpDeviceMemoryProperties(vk::PhysicalDevice device)
+{
+    const auto memProps = device.getMemoryProperties();
+
+    LOGI("physcialDeviceMemoryProperties{");
+
+    LOGI("   memoryTypes {");
+    for (std::uint32_t i = 0; i < memProps.memoryTypeCount; ++i)
+    {
+        std::ostringstream os;
+        os << memProps.memoryTypes[i];
+        LOGI("      %s", os.str().c_str());
+    }
+    LOGI("   }");
+
+    LOGI("   memoryHeaps {");
+    for (std::uint32_t i = 0; i < memProps.memoryHeapCount; ++i)
+    {
+        std::ostringstream os;
+        os << memProps.memoryHeaps[i];
+        LOGI("      %s", os.str().c_str());
+    }
+    LOGI("   }");
+
+    LOGI("}");
+}
+
 /* ============================================================================================== */
 
 int sample_main(int argc, char *argv[]) {
@@ -202,6 +229,7 @@ int sample_main(int argc, char *argv[]) {
 
     dumpInstanceExtensions();
     dumpDeviceExtensions(info.gpu);
+    dumpDeviceMemoryProperties(info.gpu);
 
     clspv_utils::device device(info.gpu,
                                *info.device,

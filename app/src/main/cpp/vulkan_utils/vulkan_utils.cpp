@@ -833,7 +833,34 @@ std::ostream& operator<<(std::ostream& os, vk::MemoryPropertyFlags vkFlags) {
     return os;
 }
 
+std::ostream& operator<<(std::ostream& os, vk::MemoryHeapFlags vkFlags) {
+    const VkMemoryHeapFlags flags = (VkMemoryHeapFlags) vkFlags;
+    if (0 == flags) {
+        os << "0";
+    }
+    else {
+        std::vector<const char*> bits;
+        bits.reserve(2);
+        if (0 != (flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)) {
+            bits.push_back("eDeviceLocal");
+        }
+        if (0 != (flags & VK_MEMORY_HEAP_MULTI_INSTANCE_BIT_KHX)) {
+            bits.push_back("eMultiInstanceKHX");
+        }
+        os << std::hex << std::showbase << (int)flags << '(';
+        std::copy(bits.begin(), bits.end(), std::ostream_iterator<const char*>(os, " | "));
+        os << ')';
+    }
+
+    return os;
+}
+
 std::ostream& operator<<(std::ostream& os, const vk::MemoryType& memoryType) {
     os << "heapIndex:" << memoryType.heapIndex << " flags:" << memoryType.propertyFlags;
+    return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const vk::MemoryHeap& memoryHeap) {
+    os << "size:" << memoryHeap.size << " flags:" << memoryHeap.flags;
     return os;
 }

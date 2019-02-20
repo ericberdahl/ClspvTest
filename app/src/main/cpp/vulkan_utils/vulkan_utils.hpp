@@ -294,6 +294,9 @@ namespace vulkan_utils {
 }
 
 std::ostream& operator<<(std::ostream& os, vk::MemoryPropertyFlags vkFlags);
+std::ostream& operator<<(std::ostream& os, vk::MemoryHeapFlags vkFlags);
+
 std::ostream& operator<<(std::ostream& os, const vk::MemoryType& memoryType);
+std::ostream& operator<<(std::ostream& os, const vk::MemoryHeap& memoryHeap);
 
 #endif //VULKAN_UTILS_HPP
