@@ -269,18 +269,21 @@ namespace vulkan_utils {
                                                   const vk::PhysicalDeviceMemoryProperties& mem_props,
                                                   vk::MemoryPropertyFlags                   property_flags)
     {
-        auto last = mem_props.memoryTypes + mem_props.memoryTypeCount;
-        auto found = find_compatible_memory(mem_props.memoryTypes, last, mem_reqs.memoryTypeBits, property_flags);
-        if (found == last)
+        vk::UniqueDeviceMemory result;
+
+        const auto last = mem_props.memoryTypes + mem_props.memoryTypeCount;
+        const auto found = find_compatible_memory(mem_props.memoryTypes, last, mem_reqs.memoryTypeBits, property_flags);
+        if (found != last)
         {
-            fail_runtime_error("No mappable device memory");
+
+            // Allocate memory for the buffer
+            vk::MemoryAllocateInfo alloc_info;
+            alloc_info.setAllocationSize(mem_reqs.size)
+                    .setMemoryTypeIndex(std::distance(mem_props.memoryTypes, found));
+            result = device.allocateMemoryUnique(alloc_info);
         }
 
-        // Allocate memory for the buffer
-        vk::MemoryAllocateInfo alloc_info;
-        alloc_info.setAllocationSize(mem_reqs.size)
-                .setMemoryTypeIndex(std::distance(mem_props.memoryTypes, found));
-        return device.allocateMemoryUnique(alloc_info);
+        return result;
     }
 
     vk::UniqueCommandBuffer allocate_command_buffer(vk::Device device, vk::CommandPool cmd_pool) {
@@ -296,11 +299,30 @@ namespace vulkan_utils {
     
     device_memory::device_memory(vk::Device                                dev,
                                  const vk::MemoryRequirements&             mem_reqs,
-                                 const vk::PhysicalDeviceMemoryProperties  mem_props)
+                                 const vk::PhysicalDeviceMemoryProperties  mem_props,
+                                 vk::MemoryPropertyFlags                   requiredFlags,
+                                 vk::MemoryPropertyFlags                   optimalFlags)
             : mDevice(dev),
-              mMemory(allocate_device_memory(dev, mem_reqs, mem_props, vk::MemoryPropertyFlagBits::eHostVisible)),
+              mMemory(),
               mMapped(false)
     {
+        mMemory = allocate_device_memory(dev,
+                                         mem_reqs,
+                                         mem_props,
+                                         vk::MemoryPropertyFlagBits::eHostVisible | optimalFlags);
+
+        if (!mMemory)
+        {
+            mMemory = allocate_device_memory(dev,
+                                             mem_reqs,
+                                             mem_props,
+                                             vk::MemoryPropertyFlagBits::eHostVisible | requiredFlags);
+        }
+
+        if (!mMemory)
+        {
+            fail_runtime_error("Cannot allocate device memory");
+        }
     }
 
     device_memory::device_memory(device_memory&& other) :
@@ -461,7 +483,11 @@ namespace vulkan_utils {
 
         buf = dev.createBufferUnique(buf_info);
 
-        mem = device_memory(dev, dev.getBufferMemoryRequirements(*buf), memoryProperties);
+        mem = device_memory(dev,
+                            dev.getBufferMemoryRequirements(*buf),
+                            memoryProperties,
+                            vk::MemoryPropertyFlagBits(),
+                            vk::MemoryPropertyFlagBits::eHostCached);
 
         // Bind the memory to the buffer object
         mem.bind(*buf, 0);
@@ -631,6 +657,10 @@ namespace vulkan_utils {
         mDeviceMemory = allocate_device_memory(mDevice,
                                                mDevice.getImageMemoryRequirements(*mImage),
                                                mMemoryProperties);
+        if (!mDeviceMemory)
+        {
+            fail_runtime_error("Cannot allocate device memory for image");
+        }
 
         // Bind the memory to the image object
         mDevice.bindImageMemory(*mImage, *mDeviceMemory, 0);

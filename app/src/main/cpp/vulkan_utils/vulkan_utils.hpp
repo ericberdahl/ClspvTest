@@ -50,8 +50,10 @@ namespace vulkan_utils {
         device_memory() {}
 
         device_memory(vk::Device                                dev,
-                      const vk::MemoryRequirements&             mem_reqs,
-                      const vk::PhysicalDeviceMemoryProperties  mem_props);
+                      const vk::MemoryRequirements&             memReqs,
+                      const vk::PhysicalDeviceMemoryProperties  memProps,
+                      vk::MemoryPropertyFlags                   requiredFlags = vk::MemoryPropertyFlags(),
+                      vk::MemoryPropertyFlags                   optimalFlags = vk::MemoryPropertyFlags());
 
         device_memory(const device_memory& other) = delete;
 
