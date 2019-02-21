@@ -20,6 +20,9 @@ void main()
 {
 	float x =  gl_GlobalInvocationID.x;
 	float y =  gl_GlobalInvocationID.y;
-	int index = int(y * inPitch + x);
-	outImage[index] = inColor;
+	if (x < inWidth && y < inHeight)
+	{
+        int index = int(y * inPitch + x);
+        outImage[index] = inColor;
+    }
 }
