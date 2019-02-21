@@ -116,11 +116,11 @@ void init_enumerate_device(struct sample_info &info) {
     auto gpus = info.inst->enumeratePhysicalDevices();
     // find the first physical device in the list which supports the variablePointers feature
     auto found_gpu = find_if(gpus.begin(), gpus.end(), [&info](vk::PhysicalDevice g) {
-        vk::StructureChain<vk::PhysicalDeviceFeatures2KHR, vk::PhysicalDeviceVariablePointerFeaturesKHR> structureChain;
+        vk::StructureChain<vk::PhysicalDeviceFeatures2KHR, vk::PhysicalDeviceVariablePointerFeatures> structureChain;
         vk::PhysicalDeviceFeatures2KHR& features = structureChain.get<vk::PhysicalDeviceFeatures2KHR>();
         info.getPhysicalDeviceFeatures2KHR((VkPhysicalDevice)g, reinterpret_cast<VkPhysicalDeviceFeatures2KHR*>(&features));
 
-        return structureChain.get<vk::PhysicalDeviceVariablePointerFeaturesKHR>().variablePointers;
+        return structureChain.get<vk::PhysicalDeviceVariablePointerFeatures>().variablePointers;
     });
     if (found_gpu == gpus.end()) {
         throw std::runtime_error("no compatible GPU found");
