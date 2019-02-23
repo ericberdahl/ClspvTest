@@ -41,38 +41,41 @@ namespace vulkan_utils {
 
     vk::UniqueCommandBuffer allocate_command_buffer(vk::Device device, vk::CommandPool cmd_pool);
 
-    class device_memory {
+    template <typename T>
+    using mapped_ptr = std::unique_ptr<T, std::function<void (void*)> >;
+
+    class buffer {
     public:
-        template <typename T>
-        using mapped_ptr = std::unique_ptr<T, std::function<void (void*)> >;
+        buffer () {}
+
+        buffer (vk::Device device,
+                const vk::PhysicalDeviceMemoryProperties memoryProperties,
+                vk::DeviceSize                           num_bytes,
+                vk::BufferUsageFlags                     usage);
+
+        buffer (const buffer & other) = delete;
+
+        buffer (buffer && other);
+
+        ~buffer ();
+
+        buffer & operator=(const buffer & other) = delete;
+
+        buffer & operator=(buffer && other);
+
+        void    swap(buffer & other);
+
+        vk::BufferMemoryBarrier  prepareForShaderRead();
+        vk::BufferMemoryBarrier  prepareForShaderWrite();
+
+        vk::BufferMemoryBarrier  prepareForTransferSrc();
+        vk::BufferMemoryBarrier  prepareForTransferDst();
+
+        vk::DescriptorBufferInfo use();
+
+        vk::BufferUsageFlags     getUsage() const { return mUsage; }
 
     public:
-        device_memory() {}
-
-        device_memory(vk::Device                                dev,
-                      const vk::MemoryRequirements&             memReqs,
-                      const vk::PhysicalDeviceMemoryProperties  memProps,
-                      vk::MemoryPropertyFlags                   requiredFlags = vk::MemoryPropertyFlags(),
-                      vk::MemoryPropertyFlags                   optimalFlags = vk::MemoryPropertyFlags());
-
-        device_memory(const device_memory& other) = delete;
-
-        device_memory(device_memory&& other);
-
-        ~device_memory();
-
-        device_memory&  operator=(const device_memory& other) = delete;
-
-        device_memory&  operator=(device_memory&& other);
-
-        void    swap(device_memory& other);
-
-        vk::Device          getDevice() const { return mDevice; }
-
-        void    bind(vk::Buffer buffer, vk::DeviceSize memoryOffset);
-
-        void    bind(vk::Image image, vk::DeviceSize memoryOffset);
-
         template <typename T>
         inline mapped_ptr<T> map()
         {
@@ -86,101 +89,23 @@ namespace vulkan_utils {
         void    unmap();
 
     private:
+        vk::BufferUsageFlags    mUsage;
+        bool                    mIsMapped = false;
+
         vk::Device              mDevice;
-        vk::UniqueDeviceMemory  mMemory;
-        bool                    mMapped;
+        vk::UniqueDeviceMemory  mDeviceMemory;
+        vk::UniqueBuffer        mBuffer;
     };
 
-    inline void swap(device_memory& lhs, device_memory& rhs)
-    {
-        lhs.swap(rhs);
-    }
+    buffer createUniformBuffer(vk::Device device,
+                               const vk::PhysicalDeviceMemoryProperties memoryProperties,
+                               vk::DeviceSize                           num_bytes);
 
-    class uniform_buffer {
-    public:
-        template <typename T>
-        using mapped_ptr = device_memory::mapped_ptr<T>;
+    buffer createStorageBuffer(vk::Device device,
+                               const vk::PhysicalDeviceMemoryProperties memoryProperties,
+                               vk::DeviceSize                           num_bytes);
 
-    public:
-        uniform_buffer () {}
-
-        uniform_buffer (vk::Device dev, const vk::PhysicalDeviceMemoryProperties memoryProperties, vk::DeviceSize num_bytes);
-
-        uniform_buffer (const uniform_buffer& other) = delete;
-
-        uniform_buffer (uniform_buffer&& other);
-
-        ~uniform_buffer();
-
-        uniform_buffer& operator=(const uniform_buffer& other) = delete;
-
-        uniform_buffer& operator=(uniform_buffer&& other);
-
-        void    swap(uniform_buffer& other);
-
-        vk::BufferMemoryBarrier  prepareForComputeRead();
-        vk::BufferMemoryBarrier  prepareForTransferSrc();
-        vk::BufferMemoryBarrier  prepareForTransferDst();
-        vk::DescriptorBufferInfo use();
-
-    public:
-        template <typename T = void>
-        inline mapped_ptr<T> map()
-        {
-            return mem.map<T>();
-        }
-
-    private:
-        device_memory       mem;
-        vk::UniqueBuffer    buf;
-    };
-
-    inline void swap(uniform_buffer& lhs, uniform_buffer& rhs)
-    {
-        lhs.swap(rhs);
-    }
-
-    class storage_buffer {
-    public:
-        template <typename T>
-        using mapped_ptr = device_memory::mapped_ptr<T>;
-
-    public:
-        storage_buffer () {}
-
-        storage_buffer (vk::Device dev, const vk::PhysicalDeviceMemoryProperties memoryProperties, vk::DeviceSize num_bytes);
-
-        storage_buffer (const storage_buffer & other) = delete;
-
-        storage_buffer (storage_buffer && other);
-
-        ~storage_buffer ();
-
-        storage_buffer & operator=(const storage_buffer & other) = delete;
-
-        storage_buffer & operator=(storage_buffer && other);
-
-        void    swap(storage_buffer & other);
-
-        vk::BufferMemoryBarrier  prepareForComputeRead();
-        vk::BufferMemoryBarrier  prepareForComputeWrite();
-        vk::BufferMemoryBarrier  prepareForTransferSrc();
-        vk::BufferMemoryBarrier  prepareForTransferDst();
-        vk::DescriptorBufferInfo use();
-
-    public:
-        template <typename T = void>
-        inline mapped_ptr<T> map()
-        {
-            return mem.map<T>();
-        }
-
-    private:
-        device_memory       mem;
-        vk::UniqueBuffer    buf;
-    };
-
-    inline void swap(storage_buffer & lhs, storage_buffer & rhs)
+    inline void swap(buffer & lhs, buffer & rhs)
     {
         lhs.swap(rhs);
     }
@@ -217,12 +142,13 @@ namespace vulkan_utils {
 
         void    swap(image& other);
 
-        staging_buffer  createStagingBuffer();
-
         vk::DescriptorImageInfo use();
         vk::ImageMemoryBarrier  prepare(vk::ImageLayout newLayout);
 
         vk::Extent3D getExtent() const { return mExtent; }
+
+    public:
+        staging_buffer  createStagingBuffer();
 
     private:
         vk::Device                          mDevice;
@@ -240,11 +166,9 @@ namespace vulkan_utils {
         lhs.swap(rhs);
     }
 
-    class staging_buffer {
-    public:
-        template <typename T>
-        using mapped_ptr = device_memory::mapped_ptr <T>;
+    // TODO staging_buffer should go away and be replaced with buffer
 
+    class staging_buffer {
     public:
         staging_buffer ();
 
@@ -272,14 +196,14 @@ namespace vulkan_utils {
         template <typename T>
         inline mapped_ptr<T> map()
         {
-            return mStorageBuffer.map<T>();
+            return mBuffer.map<T>();
         }
 
     private:
-        vk::Device              mDevice;
-        image*                  mImage;
-        storage_buffer          mStorageBuffer;
-        vk::Extent3D            mExtent;
+        vk::Device      mDevice;
+        image*          mImage;
+        buffer          mBuffer;
+        vk::Extent3D    mExtent;
     };
 
     inline void swap(staging_buffer & lhs, staging_buffer & rhs)
@@ -295,12 +219,12 @@ namespace vulkan_utils {
     vk::Extent3D computeNumberWorkgroups(const vk::Extent3D& workgroupSize, const vk::Extent3D& dataSize);
 
     void copyBufferToImage(vk::CommandBuffer    commandBuffer,
-                           storage_buffer&      buffer,
+                           buffer&              buffer,
                            image&               image);
 
     void copyImageToBuffer(vk::CommandBuffer    commandBuffer,
                            image&               image,
-                           storage_buffer&      buffer);
+                           buffer&              buffer);
 }
 
 std::ostream& operator<<(std::ostream& os, vk::MemoryPropertyFlags vkFlags);

@@ -15,9 +15,9 @@
 namespace fillarraystruct_kernel {
 
     clspv_utils::execution_time_t
-    invoke(clspv_utils::kernel&             kernel,
-           vulkan_utils::storage_buffer&    destination_buffer,
-           unsigned int                     num_elements);
+    invoke(clspv_utils::kernel&     kernel,
+           vulkan_utils::buffer&    destination_buffer,
+           unsigned int             num_elements);
 
     struct Test : public test_utils::Test
     {
@@ -36,7 +36,7 @@ namespace fillarraystruct_kernel {
         } FloatArrayWrapper;
 
         int                             mBufferWidth;
-        vulkan_utils::storage_buffer    mDstBuffer;
+        vulkan_utils::buffer            mDstBuffer;
         std::vector<FloatArrayWrapper>  mExpectedResults;
     };
 

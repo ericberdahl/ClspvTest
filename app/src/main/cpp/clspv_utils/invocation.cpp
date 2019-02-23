@@ -95,9 +95,13 @@ namespace clspv_utils {
         return ka.mBinding;
     }
 
-    void invocation::addStorageBufferArgument(vulkan_utils::storage_buffer& buffer) {
-        mBufferMemoryBarriers.push_back(buffer.prepareForComputeRead());
-        mBufferMemoryBarriers.push_back(buffer.prepareForComputeWrite());
+    void invocation::addStorageBufferArgument(vulkan_utils::buffer& buffer) {
+        if (!(buffer.getUsage() & vk::BufferUsageFlagBits::eStorageBuffer)) {
+            fail_runtime_error("buffer is not configured as a storage buffer");
+        }
+
+        mBufferMemoryBarriers.push_back(buffer.prepareForShaderRead());
+        mBufferMemoryBarriers.push_back(buffer.prepareForShaderWrite());
         mBufferArgumentInfo.push_back(buffer.use());
 
         vk::WriteDescriptorSet argSet;
@@ -108,8 +112,12 @@ namespace clspv_utils {
         mArgumentDescriptorWrites.push_back(argSet);
     }
 
-    void invocation::addUniformBufferArgument(vulkan_utils::uniform_buffer& buffer) {
-        mBufferMemoryBarriers.push_back(buffer.prepareForComputeRead());
+    void invocation::addUniformBufferArgument(vulkan_utils::buffer& buffer) {
+        if (!(buffer.getUsage() & vk::BufferUsageFlagBits::eUniformBuffer)) {
+            fail_runtime_error("buffer is not configured as a uniform buffer");
+        }
+
+        mBufferMemoryBarriers.push_back(buffer.prepareForShaderRead());
         mBufferArgumentInfo.push_back(buffer.use());
 
         vk::WriteDescriptorSet argSet;

@@ -19,6 +19,8 @@
 
 #include "vulkan_utils/vulkan_utils.hpp"
 
+// TODO invocation should dispatch, not run. taking a command buffer argument that the client owns
+// TODO invocation should return execution time via a getter, not the result of run
 
 namespace clspv_utils {
 
@@ -46,8 +48,8 @@ namespace clspv_utils {
 
                     ~invocation();
 
-        void    addStorageBufferArgument(vulkan_utils::storage_buffer& buffer);
-        void    addUniformBufferArgument(vulkan_utils::uniform_buffer& buffer);
+        void    addStorageBufferArgument(vulkan_utils::buffer& buffer);
+        void    addUniformBufferArgument(vulkan_utils::buffer& buffer);
         void    addReadOnlyImageArgument(vulkan_utils::image& image);
         void    addWriteOnlyImageArgument(vulkan_utils::image& image);
         void    addSamplerArgument(vk::Sampler samp);

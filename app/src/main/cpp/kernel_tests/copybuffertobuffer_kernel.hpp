@@ -16,16 +16,16 @@
 namespace copybuffertobuffer_kernel {
 
     clspv_utils::execution_time_t
-    invoke(clspv_utils::kernel&             kernel,
-           vulkan_utils::storage_buffer&    src_buffer,
-           vulkan_utils::storage_buffer&    dst_buffer,
-           std::int32_t                     src_pitch,
-           std::int32_t                     src_offset,
-           std::int32_t                     dst_pitch,
-           std::int32_t                     dst_offset,
-           bool                             is32Bit,
-           std::int32_t                     width,
-           std::int32_t                     height);
+    invoke(clspv_utils::kernel&     kernel,
+           vulkan_utils::buffer&    src_buffer,
+           vulkan_utils::buffer&    dst_buffer,
+           std::int32_t             src_pitch,
+           std::int32_t             src_offset,
+           std::int32_t             dst_pitch,
+           std::int32_t             dst_offset,
+           bool                     is32Bit,
+           std::int32_t             width,
+           std::int32_t             height);
 
     test_utils::KernelTest::invocation_tests getAllTestVariants();
 
@@ -37,10 +37,10 @@ namespace copybuffertobuffer_kernel {
 
         virtual clspv_utils::execution_time_t run(clspv_utils::kernel& kernel) override;
 
-        vk::Extent3D                    mBufferExtent;
-        vulkan_utils::storage_buffer    mSrcBuffer;
-        vulkan_utils::storage_buffer    mDstBuffer;
-        bool                            mIs32Bit;
+        vk::Extent3D            mBufferExtent;
+        vulkan_utils::buffer    mSrcBuffer;
+        vulkan_utils::buffer    mDstBuffer;
+        bool                    mIs32Bit;
     };
 
     template <typename PixelType>

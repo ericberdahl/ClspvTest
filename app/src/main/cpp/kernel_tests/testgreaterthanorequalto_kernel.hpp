@@ -16,7 +16,7 @@ namespace testgreaterthanorequalto_kernel {
 
     clspv_utils::execution_time_t
     invoke(const clspv_utils::kernel&       kernel,
-           vulkan_utils::storage_buffer&    dst_buffer,
+           vulkan_utils::buffer&            dst_buffer,
            vk::Extent3D                     extent);
 
     struct Test : public test_utils::Test
@@ -29,9 +29,9 @@ namespace testgreaterthanorequalto_kernel {
 
         virtual test_utils::Evaluation evaluate(bool verbose) override;
 
-        vk::Extent3D                    mBufferExtent;
-        vulkan_utils::storage_buffer    mDstBuffer;
-        std::vector<float>              mExpectedResults;
+        vk::Extent3D            mBufferExtent;
+        vulkan_utils::buffer    mDstBuffer;
+        std::vector<float>      mExpectedResults;
     };
 
     test_utils::KernelTest::invocation_tests getAllTestVariants();

@@ -17,7 +17,7 @@ namespace fill_kernel {
 
     clspv_utils::execution_time_t
     invoke(clspv_utils::kernel&             kernel,
-           vulkan_utils::storage_buffer&    dst_buffer,
+           vulkan_utils::buffer&            dst_buffer,
            int                              pitch,
            int                              device_format,
            int                              offset_x,
@@ -53,7 +53,9 @@ namespace fill_kernel {
             // allocate image buffer
             const std::size_t buffer_length = mBufferExtent.width * mBufferExtent.height * mBufferExtent.depth;
             const std::size_t buffer_size = buffer_length * sizeof(PixelType);
-            mDstBuffer = vulkan_utils::storage_buffer(device.getDevice(), device.getMemoryProperties(), buffer_size);
+            mDstBuffer = vulkan_utils::createStorageBuffer(device.getDevice(),
+                                                           device.getMemoryProperties(),
+                                                           buffer_size);
         }
 
         virtual void prepare() override
@@ -94,9 +96,9 @@ namespace fill_kernel {
                                              verbose);
         }
 
-        vk::Extent3D                    mBufferExtent;
-        vulkan_utils::storage_buffer    mDstBuffer;
-        gpu_types::float4               mFillColor;
+        vk::Extent3D            mBufferExtent;
+        vulkan_utils::buffer    mDstBuffer;
+        gpu_types::float4       mFillColor;
     };
 
     template <typename PixelType>

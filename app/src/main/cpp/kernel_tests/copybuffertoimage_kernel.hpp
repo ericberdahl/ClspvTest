@@ -18,17 +18,17 @@
 namespace copybuffertoimage_kernel {
 
     clspv_utils::execution_time_t
-    invoke(clspv_utils::kernel&             kernel,
-           vulkan_utils::storage_buffer&    src_buffer,
-           vulkan_utils::image&             dst_image,
-           int                              src_offset,
-           int                              src_pitch,
-           cl_channel_order                 src_channel_order,
-           cl_channel_type                  src_channel_type,
-           bool                             swap_components,
-           bool                             premultiply,
-           int                              width,
-           int                              height);
+    invoke(clspv_utils::kernel&     kernel,
+           vulkan_utils::buffer&    src_buffer,
+           vulkan_utils::image&     dst_image,
+           int                      src_offset,
+           int                      src_pitch,
+           cl_channel_order         src_channel_order,
+           cl_channel_type          src_channel_type,
+           bool                     swap_components,
+           bool                     premultiply,
+           int                      width,
+           int                      height);
 
     test_utils::KernelTest::invocation_tests getAllTestVariants();
 
@@ -56,9 +56,9 @@ namespace copybuffertoimage_kernel {
             const std::size_t buffer_size = buffer_length * sizeof(BufferPixelType);
 
             // allocate buffers and images
-            mSrcBuffer = vulkan_utils::storage_buffer(device.getDevice(),
-                                                   device.getMemoryProperties(),
-                                                   buffer_size);
+            mSrcBuffer = vulkan_utils::createStorageBuffer(device.getDevice(),
+                                                           device.getMemoryProperties(),
+                                                           buffer_size);
             mDstImage = vulkan_utils::image(device.getDevice(),
                                          device.getMemoryProperties(),
                                          mBufferExtent,
@@ -141,7 +141,7 @@ namespace copybuffertoimage_kernel {
         vk::CommandPool                 mCommandPool;
         vk::Queue                       mComputeQueue;
         vk::Extent3D                    mBufferExtent;
-        vulkan_utils::storage_buffer    mSrcBuffer;
+        vulkan_utils::buffer            mSrcBuffer;
         vulkan_utils::image             mDstImage;
         vulkan_utils::staging_buffer    mDstImageStaging;
 

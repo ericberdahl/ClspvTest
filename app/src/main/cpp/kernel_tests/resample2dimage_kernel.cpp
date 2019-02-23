@@ -52,10 +52,10 @@ namespace {
 namespace resample2dimage_kernel {
 
     clspv_utils::execution_time_t
-    invoke(clspv_utils::kernel&             kernel,
-           vulkan_utils::image&             src_image,
-           vulkan_utils::storage_buffer&    dst_buffer,
-           vk::Extent3D                     extent)
+    invoke(clspv_utils::kernel&     kernel,
+           vulkan_utils::image&     src_image,
+           vulkan_utils::buffer&    dst_buffer,
+           vk::Extent3D             extent)
     {
         if (1 != extent.depth)
         {
@@ -69,9 +69,9 @@ namespace resample2dimage_kernel {
         static_assert(0 == offsetof(scalar_args, inWidth), "inWidth offset incorrect");
         static_assert(4 == offsetof(scalar_args, inHeight), "inHeight offset incorrect");
 
-        vulkan_utils::uniform_buffer scalarBuffer(kernel.getDevice().getDevice(),
-                                                  kernel.getDevice().getMemoryProperties(),
-                                                  sizeof(scalar_args));
+        vulkan_utils::buffer scalarBuffer = vulkan_utils::createUniformBuffer(kernel.getDevice().getDevice(),
+                                                                              kernel.getDevice().getMemoryProperties(),
+                                                                              sizeof(scalar_args));
         auto scalars = scalarBuffer.map<scalar_args>();
         scalars->inWidth = extent.width;
         scalars->inHeight = extent.height;
@@ -110,9 +110,9 @@ namespace resample2dimage_kernel {
         const std::size_t buffer_size = buffer_length * sizeof(BufferPixelType);
 
         // allocate buffers and images
-        mDstBuffer = vulkan_utils::storage_buffer(device.getDevice(),
-                                                device.getMemoryProperties(),
-                                                buffer_size);
+        mDstBuffer = vulkan_utils::createStorageBuffer(device.getDevice(),
+                                                       device.getMemoryProperties(),
+                                                       buffer_size);
         mSrcImage = vulkan_utils::image(device.getDevice(),
                                      device.getMemoryProperties(),
                                      vk::Extent3D(image_width, image_height, 1),

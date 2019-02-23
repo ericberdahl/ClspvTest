@@ -275,7 +275,6 @@ namespace vulkan_utils {
         const auto found = find_compatible_memory(mem_props.memoryTypes, last, mem_reqs.memoryTypeBits, property_flags);
         if (found != last)
         {
-
             // Allocate memory for the buffer
             vk::MemoryAllocateInfo alloc_info;
             alloc_info.setAllocationSize(mem_reqs.size)
@@ -296,280 +295,221 @@ namespace vulkan_utils {
         assert(buffers.size() == 1);
         return std::move(buffers[0]);
     }
-    
-    device_memory::device_memory(vk::Device                                dev,
-                                 const vk::MemoryRequirements&             mem_reqs,
-                                 const vk::PhysicalDeviceMemoryProperties  mem_props,
-                                 vk::MemoryPropertyFlags                   requiredFlags,
-                                 vk::MemoryPropertyFlags                   optimalFlags)
-            : mDevice(dev),
-              mMemory(),
-              mMapped(false)
-    {
-        mMemory = allocate_device_memory(dev,
-                                         mem_reqs,
-                                         mem_props,
-                                         vk::MemoryPropertyFlagBits::eHostVisible | optimalFlags);
 
-        if (!mMemory)
+    buffer createUniformBuffer(vk::Device device,
+                               const vk::PhysicalDeviceMemoryProperties memoryProperties,
+                               vk::DeviceSize                           num_bytes)
+    {
+        return buffer(device,
+                      memoryProperties,
+                      num_bytes,
+                      vk::BufferUsageFlagBits::eUniformBuffer);
+    }
+
+    buffer createStorageBuffer(vk::Device device,
+                               const vk::PhysicalDeviceMemoryProperties memoryProperties,
+                               vk::DeviceSize                           num_bytes)
+    {
+        return buffer(device,
+                      memoryProperties,
+                      num_bytes,
+                      vk::BufferUsageFlagBits::eStorageBuffer);
+    }
+
+    buffer::buffer(vk::Device                               device,
+                   const vk::PhysicalDeviceMemoryProperties memoryProperties,
+                   vk::DeviceSize                           num_bytes,
+                   vk::BufferUsageFlags                     usage) :
+            buffer()
+    {
+        mUsage = usage;
+        mDevice = device;
+
+        // Allocate the buffer
+        vk::BufferCreateInfo buf_info;
+        buf_info.setUsage(mUsage)
+                .setSize(num_bytes)
+                .setSharingMode(vk::SharingMode::eExclusive);
+
+        mBuffer = mDevice.createBufferUnique(buf_info);
+
+        const auto memReqs = mDevice.getBufferMemoryRequirements(*mBuffer);
+        mDeviceMemory = allocate_device_memory(mDevice,
+                                               memReqs,
+                                               memoryProperties,
+                                               vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCached);
+
+        if (!mDeviceMemory)
         {
-            mMemory = allocate_device_memory(dev,
-                                             mem_reqs,
-                                             mem_props,
-                                             vk::MemoryPropertyFlagBits::eHostVisible | requiredFlags);
+            mDeviceMemory = allocate_device_memory(mDevice,
+                                                   memReqs,
+                                                   memoryProperties,
+                                                   vk::MemoryPropertyFlagBits::eHostVisible);
         }
 
-        if (!mMemory)
+        if (!mDeviceMemory)
         {
             fail_runtime_error("Cannot allocate device memory");
         }
+
+        // Bind the memory to the buffer object
+        mDevice.bindBufferMemory(*mBuffer, *mDeviceMemory, 0);
     }
 
-    device_memory::device_memory(device_memory&& other) :
-            device_memory()
+    buffer::buffer(buffer&& other) :
+            buffer()
     {
         swap(other);
     }
 
-    device_memory::~device_memory()
-    {
+    buffer::~buffer() {
     }
 
-    device_memory& device_memory::operator=(device_memory&& other)
+    buffer& buffer::operator=(buffer&& other)
     {
         swap(other);
         return *this;
     }
 
-    void device_memory::swap(device_memory& other)
+    void buffer::swap(buffer& other)
     {
         using std::swap;
+
+        swap(mUsage, other.mUsage);
+        swap(mIsMapped, other.mIsMapped);
 
         swap(mDevice, other.mDevice);
-        swap(mMemory, other.mMemory);
-        swap(mMapped, other.mMapped);
+        swap(mDeviceMemory, other.mDeviceMemory);
+        swap(mBuffer, other.mBuffer);
     }
 
-    void device_memory::bind(vk::Buffer buffer, vk::DeviceSize memoryOffset)
+    vk::BufferMemoryBarrier buffer::prepareForShaderRead()
     {
-        mDevice.bindBufferMemory(buffer, *mMemory, memoryOffset);
-    }
+        vk::BufferMemoryBarrier result;
 
-    void device_memory::bind(vk::Image image, vk::DeviceSize memoryOffset)
-    {
-        mDevice.bindImageMemory(image, *mMemory, memoryOffset);
-    }
-
-    device_memory::mapped_ptr<void> device_memory::map()
-    {
-        if (mMapped) {
-            fail_runtime_error("device_memory is already mapped");
+        if (!(mUsage & (vk::BufferUsageFlagBits::eUniformBuffer | vk::BufferUsageFlagBits::eStorageBuffer)))
+        {
+            fail_runtime_error("buffer was not constructed as either a storage or uniform buffer");
         }
 
-        void* memMap = mDevice.mapMemory(*mMemory, 0, VK_WHOLE_SIZE, vk::MemoryMapFlags());
-        mMapped = true;
+        result.setSrcAccessMask(vk::AccessFlagBits::eHostWrite | vk::AccessFlagBits::eShaderWrite)
+              .setSize(VK_WHOLE_SIZE)
+              .setBuffer(*mBuffer);
 
-        const vk::MappedMemoryRange mappedRange(*mMemory, 0, VK_WHOLE_SIZE);
-        mDevice.invalidateMappedMemoryRanges(mappedRange);
+        if (mUsage & vk::BufferUsageFlagBits::eTransferDst)
+            result.srcAccessMask |= vk::AccessFlagBits::eTransferWrite;
 
-        return mapped_ptr<void>(memMap, std::bind(&device_memory::unmap, this));
+        if (mUsage & vk::BufferUsageFlagBits::eUniformBuffer)
+            result.dstAccessMask |= vk::AccessFlagBits::eUniformRead;
+        if (mUsage & vk::BufferUsageFlagBits::eStorageBuffer)
+            result.dstAccessMask |= vk::AccessFlagBits::eShaderRead;
+
+        return result;
     }
 
-    void device_memory::unmap()
+    vk::BufferMemoryBarrier buffer::prepareForShaderWrite()
     {
-        if (!mMapped) {
-            fail_runtime_error("device_memory is not mapped");
+        vk::BufferMemoryBarrier result;
+
+        if (!(mUsage & vk::BufferUsageFlagBits::eStorageBuffer))
+        {
+            fail_runtime_error("buffer was not constructed as a storage buffer");
         }
 
-        const vk::MappedMemoryRange mappedRange(*mMemory, 0, VK_WHOLE_SIZE);
-        mDevice.flushMappedMemoryRanges(mappedRange);
-
-        mDevice.unmapMemory(*mMemory);
-        mMapped = false;
-    }
-
-    uniform_buffer::uniform_buffer(vk::Device dev, const vk::PhysicalDeviceMemoryProperties memoryProperties, vk::DeviceSize num_bytes) :
-            uniform_buffer()
-    {
-        // Allocate the buffer
-        vk::BufferCreateInfo buf_info;
-        buf_info.setUsage(vk::BufferUsageFlagBits::eUniformBuffer)
-                .setSize(num_bytes)
-                .setSharingMode(vk::SharingMode::eExclusive);
-
-        buf = dev.createBufferUnique(buf_info);
-
-        mem = device_memory(dev, dev.getBufferMemoryRequirements(*buf), memoryProperties);
-
-        // Bind the memory to the buffer object
-        mem.bind(*buf, 0);
-    }
-
-    uniform_buffer::uniform_buffer(uniform_buffer&& other) :
-            uniform_buffer()
-    {
-        swap(other);
-    }
-
-    uniform_buffer::~uniform_buffer() {
-    }
-
-    uniform_buffer& uniform_buffer::operator=(uniform_buffer&& other)
-    {
-        swap(other);
-        return *this;
-    }
-
-    void uniform_buffer::swap(uniform_buffer& other)
-    {
-        using std::swap;
-
-        swap(mem, other.mem);
-        swap(buf, other.buf);
-    }
-
-    vk::BufferMemoryBarrier uniform_buffer::prepareForComputeRead()
-    {
-        vk::BufferMemoryBarrier result;
-
-        result.setSrcAccessMask(vk::AccessFlagBits::eHostWrite | vk::AccessFlagBits::eTransferWrite)
-                .setDstAccessMask(vk::AccessFlagBits::eUniformRead)
-                .setSize(VK_WHOLE_SIZE)
-                .setBuffer(*buf);
-
-        return result;
-    }
-
-    vk::BufferMemoryBarrier uniform_buffer::prepareForTransferSrc()
-    {
-        vk::BufferMemoryBarrier result;
-
-        result.setSrcAccessMask(vk::AccessFlagBits::eHostWrite | vk::AccessFlagBits::eTransferWrite)
-                .setDstAccessMask(vk::AccessFlagBits::eTransferRead)
-                .setSize(VK_WHOLE_SIZE)
-                .setBuffer(*buf);
-
-        return result;
-    }
-
-    vk::BufferMemoryBarrier uniform_buffer::prepareForTransferDst()
-    {
-        vk::BufferMemoryBarrier result;
-
-        result.setSrcAccessMask(vk::AccessFlagBits::eHostRead | vk::AccessFlagBits::eTransferRead | vk::AccessFlagBits::eShaderRead)
-                .setDstAccessMask(vk::AccessFlagBits::eTransferWrite)
-                .setSize(VK_WHOLE_SIZE)
-                .setBuffer(*buf);
-
-        return result;
-    }
-
-    vk::DescriptorBufferInfo uniform_buffer::use()
-    {
-        vk::DescriptorBufferInfo result;
-        result.setRange(VK_WHOLE_SIZE)
-                .setBuffer(*buf);
-        return result;
-    }
-
-    storage_buffer::storage_buffer(vk::Device dev, const vk::PhysicalDeviceMemoryProperties memoryProperties, vk::DeviceSize num_bytes) :
-            storage_buffer()
-    {
-        // Allocate the buffer
-        vk::BufferCreateInfo buf_info;
-        buf_info.setUsage(vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eTransferSrc)
-                .setSize(num_bytes)
-                .setSharingMode(vk::SharingMode::eExclusive);
-
-        buf = dev.createBufferUnique(buf_info);
-
-        mem = device_memory(dev,
-                            dev.getBufferMemoryRequirements(*buf),
-                            memoryProperties,
-                            vk::MemoryPropertyFlagBits(),
-                            vk::MemoryPropertyFlagBits::eHostCached);
-
-        // Bind the memory to the buffer object
-        mem.bind(*buf, 0);
-    }
-
-    storage_buffer::storage_buffer(storage_buffer&& other) :
-            storage_buffer()
-    {
-        swap(other);
-    }
-
-    storage_buffer::~storage_buffer() {
-    }
-
-    storage_buffer& storage_buffer::operator=(storage_buffer&& other)
-    {
-        swap(other);
-        return *this;
-    }
-
-    void storage_buffer::swap(storage_buffer& other)
-    {
-        using std::swap;
-
-        swap(mem, other.mem);
-        swap(buf, other.buf);
-    }
-
-    vk::BufferMemoryBarrier storage_buffer::prepareForComputeRead()
-    {
-        vk::BufferMemoryBarrier result;
-
-        result.setSrcAccessMask(vk::AccessFlagBits::eHostWrite | vk::AccessFlagBits::eTransferWrite | vk::AccessFlagBits::eShaderWrite)
-                .setDstAccessMask(vk::AccessFlagBits::eShaderRead)
-                .setSize(VK_WHOLE_SIZE)
-                .setBuffer(*buf);
-
-        return result;
-    }
-
-    vk::BufferMemoryBarrier storage_buffer::prepareForComputeWrite()
-    {
-        vk::BufferMemoryBarrier result;
-
-        result.setSrcAccessMask(vk::AccessFlagBits::eHostRead | vk::AccessFlagBits::eTransferRead | vk::AccessFlagBits::eShaderRead)
+        result.setSrcAccessMask(vk::AccessFlagBits::eShaderRead)
                 .setDstAccessMask(vk::AccessFlagBits::eShaderWrite)
                 .setSize(VK_WHOLE_SIZE)
-                .setBuffer(*buf);
+                .setBuffer(*mBuffer);
+
+        if (mUsage & vk::BufferUsageFlagBits::eTransferSrc)
+            result.srcAccessMask |= (vk::AccessFlagBits::eTransferRead);
 
         return result;
     }
 
-    vk::BufferMemoryBarrier storage_buffer::prepareForTransferSrc()
+    vk::BufferMemoryBarrier buffer::prepareForTransferSrc()
     {
-        vk::BufferMemoryBarrier result;
+        if (!(mUsage & vk::BufferUsageFlagBits::eTransferSrc))
+        {
+            fail_runtime_error("buffer was not constructed as a potential transfer source");
+        }
 
-        result.setSrcAccessMask(vk::AccessFlagBits::eHostWrite | vk::AccessFlagBits::eTransferWrite | vk::AccessFlagBits::eShaderWrite)
-                .setDstAccessMask(vk::AccessFlagBits::eTransferRead)
-                .setSize(VK_WHOLE_SIZE)
-                .setBuffer(*buf);
+        vk::BufferMemoryBarrier result;
+        result.setSrcAccessMask(vk::AccessFlagBits::eHostWrite)
+              .setDstAccessMask(vk::AccessFlagBits::eTransferRead)
+              .setSize(VK_WHOLE_SIZE)
+              .setBuffer(*mBuffer);
+
+        if (mUsage & (vk::BufferUsageFlagBits::eUniformBuffer | vk::BufferUsageFlagBits::eStorageBuffer))
+            result.srcAccessMask |= vk::AccessFlagBits::eShaderWrite;
+        if (mUsage & vk::BufferUsageFlagBits::eTransferDst)
+            result.srcAccessMask |= vk::AccessFlagBits::eTransferWrite;
 
         return result;
     }
 
-    vk::BufferMemoryBarrier storage_buffer::prepareForTransferDst()
+    vk::BufferMemoryBarrier buffer::prepareForTransferDst()
     {
-        vk::BufferMemoryBarrier result;
+        if (!(mUsage & vk::BufferUsageFlagBits::eTransferDst))
+        {
+            fail_runtime_error("buffer was not constructed as a potential transfer destination");
+        }
 
-        result.setSrcAccessMask(vk::AccessFlagBits::eHostRead | vk::AccessFlagBits::eTransferRead | vk::AccessFlagBits::eShaderRead)
-                .setDstAccessMask(vk::AccessFlagBits::eTransferWrite)
-                .setSize(VK_WHOLE_SIZE)
-                .setBuffer(*buf);
+        vk::BufferMemoryBarrier result;
+        result.setSrcAccessMask(vk::AccessFlagBits::eHostRead)
+              .setDstAccessMask(vk::AccessFlagBits::eTransferWrite)
+              .setSize(VK_WHOLE_SIZE)
+              .setBuffer(*mBuffer);
+
+        if (mUsage & (vk::BufferUsageFlagBits::eUniformBuffer | vk::BufferUsageFlagBits::eStorageBuffer))
+            result.srcAccessMask |= vk::AccessFlagBits::eShaderRead;
+        if (mUsage & vk::BufferUsageFlagBits::eTransferSrc)
+            result.srcAccessMask |= vk::AccessFlagBits::eTransferRead;
 
         return result;
     }
 
-    vk::DescriptorBufferInfo storage_buffer::use()
+    vk::DescriptorBufferInfo buffer::use()
     {
         vk::DescriptorBufferInfo result;
         result.setRange(VK_WHOLE_SIZE)
-                .setBuffer(*buf);
+                .setBuffer(*mBuffer);
         return result;
+    }
+
+    mapped_ptr<void> buffer::map()
+    {
+        // TODO check that the memory is host visible
+
+        if (mIsMapped) {
+            fail_runtime_error("buffer is already mapped");
+        }
+
+        void* memMap = mDevice.mapMemory(*mDeviceMemory, 0, VK_WHOLE_SIZE, vk::MemoryMapFlags());
+        mapped_ptr<void> result(memMap, std::bind(&buffer::unmap, this));
+        mIsMapped = true;
+
+        // TODO only do cache management on incoherent memory
+
+        const vk::MappedMemoryRange mappedRange(*mDeviceMemory, 0, VK_WHOLE_SIZE);
+        mDevice.invalidateMappedMemoryRanges(mappedRange);
+
+        return result;
+    }
+
+    void buffer::unmap()
+    {
+        if (!mIsMapped) {
+            fail_runtime_error("buffer is not mapped");
+        }
+
+        // TODO only do cache management on incoherent memory
+
+        const vk::MappedMemoryRange mappedRange(*mDeviceMemory, 0, VK_WHOLE_SIZE);
+        mDevice.flushMappedMemoryRanges(mappedRange);
+
+        mDevice.unmapMemory(*mDeviceMemory);
+        mIsMapped = false;
     }
 
     image::image()
@@ -766,7 +706,7 @@ namespace vulkan_utils {
     staging_buffer::staging_buffer()
             : mDevice(),
               mImage(),
-              mStorageBuffer(),
+              mBuffer(),
               mExtent(0)
     {
         // this space intentionally left blank
@@ -778,7 +718,7 @@ namespace vulkan_utils {
 
         swap(mDevice, other.mDevice);
         swap(mImage, other.mImage);
-        swap(mStorageBuffer, other.mStorageBuffer);
+        swap(mBuffer, other.mBuffer);
         swap(mExtent, other.mExtent);
     }
 
@@ -794,10 +734,9 @@ namespace vulkan_utils {
         mImage = image;
         mExtent = extent;
 
-
         const std::size_t num_bytes = pixelSize * mExtent.width * mExtent.height * mExtent.depth;
 
-        mStorageBuffer = storage_buffer(device, memoryProperties, num_bytes);
+        mBuffer = buffer(device, memoryProperties, num_bytes, vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eTransferSrc);
     }
 
     staging_buffer::staging_buffer(staging_buffer&& other)
@@ -817,7 +756,7 @@ namespace vulkan_utils {
 
     void staging_buffer::copyToImage(vk::CommandBuffer commandBuffer)
     {
-        vk::BufferMemoryBarrier bufferBarrier = mStorageBuffer.prepareForTransferSrc();
+        vk::BufferMemoryBarrier bufferBarrier = mBuffer.prepareForTransferSrc();
         vk::ImageMemoryBarrier imageBarrier = mImage->prepare(vk::ImageLayout::eTransferDstOptimal);
 
         vk::BufferImageCopy copyRegion;
@@ -839,7 +778,7 @@ namespace vulkan_utils {
 
     void staging_buffer::copyFromImage(vk::CommandBuffer commandBuffer)
     {
-        vk::BufferMemoryBarrier bufferBarrier = mStorageBuffer.prepareForTransferDst();
+        vk::BufferMemoryBarrier bufferBarrier = mBuffer.prepareForTransferDst();
         vk::ImageMemoryBarrier imageBarrier = mImage->prepare(vk::ImageLayout::eTransferSrcOptimal);
 
         vk::BufferImageCopy copyRegion;
@@ -884,9 +823,9 @@ namespace vulkan_utils {
         return result;
     }
 
-    void copyBufferToImage(vk::CommandBuffer commandBuffer,
-            storage_buffer& buffer,
-            image& image)
+    void copyBufferToImage(vk::CommandBuffer    commandBuffer,
+                           buffer&              buffer,
+                           image&               image)
     {
         vk::BufferMemoryBarrier bufferBarrier = buffer.prepareForTransferSrc();
         vk::ImageMemoryBarrier imageBarrier = image.prepare(vk::ImageLayout::eTransferDstOptimal);
@@ -906,9 +845,9 @@ namespace vulkan_utils {
         commandBuffer.copyBufferToImage(bufferBarrier.buffer, imageBarrier.image, imageBarrier.newLayout, copyRegion);
     }
 
-    void copyImageToBuffer(vk::CommandBuffer commandBuffer,
-            image& image,
-            storage_buffer& buffer)
+    void copyImageToBuffer(vk::CommandBuffer    commandBuffer,
+                           image&               image,
+                           buffer&              buffer)
     {
         vk::BufferMemoryBarrier bufferBarrier = buffer.prepareForTransferDst();
         vk::ImageMemoryBarrier imageBarrier = image.prepare(vk::ImageLayout::eTransferSrcOptimal);

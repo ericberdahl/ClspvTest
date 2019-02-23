@@ -15,8 +15,8 @@ namespace generic_kernel {
 
     struct Test : public test_utils::Test
     {
-        typedef std::vector<vulkan_utils::storage_buffer>   storage_list;
-        typedef std::vector<vulkan_utils::uniform_buffer>   uniform_list;
+        typedef std::vector<vulkan_utils::buffer>           storage_list;
+        typedef std::vector<vulkan_utils::buffer>           uniform_list;
         typedef std::vector<std::size_t>                    local_size_list;
 
         enum arg_kind
@@ -37,6 +37,8 @@ namespace generic_kernel {
         virtual test_utils::Evaluation evaluate(bool verbose) override;
 
         std::string             mParameterString;
+
+        // TODO unify storage_list and uniform_list into buffer_list
 
         storage_list            mStorageBuffers;
         uniform_list            mUniformBuffers;

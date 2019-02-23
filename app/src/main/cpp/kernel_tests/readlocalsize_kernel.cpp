@@ -320,12 +320,12 @@ namespace {
 namespace readlocalsize_kernel {
 
     clspv_utils::execution_time_t
-    invoke(clspv_utils::kernel&             kernel,
-           vulkan_utils::storage_buffer&    outLocalSizes,
-           int                              inWidth,
-           int                              inHeight,
-           int                              inPitch,
-           idtype_t                         inIdType) {
+    invoke(clspv_utils::kernel&     kernel,
+           vulkan_utils::buffer&    outLocalSizes,
+           int                      inWidth,
+           int                      inHeight,
+           int                      inPitch,
+           idtype_t                 inIdType) {
         struct scalar_args {
             int width;  // offset 0
             int height; // offset 4
@@ -337,9 +337,9 @@ namespace readlocalsize_kernel {
         static_assert(8 == offsetof(scalar_args, pitch), "pitch offset incorrect");
         static_assert(12 == offsetof(scalar_args, idtype), "idtype offset incorrect");
 
-        vulkan_utils::uniform_buffer scalarBuffer(kernel.getDevice().getDevice(),
-                                                  kernel.getDevice().getMemoryProperties(),
-                                                  sizeof(scalar_args));
+        vulkan_utils::buffer scalarBuffer = vulkan_utils::createUniformBuffer(kernel.getDevice().getDevice(),
+                                                                              kernel.getDevice().getMemoryProperties(),
+                                                                              sizeof(scalar_args));
         auto scalars = scalarBuffer.map<scalar_args>();
         scalars->width = inWidth;
         scalars->height = inHeight;
@@ -375,7 +375,9 @@ namespace readlocalsize_kernel {
         // allocate data buffer
         auto num_elements = mBufferExtent.width * mBufferExtent.height * mBufferExtent.depth;
         const std::size_t buffer_size = num_elements * sizeof(std::int32_t);
-        mDstBuffer = vulkan_utils::storage_buffer(device.getDevice(), device.getMemoryProperties(), buffer_size);
+        mDstBuffer = vulkan_utils::createStorageBuffer(device.getDevice(),
+                                                       device.getMemoryProperties(),
+                                                       buffer_size);
 
         mExpectedResults = compute_expected_results(mIdType,
                                                         mBufferExtent.width,

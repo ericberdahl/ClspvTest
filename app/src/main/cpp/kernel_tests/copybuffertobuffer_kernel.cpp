@@ -7,16 +7,16 @@
 namespace copybuffertobuffer_kernel {
 
     clspv_utils::execution_time_t
-    invoke(clspv_utils::kernel&             kernel,
-           vulkan_utils::storage_buffer&    src_buffer,
-           vulkan_utils::storage_buffer&    dst_buffer,
-           std::int32_t                     src_pitch,
-           std::int32_t                     src_offset,
-           std::int32_t                     dst_pitch,
-           std::int32_t                     dst_offset,
-           bool                             is32Bit,
-           std::int32_t                     width,
-           std::int32_t                     height)
+    invoke(clspv_utils::kernel&     kernel,
+           vulkan_utils::buffer&    src_buffer,
+           vulkan_utils::buffer&    dst_buffer,
+           std::int32_t             src_pitch,
+           std::int32_t             src_offset,
+           std::int32_t             dst_pitch,
+           std::int32_t             dst_offset,
+           bool                     is32Bit,
+           std::int32_t             width,
+           std::int32_t             height)
     {
         struct scalar_args {
             std::int32_t inSrcPitch;         // offset 0
@@ -35,9 +35,9 @@ namespace copybuffertobuffer_kernel {
         static_assert(20 == offsetof(scalar_args, inWidth), "inWidth offset incorrect");
         static_assert(24 == offsetof(scalar_args, inHeight), "inHeight offset incorrect");
 
-        vulkan_utils::uniform_buffer scalarBuffer(kernel.getDevice().getDevice(),
-                                                  kernel.getDevice().getMemoryProperties(),
-                                                  sizeof(scalar_args));
+        vulkan_utils::buffer scalarBuffer = vulkan_utils::createUniformBuffer(kernel.getDevice().getDevice(),
+                                                                              kernel.getDevice().getMemoryProperties(),
+                                                                              sizeof(scalar_args));
         auto scalars = scalarBuffer.map<scalar_args>();
         scalars->inSrcPitch = src_pitch;
         scalars->inSrcOffset = src_offset;
@@ -97,14 +97,12 @@ namespace copybuffertobuffer_kernel {
         mIs32Bit = (sizeofPixelComponent == 4);
 
         // allocate buffers and images
-        mSrcBuffer = vulkan_utils::storage_buffer(device.getDevice(),
-                                                  device.getMemoryProperties(),
-                                                  buffer_size);
-        mDstBuffer = vulkan_utils::storage_buffer(device.getDevice(),
-                                                  device.getMemoryProperties(),
-                                                  buffer_size);
-
-
+        mSrcBuffer = vulkan_utils::createStorageBuffer(device.getDevice(),
+                                                       device.getMemoryProperties(),
+                                                       buffer_size);
+        mDstBuffer = vulkan_utils::createStorageBuffer(device.getDevice(),
+                                                       device.getMemoryProperties(),
+                                                       buffer_size);
     }
 
     TestBase::~TestBase()

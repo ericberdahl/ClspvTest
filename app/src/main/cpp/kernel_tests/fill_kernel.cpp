@@ -7,15 +7,15 @@
 namespace fill_kernel {
 
     clspv_utils::execution_time_t
-    invoke(clspv_utils::kernel&             kernel,
-           vulkan_utils::storage_buffer&    dst_buffer,
-           int                              pitch,
-           int                              device_format,
-           int                              offset_x,
-           int                              offset_y,
-           int                              width,
-           int                              height,
-           const gpu_types::float4&         color) {
+    invoke(clspv_utils::kernel&     kernel,
+           vulkan_utils::buffer&    dst_buffer,
+           int                      pitch,
+           int                      device_format,
+           int                      offset_x,
+           int                      offset_y,
+           int                      width,
+           int                      height,
+           const gpu_types::float4& color) {
         struct scalar_args {
             int inPitch;        // offset 0
             int inDeviceFormat; // DevicePixelFormat offset 4
@@ -34,9 +34,9 @@ namespace fill_kernel {
         static_assert(20 == offsetof(scalar_args, inHeight), "inHeight offset incorrect");
         static_assert(32 == offsetof(scalar_args, inColor), "inColor offset incorrect");
 
-        vulkan_utils::uniform_buffer scalarBuffer(kernel.getDevice().getDevice(),
-                                                  kernel.getDevice().getMemoryProperties(),
-                                                  sizeof(scalar_args));
+        vulkan_utils::buffer scalarBuffer = vulkan_utils::createUniformBuffer(kernel.getDevice().getDevice(),
+                                                                              kernel.getDevice().getMemoryProperties(),
+                                                                              sizeof(scalar_args));
         auto scalars = scalarBuffer.map<scalar_args>();
         scalars->inPitch = pitch;
         scalars->inDeviceFormat = device_format;

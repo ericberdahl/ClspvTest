@@ -9,11 +9,11 @@
 namespace strangeshuffle_kernel {
 
     clspv_utils::execution_time_t
-    invoke(clspv_utils::kernel&             kernel,
-           vulkan_utils::storage_buffer&    index_buffer,
-           vulkan_utils::storage_buffer&    source_buffer,
-           vulkan_utils::storage_buffer&    destination_buffer,
-           std::size_t                      num_elements)
+    invoke(clspv_utils::kernel&     kernel,
+           vulkan_utils::buffer&    index_buffer,
+           vulkan_utils::buffer&    source_buffer,
+           vulkan_utils::buffer&    destination_buffer,
+           std::size_t              num_elements)
     {
         if (0 != (num_elements % 2)) {
             throw std::runtime_error("num_elements must be even");
@@ -40,12 +40,18 @@ namespace strangeshuffle_kernel {
 
         // allocate source and destination buffers
         const std::size_t pixel_buffer_size = mBufferWidth * sizeof(gpu_types::float4);
-        mSrcBuffer = vulkan_utils::storage_buffer(device.getDevice(), device.getMemoryProperties(), pixel_buffer_size);
-        mDstBuffer = vulkan_utils::storage_buffer(device.getDevice(), device.getMemoryProperties(), pixel_buffer_size);
+        mSrcBuffer = vulkan_utils::createStorageBuffer(device.getDevice(),
+                                                       device.getMemoryProperties(),
+                                                       pixel_buffer_size);
+        mDstBuffer = vulkan_utils::createStorageBuffer(device.getDevice(),
+                                                       device.getMemoryProperties(),
+                                                       pixel_buffer_size);
 
         // allocate index buffer
         const std::size_t index_buffer_size = mBufferWidth * sizeof(int32_t);
-        mIndexBuffer = vulkan_utils::storage_buffer(device.getDevice(), device.getMemoryProperties(), index_buffer_size);
+        mIndexBuffer = vulkan_utils::createStorageBuffer(device.getDevice(),
+                                                         device.getMemoryProperties(),
+                                                         index_buffer_size);
 
         auto srcBufferMap = mSrcBuffer.map<gpu_types::float4>();
         test_utils::fill_random_pixels<gpu_types::float4>(srcBufferMap.get(), srcBufferMap.get() + mBufferWidth);

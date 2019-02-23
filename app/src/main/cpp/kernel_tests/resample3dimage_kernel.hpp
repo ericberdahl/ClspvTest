@@ -17,7 +17,7 @@ namespace resample3dimage_kernel {
     clspv_utils::execution_time_t
     invoke(clspv_utils::kernel &kernel,
            vulkan_utils::image &src_image,
-           vulkan_utils::storage_buffer &dst_buffer,
+           vulkan_utils::buffer &dst_buffer,
            int width,
            int height,
            int depth);
@@ -38,7 +38,7 @@ namespace resample3dimage_kernel {
         vk::Extent3D                    mBufferExtent;
         vulkan_utils::image             mSrcImage;
         vulkan_utils::staging_buffer    mSrcImageStaging;
-        vulkan_utils::storage_buffer    mDstBuffer;
+        vulkan_utils::buffer            mDstBuffer;
         std::vector<BufferPixelType>    mExpectedDstBuffer;
         vk::UniqueCommandBuffer         mSetupCommand;
     };

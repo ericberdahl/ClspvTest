@@ -9,9 +9,9 @@
 namespace testgreaterthanorequalto_kernel {
 
     clspv_utils::execution_time_t
-    invoke(clspv_utils::kernel&             kernel,
-           vulkan_utils::storage_buffer&    dst_buffer,
-           vk::Extent3D                     extent)
+    invoke(clspv_utils::kernel&     kernel,
+           vulkan_utils::buffer&    dst_buffer,
+           vk::Extent3D             extent)
     {
         if (1 != extent.depth)
         {
@@ -25,9 +25,9 @@ namespace testgreaterthanorequalto_kernel {
         static_assert(0 == offsetof(scalar_args, inWidth), "inWidth offset incorrect");
         static_assert(4 == offsetof(scalar_args, inHeight), "inHeight offset incorrect");
 
-        vulkan_utils::uniform_buffer scalarBuffer(kernel.getDevice().getDevice(),
-                                                  kernel.getDevice().getMemoryProperties(),
-                                                  sizeof(scalar_args));
+        vulkan_utils::buffer scalarBuffer = vulkan_utils::createUniformBuffer(kernel.getDevice().getDevice(),
+                                                                              kernel.getDevice().getMemoryProperties(),
+                                                                              sizeof(scalar_args));
         auto scalars = scalarBuffer.map<scalar_args>();
         scalars->inWidth = extent.width;
         scalars->inHeight = extent.height;
@@ -56,7 +56,9 @@ namespace testgreaterthanorequalto_kernel {
         const std::size_t buffer_size = buffer_length * sizeof(float);
 
         // allocate buffers and images
-        mDstBuffer = vulkan_utils::storage_buffer(device.getDevice(), device.getMemoryProperties(), buffer_size);
+        mDstBuffer = vulkan_utils::createStorageBuffer(device.getDevice(),
+                                                       device.getMemoryProperties(),
+                                                       buffer_size);
 
         // set up expected results of the destination buffer
         int index = 0;

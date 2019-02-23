@@ -17,9 +17,9 @@ namespace {
 namespace fillarraystruct_kernel {
 
     clspv_utils::execution_time_t
-    invoke(clspv_utils::kernel&             kernel,
-           vulkan_utils::storage_buffer&    destination_buffer,
-           unsigned int                     num_elements)
+    invoke(clspv_utils::kernel&     kernel,
+           vulkan_utils::buffer&    destination_buffer,
+           unsigned int             num_elements)
     {
         const vk::Extent3D workgroup_sizes = kernel.getWorkgroupSize();
         const vk::Extent3D num_workgroups(
@@ -41,7 +41,9 @@ namespace fillarraystruct_kernel {
         // allocate destination buffer
         const std::size_t buffer_size = mBufferWidth * sizeof(FloatArrayWrapper);
         const int num_floats_in_buffer = num_floats_in_struct * mBufferWidth;
-        mDstBuffer = vulkan_utils::storage_buffer(device.getDevice(), device.getMemoryProperties(), buffer_size);
+        mDstBuffer = vulkan_utils::createStorageBuffer(device.getDevice(),
+                                                       device.getMemoryProperties(),
+                                                       buffer_size);
 
         mExpectedResults.resize(mBufferWidth);
     }

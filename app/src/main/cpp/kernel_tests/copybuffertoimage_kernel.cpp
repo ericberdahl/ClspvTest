@@ -25,17 +25,17 @@ namespace  {
 namespace copybuffertoimage_kernel {
 
     clspv_utils::execution_time_t
-    invoke(clspv_utils::kernel&             kernel,
-           vulkan_utils::storage_buffer&    src_buffer,
-           vulkan_utils::image&             dst_image,
-           int                              src_offset,
-           int                              src_pitch,
-           cl_channel_order                 src_channel_order,
-           cl_channel_type                  src_channel_type,
-           bool                             swap_components,
-           bool                             premultiply,
-           int                              width,
-           int                              height)
+    invoke(clspv_utils::kernel&     kernel,
+           vulkan_utils::buffer&    src_buffer,
+           vulkan_utils::image&     dst_image,
+           int                      src_offset,
+           int                      src_pitch,
+           cl_channel_order         src_channel_order,
+           cl_channel_type          src_channel_type,
+           bool                     swap_components,
+           bool                     premultiply,
+           int                      width,
+           int                      height)
     {
         struct scalar_args {
             int inSrcOffset;        // offset 0
@@ -59,9 +59,9 @@ namespace copybuffertoimage_kernel {
         static_assert(24 == offsetof(scalar_args, inWidth), "inWidth offset incorrect");
         static_assert(28 == offsetof(scalar_args, inHeight), "inHeight offset incorrect");
 
-        vulkan_utils::uniform_buffer scalarBuffer(kernel.getDevice().getDevice(),
-                                                  kernel.getDevice().getMemoryProperties(),
-                                                  sizeof(scalar_args));
+        vulkan_utils::buffer scalarBuffer = vulkan_utils::createUniformBuffer(kernel.getDevice().getDevice(),
+                                                                              kernel.getDevice().getMemoryProperties(),
+                                                                              sizeof(scalar_args));
         auto scalars = scalarBuffer.map<scalar_args>();
         scalars->inSrcOffset = src_offset;
         scalars->inSrcPitch = src_pitch;

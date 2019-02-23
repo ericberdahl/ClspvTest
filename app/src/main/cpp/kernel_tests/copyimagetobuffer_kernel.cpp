@@ -26,16 +26,16 @@ namespace  {
 namespace copyimagetobuffer_kernel {
 
     clspv_utils::execution_time_t
-    invoke(clspv_utils::kernel&             kernel,
-           vulkan_utils::image&             src_image,
-           vulkan_utils::storage_buffer&    dst_buffer,
-           int                              dst_offset,
-           int                              dst_pitch,
-           cl_channel_order                 dst_channel_order,
-           cl_channel_type                  dst_channel_type,
-           bool                             swap_components,
-           int                              width,
-           int                              height)
+    invoke(clspv_utils::kernel&     kernel,
+           vulkan_utils::image&     src_image,
+           vulkan_utils::buffer&    dst_buffer,
+           int                      dst_offset,
+           int                      dst_pitch,
+           cl_channel_order         dst_channel_order,
+           cl_channel_type          dst_channel_type,
+           bool                     swap_components,
+           int                      width,
+           int                      height)
     {
         struct scalar_args {
             int inDestOffset;       // offset 0
@@ -57,9 +57,9 @@ namespace copyimagetobuffer_kernel {
         static_assert(20 == offsetof(scalar_args, inWidth), "inWidth offset incorrect");
         static_assert(24 == offsetof(scalar_args, inHeight), "inHeight offset incorrect");
 
-        vulkan_utils::uniform_buffer scalarBuffer(kernel.getDevice().getDevice(),
-                                                  kernel.getDevice().getMemoryProperties(),
-                                                  sizeof(scalar_args));
+        vulkan_utils::buffer scalarBuffer = vulkan_utils::createUniformBuffer(kernel.getDevice().getDevice(),
+                                                                              kernel.getDevice().getMemoryProperties(),
+                                                                              sizeof(scalar_args));
         auto scalars = scalarBuffer.map<scalar_args>();
         scalars->inDestOffset = dst_offset;
         scalars->inDestPitch = width;

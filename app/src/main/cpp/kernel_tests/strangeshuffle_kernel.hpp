@@ -15,11 +15,11 @@
 namespace strangeshuffle_kernel {
 
     clspv_utils::execution_time_t
-    invoke(clspv_utils::kernel&             kernel,
-           vulkan_utils::storage_buffer&    index_buffer,
-           vulkan_utils::storage_buffer&    source_buffer,
-           vulkan_utils::storage_buffer&    destination_buffer,
-           std::size_t                      num_elements);
+    invoke(clspv_utils::kernel&     kernel,
+           vulkan_utils::buffer&    index_buffer,
+           vulkan_utils::buffer&    source_buffer,
+           vulkan_utils::buffer&    destination_buffer,
+           std::size_t              num_elements);
 
     struct Test : public test_utils::Test
     {
@@ -31,10 +31,10 @@ namespace strangeshuffle_kernel {
 
         virtual test_utils::Evaluation evaluate(bool verbose) override;
 
-        int                             mBufferWidth;
-        vulkan_utils::storage_buffer    mSrcBuffer;
-        vulkan_utils::storage_buffer    mDstBuffer;
-        vulkan_utils::storage_buffer    mIndexBuffer;
+        int                     mBufferWidth;
+        vulkan_utils::buffer    mSrcBuffer;
+        vulkan_utils::buffer    mDstBuffer;
+        vulkan_utils::buffer    mIndexBuffer;
     };
 
     test_utils::KernelTest::invocation_tests getAllTestVariants();

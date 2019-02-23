@@ -57,7 +57,9 @@ namespace generic_kernel {
                 if (arg == args.end()) clspv_utils::fail_runtime_error("badly formed arguments to generic test");
                 const std::size_t bufferSize = std::atoi(arg->c_str());
 
-                mStorageBuffers.push_back(vulkan_utils::storage_buffer(device.getDevice(), device.getMemoryProperties(), bufferSize));
+                mStorageBuffers.push_back(vulkan_utils::createStorageBuffer(device.getDevice(),
+                                                                            device.getMemoryProperties(),
+                                                                            bufferSize));
                 mArgOrder.push_back(kind_storageBuffer);
             }
             else if (*arg == "-sb") {
@@ -66,7 +68,9 @@ namespace generic_kernel {
                 if (arg == args.end()) clspv_utils::fail_runtime_error("badly formed arguments to generic test");
                 const auto bufferContents = hexToBytes(*arg);
 
-                mStorageBuffers.push_back(vulkan_utils::storage_buffer(device.getDevice(), device.getMemoryProperties(), bufferContents.size()));
+                mStorageBuffers.push_back(vulkan_utils::createStorageBuffer(device.getDevice(),
+                                                                            device.getMemoryProperties(),
+                                                                            bufferContents.size()));
                 mArgOrder.push_back(kind_storageBuffer);
 
                 auto bufferMap = mStorageBuffers.back().map<void>();
@@ -78,7 +82,9 @@ namespace generic_kernel {
                 if (arg == args.end()) clspv_utils::fail_runtime_error("badly formed arguments to generic test");
                 const auto bufferContents = hexToBytes(*arg);
 
-                mUniformBuffers.push_back(vulkan_utils::uniform_buffer(device.getDevice(), device.getMemoryProperties(), bufferContents.size()));
+                mUniformBuffers.push_back(vulkan_utils::createUniformBuffer(device.getDevice(),
+                                                                            device.getMemoryProperties(),
+                                                                            bufferContents.size()));
                 mArgOrder.push_back(kind_uniformBuffer);
 
                 auto bufferMap = mUniformBuffers.back().map<void>();

@@ -21,12 +21,12 @@ namespace {
 namespace resample3dimage_kernel {
 
     clspv_utils::execution_time_t
-    invoke(clspv_utils::kernel&             kernel,
-           vulkan_utils::image&             src_image,
-           vulkan_utils::storage_buffer&    dst_buffer,
-           int                              width,
-           int                              height,
-           int                              depth)
+    invoke(clspv_utils::kernel&     kernel,
+           vulkan_utils::image&     src_image,
+           vulkan_utils::buffer&    dst_buffer,
+           int                      width,
+           int                      height,
+           int                      depth)
     {
         struct scalar_args {
             int inWidth;            // offset 0
@@ -37,9 +37,9 @@ namespace resample3dimage_kernel {
         static_assert(4 == offsetof(scalar_args, inHeight), "inHeight offset incorrect");
         static_assert(8 == offsetof(scalar_args, inDepth), "inDepth offset incorrect");
 
-        vulkan_utils::uniform_buffer scalarBuffer(kernel.getDevice().getDevice(),
-                                                  kernel.getDevice().getMemoryProperties(),
-                                                  sizeof(scalar_args));
+        vulkan_utils::buffer scalarBuffer = vulkan_utils::createUniformBuffer(kernel.getDevice().getDevice(),
+                                                                              kernel.getDevice().getMemoryProperties(),
+                                                                              sizeof(scalar_args));
         auto scalars = scalarBuffer.map<scalar_args>();
         scalars->inWidth = width;
         scalars->inHeight = height;
@@ -86,9 +86,9 @@ namespace resample3dimage_kernel {
         };
 
         // allocate buffers and images
-        mDstBuffer = vulkan_utils::storage_buffer(device.getDevice(),
-                                                device.getMemoryProperties(),
-                                                buffer_size);
+        mDstBuffer = vulkan_utils::createStorageBuffer(device.getDevice(),
+                                                       device.getMemoryProperties(),
+                                                       buffer_size);
         mSrcImage = vulkan_utils::image(device.getDevice(),
                                      device.getMemoryProperties(),
                                      imageExtent,

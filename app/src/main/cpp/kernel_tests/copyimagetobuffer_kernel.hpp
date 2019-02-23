@@ -16,16 +16,16 @@
 namespace copyimagetobuffer_kernel {
 
     clspv_utils::execution_time_t
-    invoke(clspv_utils::kernel&             kernel,
-           vulkan_utils::image&             src_image,
-           vulkan_utils::storage_buffer&    dst_buffer,
-           int                              dst_offset,
-           int                              dst_pitch,
-           cl_channel_order                 dst_channel_order,
-           cl_channel_type                  dst_channel_type,
-           bool                             swap_components,
-           int                              width,
-           int                              height);
+    invoke(clspv_utils::kernel&     kernel,
+           vulkan_utils::image&     src_image,
+           vulkan_utils::buffer&    dst_buffer,
+           int                      dst_offset,
+           int                      dst_pitch,
+           cl_channel_order         dst_channel_order,
+           cl_channel_type          dst_channel_type,
+           bool                     swap_components,
+           int                      width,
+           int                      height);
 
     test_utils::KernelTest::invocation_tests getAllTestVariants();
 
@@ -41,9 +41,9 @@ namespace copyimagetobuffer_kernel {
             const std::size_t buffer_size = buffer_length * sizeof(BufferPixelType);
 
             // allocate buffers and images
-            mDstBuffer = vulkan_utils::storage_buffer(device.getDevice(),
-                                                       device.getMemoryProperties(),
-                                                       buffer_size);
+            mDstBuffer = vulkan_utils::createStorageBuffer(device.getDevice(),
+                                                           device.getMemoryProperties(),
+                                                           buffer_size);
             mSrcImage = vulkan_utils::image(device.getDevice(),
                                                      device.getMemoryProperties(),
                                                      mBufferExtent,
@@ -108,7 +108,7 @@ namespace copyimagetobuffer_kernel {
         }
 
         vk::Extent3D                    mBufferExtent;
-        vulkan_utils::storage_buffer    mDstBuffer;
+        vulkan_utils::buffer            mDstBuffer;
         vulkan_utils::image             mSrcImage;
         vulkan_utils::staging_buffer    mSrcImageStaging;
         vk::UniqueCommandBuffer         mSetupCommand;

@@ -36,12 +36,12 @@ namespace readlocalsize_kernel {
 
 
     clspv_utils::execution_time_t
-    invoke(clspv_utils::kernel&             kernel,
-           vulkan_utils::storage_buffer&    outLocalSizes,
-           int                              inWidth,
-           int                              inHeight,
-           int                              inPitch,
-           idtype_t                         inIdType);
+    invoke(clspv_utils::kernel&     kernel,
+           vulkan_utils::buffer&    outLocalSizes,
+           int                      inWidth,
+           int                      inHeight,
+           int                      inPitch,
+           idtype_t                 inIdType);
 
 
     struct Test : public test_utils::Test
@@ -57,7 +57,7 @@ namespace readlocalsize_kernel {
         virtual test_utils::Evaluation  evaluate(bool verbose) override;
 
         vk::Extent3D                    mBufferExtent;
-        vulkan_utils::storage_buffer    mDstBuffer;
+        vulkan_utils::buffer            mDstBuffer;
         std::vector<std::int32_t>       mExpectedResults;
         idtype_t                        mIdType;
     };
