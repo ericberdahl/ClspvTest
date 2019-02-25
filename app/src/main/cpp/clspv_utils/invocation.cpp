@@ -28,7 +28,7 @@ namespace clspv_utils {
     {
         vk::QueryPoolCreateInfo poolCreateInfo;
         poolCreateInfo.setQueryType(vk::QueryType::eTimestamp)
-                .setQueryCount(kQueryIndex_Count);
+                .setQueryCount(kTimestamp_count);
 
         mQueryPool = mReq.mDevice.getDevice().createQueryPoolUnique(poolCreateInfo);
     }
@@ -219,25 +219,28 @@ namespace clspv_utils {
                                          { numDescriptors, descriptors },
                                          nullptr);
 
-        commandBuffer.resetQueryPool(*mQueryPool, kQueryIndex_FirstIndex, kQueryIndex_Count);
+        commandBuffer.resetQueryPool(*mQueryPool, kTimestamp_first, kTimestamp_count);
 
-        commandBuffer.writeTimestamp(vk::PipelineStageFlagBits::eComputeShader, *mQueryPool, kQueryIndex_StartOfExecution);
+        commandBuffer.writeTimestamp(vk::PipelineStageFlagBits::eComputeShader,
+                                     *mQueryPool,
+                                     kTimestamp_startOfExecution);
+
         commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eHost | vk::PipelineStageFlagBits::eComputeShader | vk::PipelineStageFlagBits::eTransfer,
                                       vk::PipelineStageFlagBits::eComputeShader,
                                       vk::DependencyFlags(),
                                       nullptr,    // memory barriers
                                       mBufferMemoryBarriers,    // buffer memory barriers
                                       mImageMemoryBarriers);    // image memory barriers
-        commandBuffer.writeTimestamp(vk::PipelineStageFlagBits::eComputeShader, *mQueryPool, kQueryIndex_PostHostBarrier);
+
+        commandBuffer.writeTimestamp(vk::PipelineStageFlagBits::eComputeShader,
+                                     *mQueryPool,
+                                     kTimestamp_postHostBarrier);
+
         commandBuffer.dispatch(num_workgroups.width, num_workgroups.height, num_workgroups.depth);
-        commandBuffer.writeTimestamp(vk::PipelineStageFlagBits::eComputeShader, *mQueryPool, kQueryIndex_PostExecution);
-        commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eComputeShader,
-                                      vk::PipelineStageFlagBits::eHost | vk::PipelineStageFlagBits::eTransfer,
-                                      vk::DependencyFlags(),
-                                      { { vk::AccessFlagBits::eShaderWrite, vk::AccessFlagBits::eHostRead} },    // memory barriers
-                                      nullptr,    // buffer memory barriers
-                                      nullptr);    // image memory barriers
-        commandBuffer.writeTimestamp(vk::PipelineStageFlagBits::eComputeShader, *mQueryPool, kQueryIndex_PostGPUBarrier);
+
+        commandBuffer.writeTimestamp(vk::PipelineStageFlagBits::eComputeShader,
+                                     *mQueryPool,
+                                     kTimestamp_postExecution);
     }
 
     void invocation::submitCommand(vk::CommandBuffer commandBuffer) {
@@ -275,20 +278,19 @@ namespace clspv_utils {
 
     execution_time_t invocation::getExecutionTime()
     {
-        uint64_t timestamps[kQueryIndex_Count];
+        uint64_t timestamps[kTimestamp_count];
         mReq.mDevice.getDevice().getQueryPoolResults(*mQueryPool,
-                                                     kQueryIndex_FirstIndex,
-                                                     kQueryIndex_Count,
+                                                     kTimestamp_first,
+                                                     kTimestamp_count,
                                                      sizeof(uint64_t),
                                                      timestamps,
                                                      sizeof(uint64_t),
                                                      vk::QueryResultFlagBits::e64 | vk::QueryResultFlagBits::eWait);
 
         execution_time_t result;
-        result.timestamps.start = timestamps[kQueryIndex_StartOfExecution];
-        result.timestamps.host_barrier = timestamps[kQueryIndex_PostHostBarrier];
-        result.timestamps.execution = timestamps[kQueryIndex_PostExecution];
-        result.timestamps.gpu_barrier = timestamps[kQueryIndex_PostGPUBarrier];
+        result.timestamps.start = timestamps[kTimestamp_startOfExecution];
+        result.timestamps.host_barrier = timestamps[kTimestamp_postHostBarrier];
+        result.timestamps.execution = timestamps[kTimestamp_postExecution];
         return result;
     }
 

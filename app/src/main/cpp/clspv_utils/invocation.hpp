@@ -29,7 +29,6 @@ namespace clspv_utils {
             uint64_t start          = 0;
             uint64_t host_barrier   = 0;
             uint64_t execution      = 0;
-            uint64_t gpu_barrier    = 0;
         };
 
         execution_time_t();
@@ -83,13 +82,13 @@ namespace clspv_utils {
         std::size_t countArguments() const;
 
     private:
-        enum QueryIndex {
-            kQueryIndex_FirstIndex = 0,
-            kQueryIndex_StartOfExecution = 0,
-            kQueryIndex_PostHostBarrier = 1,
-            kQueryIndex_PostExecution = 2,
-            kQueryIndex_PostGPUBarrier= 3,
-            kQueryIndex_Count = 4
+        enum Timestamp {
+            kTimestamp_startOfExecution    = 0,
+            kTimestamp_postHostBarrier,
+            kTimestamp_postExecution,
+
+            kTimestamp_count,
+            kTimestamp_first = kTimestamp_startOfExecution
         };
 
     private:

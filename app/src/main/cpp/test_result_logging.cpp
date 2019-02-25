@@ -54,7 +54,6 @@ namespace {
         double wallClockTime_s      = 0.0;
         double executionTime_ns     = 0.0;
         double hostBarrierTime_ns   = 0.0;
-        double gpuBarrierTime_ns    = 0.0;
     };
 
     struct InvocationSummary {
@@ -124,10 +123,6 @@ namespace {
                                                                      timestamps.host_barrier,
                                                                      info.physical_device_properties,
                                                                      info.graphics_queue_family_properties);
-        result.gpuBarrierTime_ns = vulkan_utils::timestamp_delta_ns(timestamps.execution,
-                                                                    timestamps.gpu_barrier,
-                                                                    info.physical_device_properties,
-                                                                    info.graphics_queue_family_properties);
 
         return result;
     }
@@ -155,13 +150,11 @@ namespace {
                                               accum.wallClockTime_s += t.wallClockTime_s;
                                               accum.executionTime_ns += t.executionTime_ns;
                                               accum.hostBarrierTime_ns += t.hostBarrierTime_ns;
-                                              accum.gpuBarrierTime_ns += t.gpuBarrierTime_ns;
                                               return accum;
                                           });
         mean.wallClockTime_s /= num_times;
         mean.executionTime_ns /= num_times;
         mean.hostBarrierTime_ns /= num_times;
-        mean.gpuBarrierTime_ns /= num_times;
 
         execution_times variance;
         if (num_times > 1) {
@@ -176,15 +169,11 @@ namespace {
                                       accum.hostBarrierTime_ns += pow(
                                               mean.hostBarrierTime_ns -
                                               t.hostBarrierTime_ns, 2);
-                                      accum.gpuBarrierTime_ns += pow(
-                                              mean.gpuBarrierTime_ns -
-                                              t.gpuBarrierTime_ns, 2);
                                       return accum;
                                   });
             variance.wallClockTime_s /= (num_times - 1);
             variance.executionTime_ns /= (num_times - 1);
             variance.hostBarrierTime_ns /= (num_times - 1);
-            variance.gpuBarrierTime_ns /= (num_times - 1);
         }
 
         return std::make_pair(mean, variance);
@@ -296,8 +285,7 @@ namespace {
                << " wallClockTime:" << summary.mTimes.wallClockTime_s * 1000.0f << "ms"
                << " resultEvalTime:" << summary.mTestTime_s << "s"
                << " executionTime:" << summary.mTimes.executionTime_ns / 1000.0f << "µs"
-               << " hostBarrierTime:" << summary.mTimes.hostBarrierTime_ns / 1000.0f << "µs"
-               << " gpuBarrierTime:" << summary.mTimes.gpuBarrierTime_ns / 1000.0f << "µs";
+               << " hostBarrierTime:" << summary.mTimes.hostBarrierTime_ns / 1000.0f << "µs";
         }
 
         logInfo(os.str(), indent);
@@ -337,8 +325,7 @@ namespace {
                 os << "AVERAGE "
                    << " wallClockTime:" << summary.mMeanTimes.wallClockTime_s * 1000.0f << "ms"
                    << " executionTime:" << summary.mMeanTimes.executionTime_ns / 1000.0f << "µs"
-                   << " hostBarrierTime:" << summary.mMeanTimes.hostBarrierTime_ns / 1000.0f << "µs"
-                   << " gpuBarrierTime:" << summary.mMeanTimes.gpuBarrierTime_ns / 1000.0f << "µs";
+                   << " hostBarrierTime:" << summary.mMeanTimes.hostBarrierTime_ns / 1000.0f << "µs";
                 logInfo(os.str(), indent + 1);
             }
 
@@ -351,8 +338,6 @@ namespace {
                    << "µs"
                    << " hostBarrierTime:"
                    << sqrt(summary.mVarianceTimes.hostBarrierTime_ns) / 1000.0f
-                   << "µs"
-                   << " gpuBarrierTime:" << sqrt(summary.mVarianceTimes.gpuBarrierTime_ns) / 1000.0f
                    << "µs";
 
                 logInfo(os.str(), indent + 1);
@@ -367,8 +352,6 @@ namespace {
                    << "µs^2"
                    << " hostBarrierTime:"
                    << summary.mVarianceTimes.hostBarrierTime_ns / 1000000.0f
-                   << "µs^2"
-                   << " gpuBarrierTime:" << summary.mVarianceTimes.gpuBarrierTime_ns / 1000000.0f
                    << "µs^2";
 
                 logInfo(os.str(), indent + 1);
