@@ -64,7 +64,11 @@ namespace copybuffertoimage_kernel {
                                          mBufferExtent,
                                          vk::Format(pixels::traits<ImagePixelType>::vk_pixel_type),
                                          vulkan_utils::image::kUsage_ReadWrite);
-            mDstImageStaging = mDstImage.createStagingBuffer();
+            mDstImageStaging = vulkan_utils::createStagingBuffer(device.getDevice(),
+                                                                 device.getMemoryProperties(),
+                                                                 mDstImage,
+                                                                 false,
+                                                                 true);
 
             // initialize source memory with random data
             auto srcBufferMap = mSrcBuffer.map<BufferPixelType>();
@@ -109,7 +113,7 @@ namespace copybuffertoimage_kernel {
             vk::UniqueCommandBuffer readbackCommand = vulkan_utils::allocate_command_buffer(
                     mDevice, mCommandPool);
             readbackCommand->begin(vk::CommandBufferBeginInfo());
-            mDstImageStaging.copyFromImage(*readbackCommand);
+            vulkan_utils::copyImageToBuffer(*readbackCommand, mDstImage, mDstImageStaging);
             readbackCommand->end();
 
             vk::CommandBuffer rawCommand = *readbackCommand;
@@ -137,13 +141,13 @@ namespace copybuffertoimage_kernel {
                                                    vulkan_utils::image::kUsage_ReadWrite);
         }
 
-        vk::Device                      mDevice;
-        vk::CommandPool                 mCommandPool;
-        vk::Queue                       mComputeQueue;
-        vk::Extent3D                    mBufferExtent;
-        vulkan_utils::buffer            mSrcBuffer;
-        vulkan_utils::image             mDstImage;
-        vulkan_utils::staging_buffer    mDstImageStaging;
+        vk::Device              mDevice;
+        vk::CommandPool         mCommandPool;
+        vk::Queue               mComputeQueue;
+        vk::Extent3D            mBufferExtent;
+        vulkan_utils::buffer    mSrcBuffer;
+        vulkan_utils::image     mDstImage;
+        vulkan_utils::buffer    mDstImageStaging;
 
     };
 

@@ -316,6 +316,33 @@ namespace vulkan_utils {
                       vk::BufferUsageFlagBits::eStorageBuffer);
     }
 
+    buffer createStagingBuffer(vk::Device                               device,
+                               const vk::PhysicalDeviceMemoryProperties memoryProperties,
+                               const image&                             image,
+                               bool                                     isForInitialzation,
+                               bool                                     isForReadback)
+    {
+        const auto found = kFormatSizeTable.find((VkFormat)image.getFormat());
+        if (found == kFormatSizeTable.end()) {
+            fail_runtime_error("cannot map image format to pixel size");
+        }
+        if (0 == found->second) {
+            fail_runtime_error("image format pixels are not a knowable size");
+        }
+
+        const auto extent = image.getExtent();
+        const std::size_t num_bytes = found->second * extent.width * extent.height * extent.depth;
+
+        const vk::BufferUsageFlags usageFlags = vk::BufferUsageFlagBits::eStorageBuffer
+                                              | (isForInitialzation ? vk::BufferUsageFlagBits::eTransferSrc : vk::BufferUsageFlagBits())
+                                              | (isForReadback ? vk::BufferUsageFlagBits::eTransferDst : vk::BufferUsageFlagBits());
+
+        return buffer(device,
+                      memoryProperties,
+                      num_bytes,
+                      usageFlags);
+    }
+
     buffer::buffer(vk::Device                               device,
                    const vk::PhysicalDeviceMemoryProperties memoryProperties,
                    vk::DeviceSize                           num_bytes,
@@ -633,23 +660,6 @@ namespace vulkan_utils {
         return *this;
     }
 
-    staging_buffer image::createStagingBuffer()
-    {
-        auto found = kFormatSizeTable.find((VkFormat)mFormat);
-        if (found == kFormatSizeTable.end()) {
-            fail_runtime_error("cannot map image format to pixel size");
-        }
-        if (0 == found->second) {
-            fail_runtime_error("image format pixels are not a knowable size");
-        }
-
-        return staging_buffer(mDevice,
-                              mMemoryProperties,
-                              this,
-                              mExtent,
-                              found->second);
-    }
-
     vk::DescriptorImageInfo image::use()
     {
         vk::DescriptorImageInfo result;
@@ -703,101 +713,6 @@ namespace vulkan_utils {
         return result;
     }
 
-    staging_buffer::staging_buffer()
-            : mDevice(),
-              mImage(),
-              mBuffer(),
-              mExtent(0)
-    {
-        // this space intentionally left blank
-    }
-
-    void staging_buffer::swap(staging_buffer& other)
-    {
-        using std::swap;
-
-        swap(mDevice, other.mDevice);
-        swap(mImage, other.mImage);
-        swap(mBuffer, other.mBuffer);
-        swap(mExtent, other.mExtent);
-    }
-
-
-    staging_buffer::staging_buffer(vk::Device                           device,
-                                   vk::PhysicalDeviceMemoryProperties   memoryProperties,
-                                   image*                               image,
-                                   vk::Extent3D                         extent,
-                                   std::size_t                          pixelSize)
-            : staging_buffer()
-    {
-        mDevice = device;
-        mImage = image;
-        mExtent = extent;
-
-        const std::size_t num_bytes = pixelSize * mExtent.width * mExtent.height * mExtent.depth;
-
-        mBuffer = buffer(device, memoryProperties, num_bytes, vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eTransferSrc);
-    }
-
-    staging_buffer::staging_buffer(staging_buffer&& other)
-            : staging_buffer()
-    {
-        swap(other);
-    }
-
-    staging_buffer::~staging_buffer() {
-    }
-
-    staging_buffer& staging_buffer::operator=(staging_buffer&& other)
-    {
-        swap(other);
-        return *this;
-    }
-
-    void staging_buffer::copyToImage(vk::CommandBuffer commandBuffer)
-    {
-        vk::BufferMemoryBarrier bufferBarrier = mBuffer.prepareForTransferSrc();
-        vk::ImageMemoryBarrier imageBarrier = mImage->prepare(vk::ImageLayout::eTransferDstOptimal);
-
-        vk::BufferImageCopy copyRegion;
-        copyRegion.setBufferRowLength(mExtent.width)
-                .setBufferImageHeight(mExtent.height)
-                .setImageExtent(mExtent);
-        copyRegion.imageSubresource.setAspectMask(vk::ImageAspectFlagBits::eColor)
-                .setLayerCount(1);
-
-        commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eHost | vk::PipelineStageFlagBits::eComputeShader | vk::PipelineStageFlagBits::eTransfer,
-                                      vk::PipelineStageFlagBits::eTransfer,
-                                      vk::DependencyFlags(),
-                                      nullptr,         // memory barriers
-                                      bufferBarrier,   // buffer memory barriers
-                                      imageBarrier);   // image memory barriers
-
-        commandBuffer.copyBufferToImage(bufferBarrier.buffer, imageBarrier.image, imageBarrier.newLayout, copyRegion);
-    }
-
-    void staging_buffer::copyFromImage(vk::CommandBuffer commandBuffer)
-    {
-        vk::BufferMemoryBarrier bufferBarrier = mBuffer.prepareForTransferDst();
-        vk::ImageMemoryBarrier imageBarrier = mImage->prepare(vk::ImageLayout::eTransferSrcOptimal);
-
-        vk::BufferImageCopy copyRegion;
-        copyRegion.setBufferRowLength(mExtent.width)
-                .setBufferImageHeight(mExtent.height)
-                .setImageExtent(mExtent);
-        copyRegion.imageSubresource.setAspectMask(vk::ImageAspectFlagBits::eColor)
-                .setLayerCount(1);
-
-        commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eHost | vk::PipelineStageFlagBits::eComputeShader | vk::PipelineStageFlagBits::eTransfer,
-                                      vk::PipelineStageFlagBits::eTransfer,
-                                      vk::DependencyFlags(),
-                                      nullptr,         // memory barriers
-                                      bufferBarrier,   // buffer memory barriers
-                                      imageBarrier);   // image memory barriers
-
-        commandBuffer.copyImageToBuffer(imageBarrier.image, imageBarrier.newLayout, bufferBarrier.buffer, copyRegion);
-    }
-
     double timestamp_delta_ns(std::uint64_t                         startTimestamp,
                               std::uint64_t                         endTimestamp,
                               const vk::PhysicalDeviceProperties&   deviceProperties,
@@ -830,10 +745,14 @@ namespace vulkan_utils {
         vk::BufferMemoryBarrier bufferBarrier = buffer.prepareForTransferSrc();
         vk::ImageMemoryBarrier imageBarrier = image.prepare(vk::ImageLayout::eTransferDstOptimal);
 
+        const auto imageExtent = image.getExtent();
+
         vk::BufferImageCopy copyRegion;
-        copyRegion.setImageExtent(image.getExtent());
+        copyRegion.setBufferRowLength(imageExtent.width)
+                  .setBufferImageHeight(imageExtent.height)
+                  .setImageExtent(imageExtent);
         copyRegion.imageSubresource.setAspectMask(vk::ImageAspectFlagBits::eColor)
-                .setLayerCount(1);
+                                   .setLayerCount(1);
 
         commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eHost | vk::PipelineStageFlagBits::eComputeShader | vk::PipelineStageFlagBits::eTransfer,
                                       vk::PipelineStageFlagBits::eTransfer,
@@ -852,10 +771,14 @@ namespace vulkan_utils {
         vk::BufferMemoryBarrier bufferBarrier = buffer.prepareForTransferDst();
         vk::ImageMemoryBarrier imageBarrier = image.prepare(vk::ImageLayout::eTransferSrcOptimal);
 
+        const auto imageExtent = image.getExtent();
+
         vk::BufferImageCopy copyRegion;
-        copyRegion.setImageExtent(image.getExtent());
+        copyRegion.setBufferRowLength(imageExtent.width)
+                  .setBufferImageHeight(imageExtent.height)
+                  .setImageExtent(imageExtent);
         copyRegion.imageSubresource.setAspectMask(vk::ImageAspectFlagBits::eColor)
-                .setLayerCount(1);
+                                   .setLayerCount(1);
 
         commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eHost | vk::PipelineStageFlagBits::eComputeShader | vk::PipelineStageFlagBits::eTransfer,
                                       vk::PipelineStageFlagBits::eTransfer,

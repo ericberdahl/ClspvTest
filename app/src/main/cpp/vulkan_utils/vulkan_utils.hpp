@@ -13,6 +13,8 @@
 #include <vector>
 
 namespace vulkan_utils {
+    class buffer;
+    class image;
 
     template <typename Type, typename Deleter>
     std::vector<Type> extractUniques(vk::ArrayProxy<vk::UniqueHandle<Type,Deleter> > uniques) {
@@ -40,6 +42,35 @@ namespace vulkan_utils {
                                                   vk::MemoryPropertyFlags                   property_flags = vk::MemoryPropertyFlags());
 
     vk::UniqueCommandBuffer allocate_command_buffer(vk::Device device, vk::CommandPool cmd_pool);
+
+    buffer createUniformBuffer(vk::Device device,
+                               const vk::PhysicalDeviceMemoryProperties memoryProperties,
+                               vk::DeviceSize                           num_bytes);
+
+    buffer createStorageBuffer(vk::Device device,
+                               const vk::PhysicalDeviceMemoryProperties memoryProperties,
+                               vk::DeviceSize                           num_bytes);
+
+    buffer createStagingBuffer(vk::Device                               device,
+                               const vk::PhysicalDeviceMemoryProperties memoryProperties,
+                               const image&                             image,
+                               bool                                     isForInitialzation,
+                               bool                                     isForReadback);
+
+    double timestamp_delta_ns(std::uint64_t                         startTimestamp,
+                              std::uint64_t                         endTimestamp,
+                              const vk::PhysicalDeviceProperties&   deviceProperties,
+                              const vk::QueueFamilyProperties&      queueFamilyProperties);
+
+    vk::Extent3D computeNumberWorkgroups(const vk::Extent3D& workgroupSize, const vk::Extent3D& dataSize);
+
+    void copyBufferToImage(vk::CommandBuffer    commandBuffer,
+                           buffer&              buffer,
+                           image&               image);
+
+    void copyImageToBuffer(vk::CommandBuffer    commandBuffer,
+                           image&               image,
+                           buffer&              buffer);
 
     template <typename T>
     using mapped_ptr = std::unique_ptr<T, std::function<void (void*)> >;
@@ -97,20 +128,10 @@ namespace vulkan_utils {
         vk::UniqueBuffer        mBuffer;
     };
 
-    buffer createUniformBuffer(vk::Device device,
-                               const vk::PhysicalDeviceMemoryProperties memoryProperties,
-                               vk::DeviceSize                           num_bytes);
-
-    buffer createStorageBuffer(vk::Device device,
-                               const vk::PhysicalDeviceMemoryProperties memoryProperties,
-                               vk::DeviceSize                           num_bytes);
-
     inline void swap(buffer & lhs, buffer & rhs)
     {
         lhs.swap(rhs);
     }
-
-    class staging_buffer;
 
     class image {
     public:
@@ -146,9 +167,7 @@ namespace vulkan_utils {
         vk::ImageMemoryBarrier  prepare(vk::ImageLayout newLayout);
 
         vk::Extent3D getExtent() const { return mExtent; }
-
-    public:
-        staging_buffer  createStagingBuffer();
+        vk::Format getFormat() const { return mFormat; }
 
     private:
         vk::Device                          mDevice;
@@ -165,66 +184,6 @@ namespace vulkan_utils {
     {
         lhs.swap(rhs);
     }
-
-    // TODO staging_buffer should go away and be replaced with buffer
-
-    class staging_buffer {
-    public:
-        staging_buffer ();
-
-        staging_buffer (vk::Device                           device,
-                        vk::PhysicalDeviceMemoryProperties   memoryProperties,
-                        image*                               image,
-                        vk::Extent3D                         extent,
-                        std::size_t                          pixelSize);
-
-        staging_buffer (const staging_buffer & other) = delete;
-
-        staging_buffer (staging_buffer && other);
-
-        ~staging_buffer ();
-
-        staging_buffer & operator=(const staging_buffer & other) = delete;
-
-        staging_buffer & operator=(staging_buffer && other);
-
-        void    swap(staging_buffer & other);
-
-        void    copyToImage(vk::CommandBuffer commandBuffer);
-        void    copyFromImage(vk::CommandBuffer commandBuffer);
-
-        template <typename T>
-        inline mapped_ptr<T> map()
-        {
-            return mBuffer.map<T>();
-        }
-
-    private:
-        vk::Device      mDevice;
-        image*          mImage;
-        buffer          mBuffer;
-        vk::Extent3D    mExtent;
-    };
-
-    inline void swap(staging_buffer & lhs, staging_buffer & rhs)
-    {
-        lhs.swap(rhs);
-    }
-
-    double timestamp_delta_ns(std::uint64_t                         startTimestamp,
-                              std::uint64_t                         endTimestamp,
-                              const vk::PhysicalDeviceProperties&   deviceProperties,
-                              const vk::QueueFamilyProperties&      queueFamilyProperties);
-
-    vk::Extent3D computeNumberWorkgroups(const vk::Extent3D& workgroupSize, const vk::Extent3D& dataSize);
-
-    void copyBufferToImage(vk::CommandBuffer    commandBuffer,
-                           buffer&              buffer,
-                           image&               image);
-
-    void copyImageToBuffer(vk::CommandBuffer    commandBuffer,
-                           image&               image,
-                           buffer&              buffer);
 }
 
 std::ostream& operator<<(std::ostream& os, vk::MemoryPropertyFlags vkFlags);

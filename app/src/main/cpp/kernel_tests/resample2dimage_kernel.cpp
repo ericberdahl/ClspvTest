@@ -118,7 +118,11 @@ namespace resample2dimage_kernel {
                                      vk::Extent3D(image_width, image_height, 1),
                                      vk::Format(pixels::traits<ImagePixelType>::vk_pixel_type),
                                      vulkan_utils::image::kUsage_ReadOnly);
-        mSrcImageStaging = mSrcImage.createStagingBuffer();
+        mSrcImageStaging = vulkan_utils::createStagingBuffer(device.getDevice(),
+                                                             device.getMemoryProperties(),
+                                                             mSrcImage,
+                                                             true,
+                                                             false);
 
         // initialize source memory with random data
         auto srcImageMap = mSrcImageStaging.map<ImagePixelType>();
@@ -147,7 +151,7 @@ namespace resample2dimage_kernel {
         // complete setup of the image
         mSetupCommand = vulkan_utils::allocate_command_buffer(device.getDevice(), device.getCommandPool());
         mSetupCommand->begin(vk::CommandBufferBeginInfo());
-        mSrcImageStaging.copyToImage(*mSetupCommand);
+        vulkan_utils::copyBufferToImage(*mSetupCommand, mSrcImageStaging, mSrcImage);
         mSetupCommand->end();
 
         vk::CommandBuffer rawCommand = *mSetupCommand;

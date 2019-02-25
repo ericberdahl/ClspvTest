@@ -37,7 +37,7 @@ namespace resample3dimage_kernel {
 
         vk::Extent3D                    mBufferExtent;
         vulkan_utils::image             mSrcImage;
-        vulkan_utils::staging_buffer    mSrcImageStaging;
+        vulkan_utils::buffer            mSrcImageStaging;
         vulkan_utils::buffer            mDstBuffer;
         std::vector<BufferPixelType>    mExpectedDstBuffer;
         vk::UniqueCommandBuffer         mSetupCommand;
