@@ -21,11 +21,8 @@ namespace fillarraystruct_kernel {
            vulkan_utils::buffer&    destination_buffer,
            unsigned int             num_elements)
     {
-        const vk::Extent3D workgroup_sizes = kernel.getWorkgroupSize();
-        const vk::Extent3D num_workgroups(
-                (num_elements + workgroup_sizes.width - 1) / workgroup_sizes.width,
-                1,
-                1);
+        const auto num_workgroups = vulkan_utils::computeNumberWorkgroups(kernel.getWorkgroupSize(),
+                                                                          vk::Extent3D(num_elements, 1, 1));
 
         clspv_utils::invocation invocation(kernel.createInvocationReq());
 

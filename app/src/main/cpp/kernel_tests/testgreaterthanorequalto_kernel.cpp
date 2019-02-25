@@ -33,11 +33,8 @@ namespace testgreaterthanorequalto_kernel {
         scalars->inHeight = extent.height;
         scalars.reset();
 
-        const vk::Extent3D workgroup_sizes = kernel.getWorkgroupSize();
-        const vk::Extent3D num_workgroups(
-                (extent.width + workgroup_sizes.width - 1) / workgroup_sizes.width,
-                (extent.height + workgroup_sizes.height - 1) / workgroup_sizes.height,
-                1);
+        const auto num_workgroups = vulkan_utils::computeNumberWorkgroups(kernel.getWorkgroupSize(),
+                                                                          extent);
 
         clspv_utils::invocation invocation(kernel.createInvocationReq());
 

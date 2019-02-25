@@ -46,11 +46,8 @@ namespace resample3dimage_kernel {
         scalars->inDepth = depth;
         scalars.reset();
 
-        const vk::Extent3D workgroup_sizes = kernel.getWorkgroupSize();
-        const vk::Extent3D num_workgroups(
-                (width + workgroup_sizes.width - 1) / workgroup_sizes.width,
-                (height + workgroup_sizes.height - 1) / workgroup_sizes.height,
-                (depth + workgroup_sizes.depth - 1) / workgroup_sizes.depth);
+        const auto num_workgroups = vulkan_utils::computeNumberWorkgroups(kernel.getWorkgroupSize(),
+                                                                          vk::Extent3D(width, height, depth));
 
         clspv_utils::invocation invocation(kernel.createInvocationReq());
 

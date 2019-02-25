@@ -25,11 +25,8 @@ namespace readconstantdata_kernel {
         scalars->inWidth = width;
         scalars.reset();
 
-        const vk::Extent3D workgroup_sizes = kernel.getWorkgroupSize();
-        const vk::Extent3D num_workgroups(
-                (width + workgroup_sizes.width - 1) / workgroup_sizes.width,
-                1,
-                1);
+        const auto num_workgroups = vulkan_utils::computeNumberWorkgroups(kernel.getWorkgroupSize(),
+                                                                          vk::Extent3D(width, 1, 1));
 
         clspv_utils::invocation invocation(kernel.createInvocationReq());
 

@@ -19,10 +19,9 @@ namespace strangeshuffle_kernel {
             throw std::runtime_error("num_elements must be even");
         }
 
-        const vk::Extent3D workgroup_sizes = kernel.getWorkgroupSize();
-        const vk::Extent3D num_workgroups(((num_elements/2) + workgroup_sizes.width - 1)/workgroup_sizes.width,
-                                          1,
-                                          1);
+        const auto workgroup_sizes = kernel.getWorkgroupSize();
+        const auto num_workgroups = vulkan_utils::computeNumberWorkgroups(workgroup_sizes,
+                                                                          vk::Extent3D(num_elements/2, 1, 1));
 
         clspv_utils::invocation invocation(kernel.createInvocationReq());
 
