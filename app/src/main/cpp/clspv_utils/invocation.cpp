@@ -26,8 +26,6 @@ namespace clspv_utils {
     invocation::invocation(invocation_req_t req)
             : mReq(std::move(req))
     {
-        mCommand = vulkan_utils::allocate_command_buffer(mReq.mDevice.getDevice(), mReq.mDevice.getCommandPool());
-
         vk::QueryPoolCreateInfo poolCreateInfo;
         poolCreateInfo.setQueryType(vk::QueryType::eTimestamp)
                 .setQueryCount(kQueryIndex_Count);
@@ -49,7 +47,6 @@ namespace clspv_utils {
         using std::swap;
 
         swap(mReq, other.mReq);
-        swap(mCommand, other.mCommand);
         swap(mQueryPool, other.mQueryPool);
 
         swap(mSpecConstantArguments, other.mSpecConstantArguments);
@@ -177,8 +174,6 @@ namespace clspv_utils {
         // picking up image and buffer infos in order.
         //
 
-        vector<vk::WriteDescriptorSet> writeSets;
-
         auto nextImage = mImageArgumentInfo.begin();
         auto nextBuffer = mBufferArgumentInfo.begin();
 
@@ -202,57 +197,51 @@ namespace clspv_utils {
             }
         }
 
-        writeSets.insert(writeSets.end(), mArgumentDescriptorWrites.begin(), mArgumentDescriptorWrites.end());
-
         //
         // Do the actual descriptor set updates
         //
-        mReq.mDevice.getDevice().updateDescriptorSets(writeSets, nullptr);
+        mReq.mDevice.getDevice().updateDescriptorSets(mArgumentDescriptorWrites, nullptr);
     }
 
-    void invocation::fillCommandBuffer(const vk::Extent3D& num_workgroups)
+    void invocation::fillCommandBuffer(vk::CommandBuffer commandBuffer, const vk::Extent3D& num_workgroups)
     {
         auto pipeline = mReq.mGetPipelineFn(mSpecConstantArguments);
 
-        mCommand->begin(vk::CommandBufferBeginInfo());
-
-        mCommand->bindPipeline(vk::PipelineBindPoint::eCompute, pipeline);
+        commandBuffer.bindPipeline(vk::PipelineBindPoint::eCompute, pipeline);
 
         vk::DescriptorSet descriptors[] = { mReq.mLiteralSamplerDescriptor, mReq.mArgumentsDescriptor };
         std::uint32_t numDescriptors = (descriptors[0] ? 2 : 1);
         if (1 == numDescriptors) descriptors[0] = descriptors[1];
 
-        mCommand->bindDescriptorSets(vk::PipelineBindPoint::eCompute,
-                                     mReq.mPipelineLayout,
-                                     0,
-                                     { numDescriptors, descriptors },
-                                     nullptr);
+        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eCompute,
+                                         mReq.mPipelineLayout,
+                                         0,
+                                         { numDescriptors, descriptors },
+                                         nullptr);
 
-        mCommand->resetQueryPool(*mQueryPool, kQueryIndex_FirstIndex, kQueryIndex_Count);
+        commandBuffer.resetQueryPool(*mQueryPool, kQueryIndex_FirstIndex, kQueryIndex_Count);
 
-        mCommand->writeTimestamp(vk::PipelineStageFlagBits::eComputeShader, *mQueryPool, kQueryIndex_StartOfExecution);
-        mCommand->pipelineBarrier(vk::PipelineStageFlagBits::eHost | vk::PipelineStageFlagBits::eComputeShader | vk::PipelineStageFlagBits::eTransfer,
-                                  vk::PipelineStageFlagBits::eComputeShader,
-                                  vk::DependencyFlags(),
-                                  nullptr,    // memory barriers
-                                  mBufferMemoryBarriers,    // buffer memory barriers
-                                  mImageMemoryBarriers);    // image memory barriers
-        mCommand->writeTimestamp(vk::PipelineStageFlagBits::eComputeShader, *mQueryPool, kQueryIndex_PostHostBarrier);
-        mCommand->dispatch(num_workgroups.width, num_workgroups.height, num_workgroups.depth);
-        mCommand->writeTimestamp(vk::PipelineStageFlagBits::eComputeShader, *mQueryPool, kQueryIndex_PostExecution);
-        mCommand->pipelineBarrier(vk::PipelineStageFlagBits::eComputeShader,
-                                  vk::PipelineStageFlagBits::eHost | vk::PipelineStageFlagBits::eTransfer,
-                                  vk::DependencyFlags(),
-                                  { { vk::AccessFlagBits::eShaderWrite, vk::AccessFlagBits::eHostRead} },    // memory barriers
-                                  nullptr,    // buffer memory barriers
-                                  nullptr);    // image memory barriers
-        mCommand->writeTimestamp(vk::PipelineStageFlagBits::eComputeShader, *mQueryPool, kQueryIndex_PostGPUBarrier);
-
-        mCommand->end();
+        commandBuffer.writeTimestamp(vk::PipelineStageFlagBits::eComputeShader, *mQueryPool, kQueryIndex_StartOfExecution);
+        commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eHost | vk::PipelineStageFlagBits::eComputeShader | vk::PipelineStageFlagBits::eTransfer,
+                                      vk::PipelineStageFlagBits::eComputeShader,
+                                      vk::DependencyFlags(),
+                                      nullptr,    // memory barriers
+                                      mBufferMemoryBarriers,    // buffer memory barriers
+                                      mImageMemoryBarriers);    // image memory barriers
+        commandBuffer.writeTimestamp(vk::PipelineStageFlagBits::eComputeShader, *mQueryPool, kQueryIndex_PostHostBarrier);
+        commandBuffer.dispatch(num_workgroups.width, num_workgroups.height, num_workgroups.depth);
+        commandBuffer.writeTimestamp(vk::PipelineStageFlagBits::eComputeShader, *mQueryPool, kQueryIndex_PostExecution);
+        commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eComputeShader,
+                                      vk::PipelineStageFlagBits::eHost | vk::PipelineStageFlagBits::eTransfer,
+                                      vk::DependencyFlags(),
+                                      { { vk::AccessFlagBits::eShaderWrite, vk::AccessFlagBits::eHostRead} },    // memory barriers
+                                      nullptr,    // buffer memory barriers
+                                      nullptr);    // image memory barriers
+        commandBuffer.writeTimestamp(vk::PipelineStageFlagBits::eComputeShader, *mQueryPool, kQueryIndex_PostGPUBarrier);
     }
 
-    void invocation::submitCommand() {
-        vk::CommandBuffer rawCommand = *mCommand;
+    void invocation::submitCommand(vk::CommandBuffer commandBuffer) {
+        vk::CommandBuffer rawCommand = commandBuffer;
         vk::SubmitInfo submitInfo;
         submitInfo.setCommandBufferCount(1)
                 .setPCommandBuffers(&rawCommand);
@@ -262,14 +251,30 @@ namespace clspv_utils {
     }
 
     execution_time_t invocation::run(const vk::Extent3D& num_workgroups) {
-        updateDescriptorSets();
-        fillCommandBuffer(num_workgroups);
+        const auto commandBuffer = vulkan_utils::allocate_command_buffer(mReq.mDevice.getDevice(), mReq.mDevice.getCommandPool());
+
+        commandBuffer->begin(vk::CommandBufferBeginInfo());
+        dispatch(*commandBuffer, num_workgroups);
+        commandBuffer->end();
 
         auto start = std::chrono::high_resolution_clock::now();
-        submitCommand();
+        submitCommand(*commandBuffer);
         mReq.mDevice.getComputeQueue().waitIdle();
         auto end = std::chrono::high_resolution_clock::now();
 
+        execution_time_t result = getExecutionTime();
+        result.cpu_duration = end - start;
+        return result;
+    }
+
+    void invocation::dispatch(vk::CommandBuffer commandBuffer, const vk::Extent3D& numWorkgroups)
+    {
+        updateDescriptorSets();
+        fillCommandBuffer(commandBuffer, numWorkgroups);
+    }
+
+    execution_time_t invocation::getExecutionTime()
+    {
         uint64_t timestamps[kQueryIndex_Count];
         mReq.mDevice.getDevice().getQueryPoolResults(*mQueryPool,
                                                      kQueryIndex_FirstIndex,
@@ -280,7 +285,6 @@ namespace clspv_utils {
                                                      vk::QueryResultFlagBits::e64 | vk::QueryResultFlagBits::eWait);
 
         execution_time_t result;
-        result.cpu_duration = end - start;
         result.timestamps.start = timestamps[kQueryIndex_StartOfExecution];
         result.timestamps.host_barrier = timestamps[kQueryIndex_PostHostBarrier];
         result.timestamps.execution = timestamps[kQueryIndex_PostExecution];

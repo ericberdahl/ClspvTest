@@ -55,14 +55,25 @@ namespace clspv_utils {
         void    addSamplerArgument(vk::Sampler samp);
         void    addLocalArraySizeArgument(unsigned int numElements);
 
+        // Execute the invocation synchronously.
         execution_time_t    run(const vk::Extent3D& num_workgroups);
+
+        // Record the invocation into the command buffer. The client is responsible for submitting
+        // the command buffer and waiting for completion.
+        void                dispatch(vk::CommandBuffer commandBuffer,
+                                     const vk::Extent3D& numWorkgroups);
+
+        // Return the execution time from the most recently completed execution. Clients must be
+        // careful to avoid races if the invocation is dispatched multiple times!
+        execution_time_t    getExecutionTime();
+
 
         void    swap(invocation& other);
 
     private:
-        void    fillCommandBuffer(const vk::Extent3D&    num_workgroups);
+        void    fillCommandBuffer(vk::CommandBuffer commandBuffer, const vk::Extent3D&    num_workgroups);
         void    updateDescriptorSets();
-        void    submitCommand();
+        void    submitCommand(vk::CommandBuffer commandBuffer);
 
         // Sanity check that the nth argument (specified by ordinal) has the indicated
         // spvmap type. Throw an exception if false. Return the binding number if true.
@@ -83,7 +94,6 @@ namespace clspv_utils {
 
     private:
         invocation_req_t                    mReq;
-        vk::UniqueCommandBuffer             mCommand;
         vk::UniqueQueryPool                 mQueryPool;
 
         vector<vk::BufferMemoryBarrier>     mBufferMemoryBarriers;
