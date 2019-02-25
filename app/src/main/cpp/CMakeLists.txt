@@ -96,7 +96,7 @@ set(CLSPV_FLAGS ${CLSPV_FLAGS} -hack-inserts)
 set(CLSPV_FLAGS ${CLSPV_FLAGS} -hack-phis)
 set(CLSPV_FLAGS ${CLSPV_FLAGS} -hack-scf)
 set(CLSPV_FLAGS ${CLSPV_FLAGS} -hack-undef)
-# set(CLSPV_FLAGS ${CLSPV_FLAGS} -constant-args-ubo)
+set(CLSPV_FLAGS ${CLSPV_FLAGS} -constant-args-ubo)
 set(CLSPV_FLAGS ${CLSPV_FLAGS} -pod-ubo)
 set(CLSPV_FLAGS ${CLSPV_FLAGS} -relaxed-ubo-layout)
 set(CLSPV_FLAGS ${CLSPV_FLAGS} -enable-pre=0)
@@ -105,6 +105,7 @@ set(CLSPV_FLAGS ${CLSPV_FLAGS} -inline-entry-points)
 
 set(SPIRV_OPT_FLAGS)
 set(SPIRV_OPT_FLAGS ${SPIRV_OPT_FLAGS} --set-spec-const-default-value "0:2 1:2 2:2")
+set(SPIRV_OPT_FLAGS ${SPIRV_OPT_FLAGS} --skip-validation)
 
 set(OPENCL_KERNELS
         Fills
