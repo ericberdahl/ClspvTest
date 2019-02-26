@@ -4,6 +4,8 @@
 
 #include "kernel.hpp"
 
+#include "vulkan_utils/vulkan_utils.hpp"
+
 namespace {
 
     vk::UniquePipelineLayout create_pipeline_layout(vk::Device                                      device,
@@ -39,8 +41,6 @@ namespace clspv_utils {
         if (mReq.mLiteralSamplerLayout) layouts.push_back(mReq.mLiteralSamplerLayout);
         if (mArgumentsLayout) layouts.push_back(*mArgumentsLayout);
         mPipelineLayout = create_pipeline_layout(mReq.mDevice.getDevice(), layouts);
-
-        updatePipeline(nullptr);
     }
 
     kernel::~kernel() {
@@ -95,6 +95,15 @@ namespace clspv_utils {
 
         mSpecConstants.resize(3 + otherSpecConstants.size());
         std::copy(otherSpecConstants.begin(), otherSpecConstants.end(), std::next(mSpecConstants.begin(), 3));
+
+        mPipeline = vulkan_utils::create_compute_pipeline(mReq.mDevice.getDevice(),
+                                                          mReq.mShaderModule,
+                                                          mReq.mKernelSpec.mName.c_str(),
+                                                          *mPipelineLayout,
+                                                          mReq.mPipelineCache,
+                                                          mSpecConstants);
+
+        return *mPipeline;
 
         vector<vk::SpecializationMapEntry> specializationEntries;
         uint32_t index = 0;

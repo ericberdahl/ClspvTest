@@ -43,6 +43,13 @@ namespace vulkan_utils {
 
     vk::UniqueCommandBuffer allocate_command_buffer(vk::Device device, vk::CommandPool cmd_pool);
 
+    vk::UniquePipeline create_compute_pipeline(vk::Device                       device,
+                                               vk::ShaderModule                 shaderModule,
+                                               const char*                      entryPoint,
+                                               vk::PipelineLayout               pipelineLayout,
+                                               vk::PipelineCache                pipelineCache,
+                                               vk::ArrayProxy<std::uint32_t>    specConstants);
+
     buffer createUniformBuffer(vk::Device device,
                                const vk::PhysicalDeviceMemoryProperties memoryProperties,
                                vk::DeviceSize                           num_bytes);

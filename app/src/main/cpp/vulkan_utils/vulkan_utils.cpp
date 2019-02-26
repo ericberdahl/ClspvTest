@@ -790,6 +790,42 @@ namespace vulkan_utils {
         commandBuffer.copyImageToBuffer(imageBarrier.image, imageBarrier.newLayout, bufferBarrier.buffer, copyRegion);
     }
 
+    vk::UniquePipeline create_compute_pipeline(vk::Device                       device,
+                                               vk::ShaderModule                 shaderModule,
+                                               const char*                      entryPoint,
+                                               vk::PipelineLayout               pipelineLayout,
+                                               vk::PipelineCache                pipelineCache,
+                                               vk::ArrayProxy<std::uint32_t>    specConstants)
+    {
+        std::vector<vk::SpecializationMapEntry> specializationEntries;
+        specializationEntries.reserve(specConstants.size());
+
+        std::uint32_t index = 0;
+        std::generate_n(std::back_inserter(specializationEntries),
+                        specConstants.size(),
+                        [&index] () {
+                            const std::uint32_t current = index++;
+                            return vk::SpecializationMapEntry(current, // constantID
+                                                              current * sizeof(std::uint32_t), // offset
+                                                              sizeof(std::uint32_t)); // size
+                        });
+
+        vk::SpecializationInfo specializationInfo;
+        specializationInfo.setMapEntryCount(specConstants.size())
+                .setPMapEntries(specializationEntries.data())
+                .setDataSize(specConstants.size() * sizeof(std::uint32_t))
+                .setPData(specConstants.data());
+
+        vk::ComputePipelineCreateInfo createInfo;
+        createInfo.setLayout(pipelineLayout);
+        createInfo.stage.setStage(vk::ShaderStageFlagBits::eCompute)
+                .setModule(shaderModule)
+                .setPName(entryPoint)
+                .setPSpecializationInfo(&specializationInfo);
+
+        return device.createComputePipelineUnique(pipelineCache, createInfo);
+    }
+
 } // namespace vulkan_utils
 
 std::ostream& operator<<(std::ostream& os, vk::MemoryPropertyFlags flags) {
