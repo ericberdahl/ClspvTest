@@ -51,10 +51,10 @@ test2d FillStructArray fillarraystruct 32 1
 #
 #
 module shaders_cl/LocalMemory
-test2d StrangeShuffle strangeShuffle 1024 1
+test2d StrangeShuffle strangeShuffle 256 1
 #
 module shaders/GL_LocalMemory
-test2d main strangeShuffle 1024 1
+test2d main strangeShuffle 256 1
 #
 #
 #
@@ -78,12 +78,12 @@ test2d ReadLocalSize readLocalSize 32 32 local_size_z
 #
 #
 module shaders_cl/Fills
-test2d FillWithColorKernel fill 32 32 -w 64 -h 64
-test2d FillWithColorKernel fill 32 32 -w 1080 -h 720
+test2d FillWithColorKernel fill 16 16 -w 64 -h 64
+test2d FillWithColorKernel fill 16 16 -w 1080 -h 720
 #
 module shaders/GL_Fills_reduced
-test2d main fill<float4> 32 32 -w 64 -h 64
-test2d main fill<float4> 32 32 -w 1080 -h 720
+test2d main fill<float4> 16 16 -w 64 -h 64
+test2d main fill<float4> 16 16 -w 1080 -h 720
 #
 #
 #
@@ -92,7 +92,7 @@ test2d CopyBufferToBufferKernel copyBufferToBuffer<float4> 32 32
 test2d CopyBufferToImageKernel copyBufferToImage 32 32
 test2d CopyImageToBufferKernel copyImageToBuffer 32 32
 test2d Resample2DImage resample2dimage 32 32
-test3d Resample3DImage resample3dimage 32 32 32
+test3d Resample3DImage resample3dimage 4 4 4
 #
 #
 #
