@@ -174,3 +174,27 @@ add_custom_command(TARGET build-gl-shaders
                    COMMAND ${CMAKE_COMMAND} -E make_directory ${GLSL_OUTPUT_DIR})
 
 add_dependencies(native-activity build-gl-shaders)
+
+#
+# Boost
+#
+
+set(BOOST_ROOT ${PROJECT_SOURCE_DIR}/third_party/boost)
+set(Boost_INCLUDE_DIRS ${BOOST_ROOT})
+
+target_include_directories(native-activity PRIVATE
+        ${Boost_INCLUDE_DIRS})
+
+add_custom_target(boost-init
+        COMMAND ${PROJECT_SOURCE_DIR}/scripts/boost_init.sh
+        WORKING_DIRECTORY ${BOOST_ROOT}
+        VERBATIM)
+add_dependencies(native-activity boost-init)
+
+#
+# Vulkan
+#
+
+set(VULKAN_ROOT ${PROJECT_SOURCE_DIR}/third_party/vulkan)
+target_include_directories(native-activity PRIVATE
+        ${VULKAN_ROOT})
