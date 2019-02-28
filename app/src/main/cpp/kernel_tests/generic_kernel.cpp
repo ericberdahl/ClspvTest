@@ -6,6 +6,8 @@
 
 #include "clspv_utils/kernel.hpp"
 
+#include "boost/algorithm/hex.hpp"
+
 namespace {
     std::vector<std::uint8_t> hexToBytes(std::string hexString) {
         std::vector<std::uint8_t> result;
@@ -16,16 +18,7 @@ namespace {
 
         result.reserve(hexString.length() / 2);
 
-        for (std::string::size_type i = 0; i < hexString.length(); i +=2) {
-            const std::string   byteString = hexString.substr(i, 2);
-            const int           byteInt = std::stoi(byteString, nullptr, 16);
-
-            assert(0 <= byteInt);
-            assert(byteInt <= std::numeric_limits<std::uint8_t>::max());
-
-            result.push_back(static_cast<std::uint8_t>(byteInt));
-        }
-
+        boost::algorithm::unhex(hexString, std::back_inserter(result));
         return result;
     }
 }
@@ -172,5 +165,55 @@ namespace generic_kernel {
     test_utils::KernelTest::invocation_tests getAllTestVariants()
     {
         return test_utils::KernelTest::invocation_tests({ test_utils::make_invocation_test<Test>("") });
+    }
+
+    formatter::formatter(const char*           entryPoint,
+                         const char*           label,
+                         unsigned int          numIterations,
+                         const vk::Extent3D&   workgroupSizes,
+                         const vk::Extent3D&   numWorkgroups)
+    {
+        mStream << "time " << entryPoint << ' ' << numIterations << ' '
+                << workgroupSizes.width << ' ' << workgroupSizes.height << ' '
+                << workgroupSizes.depth << ' '
+                << numWorkgroups.width << ' ' << numWorkgroups.height << ' ' << numWorkgroups.depth;
+        if (label) {
+            mStream << " -label " << label;
+        }
+    }
+
+    void formatter::addStorageBufferArgument(vulkan_utils::buffer& buffer)
+    {
+        mStream << " -pb " << buffer.getSize();
+    }
+
+    void formatter::addUniformBufferArgument(vulkan_utils::buffer& buffer)
+    {
+        mStream << " -ub ";
+
+        auto p = buffer.map<std::uint8_t>();
+        boost::algorithm::hex(p.get(),
+                              p.get() + buffer.getSize(),
+                              std::ostream_iterator<char>(mStream));
+    }
+
+    void formatter::addReadOnlyImageArgument(vulkan_utils::image& image)
+    {
+        clspv_utils::fail_runtime_error("generic test does not yet support image arguments");
+    }
+
+    void formatter::addWriteOnlyImageArgument(vulkan_utils::image& image)
+    {
+        clspv_utils::fail_runtime_error("generic test does not yet support image arguments");
+    }
+
+    void formatter::addSamplerArgument(vk::Sampler samp)
+    {
+        clspv_utils::fail_runtime_error("generic test does not yet support sampler arguments");
+    }
+
+    void formatter::addLocalArraySizeArgument(unsigned int numElements)
+    {
+        clspv_utils::fail_runtime_error("generic test does not yet support sampler arguments");
     }
 }

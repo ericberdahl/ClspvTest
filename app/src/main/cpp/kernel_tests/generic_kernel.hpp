@@ -48,6 +48,28 @@ namespace generic_kernel {
         vk::Extent3D        mNumWorkgroups;
     };
 
+    class formatter
+    {
+    public:
+        formatter(const char*           entryPoint,
+                  const char*           label,
+                  unsigned int          numIterations,
+                  const vk::Extent3D&   workgroupSizes,
+                  const vk::Extent3D&   numWorkgroups);
+
+        void    addStorageBufferArgument(vulkan_utils::buffer& buffer);
+        void    addUniformBufferArgument(vulkan_utils::buffer& buffer);
+        void    addReadOnlyImageArgument(vulkan_utils::image& image);
+        void    addWriteOnlyImageArgument(vulkan_utils::image& image);
+        void    addSamplerArgument(vk::Sampler samp);
+        void    addLocalArraySizeArgument(unsigned int numElements);
+
+        std::string getString() const { return mStream.str(); }
+
+    private:
+        std::ostringstream  mStream;
+    };
+
     test_utils::KernelTest::invocation_tests getAllTestVariants();
 }
 

@@ -351,11 +351,12 @@ namespace vulkan_utils {
     {
         mUsage = usage;
         mDevice = device;
+        mSize = num_bytes;
 
         // Allocate the buffer
         vk::BufferCreateInfo buf_info;
         buf_info.setUsage(mUsage)
-                .setSize(num_bytes)
+                .setSize(mSize)
                 .setSharingMode(vk::SharingMode::eExclusive);
 
         mBuffer = mDevice.createBufferUnique(buf_info);

@@ -112,6 +112,7 @@ namespace vulkan_utils {
         vk::DescriptorBufferInfo use();
 
         vk::BufferUsageFlags     getUsage() const { return mUsage; }
+        vk::DeviceSize           getSize() const { return mSize; }
 
     public:
         template <typename T>
@@ -128,7 +129,8 @@ namespace vulkan_utils {
 
     private:
         vk::BufferUsageFlags    mUsage;
-        bool                    mIsMapped = false;
+        bool                    mIsMapped   = false;
+        vk::DeviceSize          mSize       = 0;
 
         vk::Device              mDevice;
         vk::UniqueDeviceMemory  mDeviceMemory;
