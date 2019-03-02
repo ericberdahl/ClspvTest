@@ -7,6 +7,9 @@
 
 #include <vulkan/vulkan.hpp>
 
+#include <boost/units/quantity.hpp>
+#include <boost/units/systems/si/time.hpp>
+
 #include <cstdint>
 #include <memory>
 #include <ostream>
@@ -68,6 +71,12 @@ namespace vulkan_utils {
                               std::uint64_t                         endTimestamp,
                               const vk::PhysicalDeviceProperties&   deviceProperties,
                               const vk::QueueFamilyProperties&      queueFamilyProperties);
+
+    boost::units::quantity<boost::units::si::time>
+    timestamp_delta(std::uint64_t                         startTimestamp,
+                    std::uint64_t                         endTimestamp,
+                    const vk::PhysicalDeviceProperties&   deviceProperties,
+                    const vk::QueueFamilyProperties&      queueFamilyProperties);
 
     vk::Extent3D computeNumberWorkgroups(const vk::Extent3D& workgroupSize, const vk::Extent3D& dataSize);
 

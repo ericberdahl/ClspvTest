@@ -730,6 +730,18 @@ namespace vulkan_utils {
         return timestampDelta * deviceProperties.limits.timestampPeriod;
     }
 
+    boost::units::quantity<boost::units::si::time>
+    timestamp_delta(std::uint64_t                         startTimestamp,
+                    std::uint64_t                         endTimestamp,
+                    const vk::PhysicalDeviceProperties&   deviceProperties,
+                    const vk::QueueFamilyProperties&      queueFamilyProperties) {
+        return timestamp_delta_ns(startTimestamp,
+                                  endTimestamp,
+                                  deviceProperties,
+                                  queueFamilyProperties)
+               * boost::units::si::seconds * 1.0e-9;
+    }
+
     vk::Extent3D computeNumberWorkgroups(const vk::Extent3D& workgroupSize, const vk::Extent3D& dataSize)
     {
         const vk::Extent3D result(

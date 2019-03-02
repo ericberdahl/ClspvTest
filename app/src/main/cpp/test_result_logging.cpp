@@ -10,6 +10,11 @@
 
 #include <vulkan/vulkan.hpp>
 
+#include <boost/units/cmath.hpp>
+#include <boost/units/io.hpp>
+#include <boost/units/systems/si.hpp>
+#include <boost/units/systems/si/prefixes.hpp>
+
 #include <algorithm>
 #include <sstream>
 #include <utility>
@@ -51,23 +56,23 @@ namespace {
     };
 
     struct execution_times {
-        double wallClockTime_s      = 0.0;
-        double executionTime_ns     = 0.0;
-        double hostBarrierTime_ns   = 0.0;
+        boost::units::quantity<boost::units::si::time> wallClockTime;
+        boost::units::quantity<boost::units::si::time> executionTime;
+        boost::units::quantity<boost::units::si::time> hostBarrierTime;
     };
 
     struct InvocationSummary {
         typedef decltype(test_utils::Evaluation::mMessages)::const_iterator   message_iterator;
         typedef iter_pair_range<message_iterator>   messages_t;
 
-        ResultCounts        mCounts     = ResultCounts::null();
-        execution_times     mTimes;
-        double              mTestTime_s = 0.0;
-        const std::string*  mVariation  = nullptr;
-        const std::string*  mParameters = nullptr;
-        unsigned int        mNumCorrect = 0;
-        unsigned int        mNumErrors  = 0;
-        messages_t          mMessages;
+        ResultCounts                                    mCounts     = ResultCounts::null();
+        execution_times                                 mTimes;
+        boost::units::quantity<boost::units::si::time>  mTestTime;
+        const std::string*                              mVariation  = nullptr;
+        const std::string*                              mParameters = nullptr;
+        unsigned int                                    mNumCorrect = 0;
+        unsigned int                                    mNumErrors  = 0;
+        messages_t                                      mMessages;
     };
 
     struct KernelSummary {
@@ -78,7 +83,7 @@ namespace {
 
         unsigned int                    mTimingIterations   = 0;
         execution_times                 mMeanTimes;
-        execution_times                 mVarianceTimes;
+        execution_times                 mStdDeviationTimes;
     };
 
     struct ModuleSummary {
@@ -114,15 +119,15 @@ namespace {
         auto &timestamps = ir.mExecutionTime.timestamps;
 
         execution_times result;
-        result.wallClockTime_s = ir.mExecutionTime.cpu_duration.count();
-        result.executionTime_ns = vulkan_utils::timestamp_delta_ns(timestamps.host_barrier,
-                                                                   timestamps.execution,
-                                                                   info.physical_device_properties,
-                                                                   info.graphics_queue_family_properties);
-        result.hostBarrierTime_ns = vulkan_utils::timestamp_delta_ns(timestamps.start,
-                                                                     timestamps.host_barrier,
-                                                                     info.physical_device_properties,
-                                                                     info.graphics_queue_family_properties);
+        result.wallClockTime = ir.mExecutionTime.cpu_duration.count() * boost::units::si::seconds;
+        result.executionTime = vulkan_utils::timestamp_delta(timestamps.host_barrier,
+                                                             timestamps.execution,
+                                                             info.physical_device_properties,
+                                                             info.graphics_queue_family_properties);
+        result.hostBarrierTime = vulkan_utils::timestamp_delta(timestamps.start,
+                                                               timestamps.host_barrier,
+                                                               info.physical_device_properties,
+                                                               info.graphics_queue_family_properties);
 
         return result;
     }
@@ -137,6 +142,15 @@ namespace {
 
     std::pair<execution_times, execution_times>
     computeSummaryStats(const sample_info &info, const test_utils::KernelResult::results &resultSet) {
+        typedef boost::units::derived_dimension<boost::units::time_base_dimension, 2>::type time_variance_dimension;
+        typedef boost::units::unit<time_variance_dimension, boost::units::si::system> time_variance;
+
+        struct var_execution_times {
+            boost::units::quantity<time_variance> wallClockTime;
+            boost::units::quantity<time_variance> executionTime;
+            boost::units::quantity<time_variance> hostBarrierTime;
+        };
+
         std::vector<execution_times> times;
         times.reserve(resultSet.size());
         transform(resultSet.begin(), resultSet.end(), std::back_inserter(times),
@@ -147,42 +161,41 @@ namespace {
 
         execution_times mean = accumulate(times.begin(), times.end(), execution_times(),
                                           [&info](execution_times accum, const execution_times &t) {
-                                              accum.wallClockTime_s += t.wallClockTime_s;
-                                              accum.executionTime_ns += t.executionTime_ns;
-                                              accum.hostBarrierTime_ns += t.hostBarrierTime_ns;
+                                              accum.wallClockTime += t.wallClockTime;
+                                              accum.executionTime += t.executionTime;
+                                              accum.hostBarrierTime += t.hostBarrierTime;
                                               return accum;
                                           });
-        mean.wallClockTime_s /= num_times;
-        mean.executionTime_ns /= num_times;
-        mean.hostBarrierTime_ns /= num_times;
+        mean.wallClockTime /= num_times;
+        mean.executionTime /= num_times;
+        mean.hostBarrierTime /= num_times;
 
-        execution_times variance;
+        var_execution_times variance;
         if (num_times > 1) {
-            variance = accumulate(times.begin(), times.end(), execution_times(),
-                                  [mean](execution_times accum, const execution_times &t) {
-                                      accum.wallClockTime_s += pow(
-                                              mean.wallClockTime_s -
-                                              t.wallClockTime_s, 2);
-                                      accum.executionTime_ns += pow(
-                                              mean.executionTime_ns -
-                                              t.executionTime_ns, 2);
-                                      accum.hostBarrierTime_ns += pow(
-                                              mean.hostBarrierTime_ns -
-                                              t.hostBarrierTime_ns, 2);
+            variance = accumulate(times.begin(), times.end(), var_execution_times(),
+                                  [mean](var_execution_times accum, const execution_times &t) {
+                                      accum.wallClockTime += pow<2>(mean.wallClockTime - t.wallClockTime);
+                                      accum.executionTime += pow<2>(mean.executionTime - t.executionTime);
+                                      accum.hostBarrierTime += pow<2>(mean.hostBarrierTime - t.hostBarrierTime);
                                       return accum;
                                   });
-            variance.wallClockTime_s /= (num_times - 1);
-            variance.executionTime_ns /= (num_times - 1);
-            variance.hostBarrierTime_ns /= (num_times - 1);
+            variance.wallClockTime /= (num_times - 1);
+            variance.executionTime /= (num_times - 1);
+            variance.hostBarrierTime /= (num_times - 1);
         }
 
-        return std::make_pair(mean, variance);
+        execution_times stdDeviation;
+        stdDeviation.wallClockTime = sqrt(variance.wallClockTime);
+        stdDeviation.executionTime = sqrt(variance.executionTime);
+        stdDeviation.hostBarrierTime = sqrt(variance.hostBarrierTime);
+
+        return std::make_pair(mean, stdDeviation);
     };
 
     InvocationSummary summarizeInvocation(const sample_info &info, const test_utils::InvocationTest::result& ir) {
         InvocationSummary result;
         result.mTimes = measureInvocationTime(info, ir.second);
-        result.mTestTime_s = ir.second.mEvalTime.count();
+        result.mTestTime = ir.second.mEvalTime.count() * boost::units::si::seconds;
         result.mNumCorrect = ir.second.mEvaluation.mNumCorrect;
         result.mNumErrors = ir.second.mEvaluation.mNumErrors;
         result.mMessages = std::make_pair(ir.second.mEvaluation.mMessages.begin(), ir.second.mEvaluation.mMessages.end());
@@ -218,7 +231,7 @@ namespace {
                                          [](ResultCounts r, const InvocationSummary& is) { return r + is.mCounts; });
 
         if (result.mTimingIterations > 0) {
-            std::tie(result.mMeanTimes, result.mVarianceTimes) = computeSummaryStats(info, kr.second.mInvocationResults);
+            std::tie(result.mMeanTimes, result.mStdDeviationTimes) = computeSummaryStats(info, kr.second.mInvocationResults);
         }
 
         return result;
@@ -280,12 +293,13 @@ namespace {
         os << composeBasicInvocationSummary(summary);
 
         if (0 == summary.mCounts.mSkip) {
-            os << " correctValues:" << summary.mNumCorrect
+            os << boost::units::engineering_prefix
+               << " correctValues:" << summary.mNumCorrect
                << " incorrectValues:" << summary.mNumErrors
-               << " wallClockTime:" << summary.mTimes.wallClockTime_s * 1000.0f << "ms"
-               << " resultEvalTime:" << summary.mTestTime_s << "s"
-               << " executionTime:" << summary.mTimes.executionTime_ns / 1000.0f << "µs"
-               << " hostBarrierTime:" << summary.mTimes.hostBarrierTime_ns / 1000.0f << "µs";
+               << " wallClockTime:" << summary.mTimes.wallClockTime
+               << " resultEvalTime:" << summary.mTestTime
+               << " executionTime:" << summary.mTimes.executionTime
+               << " hostBarrierTime:" << summary.mTimes.hostBarrierTime;
         }
 
         logInfo(os.str(), indent);
@@ -322,37 +336,21 @@ namespace {
 
             {
                 std::ostringstream os;
-                os << "AVERAGE "
-                   << " wallClockTime:" << summary.mMeanTimes.wallClockTime_s * 1000.0f << "ms"
-                   << " executionTime:" << summary.mMeanTimes.executionTime_ns / 1000.0f << "µs"
-                   << " hostBarrierTime:" << summary.mMeanTimes.hostBarrierTime_ns / 1000.0f << "µs";
+                os << boost::units::engineering_prefix
+                   << "AVERAGE "
+                   << " wallClockTime:" << summary.mMeanTimes.wallClockTime
+                   << " executionTime:" << summary.mMeanTimes.executionTime
+                   << " hostBarrierTime:" << summary.mMeanTimes.hostBarrierTime;
                 logInfo(os.str(), indent + 1);
             }
 
             if (summary.mInvocationSummaries.size() > 1) {
                 std::ostringstream os;
-                os << "STD_DEVIATION "
-                   << " wallClockTime:" << sqrt(summary.mVarianceTimes.wallClockTime_s) * 1000.0f
-                   << "ms"
-                   << " executionTime:" << sqrt(summary.mVarianceTimes.executionTime_ns) / 1000.0f
-                   << "µs"
-                   << " hostBarrierTime:"
-                   << sqrt(summary.mVarianceTimes.hostBarrierTime_ns) / 1000.0f
-                   << "µs";
-
-                logInfo(os.str(), indent + 1);
-            }
-
-            if (summary.mInvocationSummaries.size() > 1) {
-                std::ostringstream os;
-                os << "VARIANCE "
-                   << " wallClockTime:" << summary.mVarianceTimes.wallClockTime_s * 1000000.0f
-                   << "ms^2"
-                   << " executionTime:" << summary.mVarianceTimes.executionTime_ns / 1000000.0f
-                   << "µs^2"
-                   << " hostBarrierTime:"
-                   << summary.mVarianceTimes.hostBarrierTime_ns / 1000000.0f
-                   << "µs^2";
+                os << boost::units::engineering_prefix
+                   << "STD_DEVIATION "
+                   << " wallClockTime:" << summary.mStdDeviationTimes.wallClockTime
+                   << " executionTime:" << summary.mStdDeviationTimes.executionTime
+                   << " hostBarrierTime:" << summary.mStdDeviationTimes.hostBarrierTime;
 
                 logInfo(os.str(), indent + 1);
             }
