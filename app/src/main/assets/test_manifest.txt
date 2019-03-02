@@ -80,10 +80,12 @@ test2d ReadLocalSize readLocalSize 32 32 local_size_z
 module shaders_cl/Fills
 test2d FillWithColorKernel fill 16 16 -w 64 -h 64
 test2d FillWithColorKernel fill 16 16 -w 1080 -h 720
+time FillWithColorKernel generic 100 16 16 1 4 4 1 -label 64x64;16x16wgs;float4 -pb 65536 -ub 40000000010000000000000000000000400000004000000000000000000000000000803F0000803F0000803F0000803F
 #
 module shaders/GL_Fills_reduced
 test2d main fill<float4> 16 16 -w 64 -h 64
 test2d main fill<float4> 16 16 -w 1080 -h 720
+time main generic 100 16 16 1 4 4 1 -label 64x64;16x16wgs;float4 -pb 65536 -ub 40000000010000000000000000000000400000004000000000000000000000000000803F0000803F0000803F0000803F
 #
 #
 #
