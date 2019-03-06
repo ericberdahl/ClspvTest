@@ -9,7 +9,7 @@
 #include "clspv_utils/module.hpp"
 
 #include "crlf_savvy.hpp"
-#include "file_utils.hpp"
+#include "util.hpp"
 
 namespace {
     using namespace test_utils;
@@ -114,7 +114,7 @@ namespace test_utils {
         result.first = &moduleTest;
 
         try {
-            file_utils::AndroidAssetStream spvmapStream(moduleTest.mName + ".spvmap");
+            android_utils::iassetstream spvmapStream(moduleTest.mName + ".spvmap");
             if (!spvmapStream.good())
             {
                 throw std::runtime_error("cannot open spvmap for " + moduleTest.mName);
@@ -129,7 +129,7 @@ namespace test_utils {
             clspv_utils::module_spec_t moduleInterface = clspv_utils::createModuleSpec(spvmapStream);
             spvmapStream.close();
 
-            file_utils::AndroidAssetStream spvStream(moduleTest.mName + ".spv");
+            android_utils::iassetstream spvStream(moduleTest.mName + ".spv");
             if (!spvStream.good())
             {
                 throw std::runtime_error("cannot open spv for " + moduleTest.mName);

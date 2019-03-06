@@ -71,27 +71,6 @@ VKAPI_ATTR VkBool32 VKAPI_CALL dbgFunc(VkDebugReportFlagsEXT        msgFlags,
 
 /* ============================================================================================== */
 
-std::string read_asset_file(const std::string& fileName) {
-    std::string result;
-
-    std::unique_ptr<std::FILE, decltype(&std::fclose)> assetFile(AndroidFopen(fileName.c_str(), "r"),
-                                                                 &std::fclose);
-    if (assetFile) {
-        std::fseek(assetFile.get(), 0, SEEK_END);
-        result.resize(std::ftell(assetFile.get()), ' ');
-
-        std::fseek(assetFile.get(), 0, SEEK_SET);
-        std::fread(&result.front(), 1, result.length(), assetFile.get());
-    }
-    else {
-        LOGI("Asset file '%s' not found", fileName.c_str());
-    }
-
-    return result;
-}
-
-/* ============================================================================================== */
-
 
 void init_validation_layers(struct sample_info& info) {
     /* Use standard_validation meta layer that enables all
@@ -203,7 +182,9 @@ void dumpDeviceMemoryProperties(vk::PhysicalDevice device)
 /* ============================================================================================== */
 
 int sample_main(int argc, char *argv[]) {
-    const auto manifest = test_manifest::read(read_asset_file("test_manifest.txt"));
+    android_utils::iassetstream is("test_manifest.txt");
+    const auto manifest = test_manifest::read(is);
+    is.close();
 
     struct sample_info info = {};
     init_global_layer_properties(info);

@@ -20,8 +20,7 @@
 #include "kernel_tests/testgreaterthanorequalto_kernel.hpp"
 
 #include "crlf_savvy.hpp"
-#include "file_utils.hpp"
-#include "util.hpp" // for LOGxx macros
+#include "util.hpp"
 
 namespace
 {
@@ -254,7 +253,7 @@ namespace
 
     void ensure_all_entries_tested(test_utils::ModuleTest& moduleTest)
     {
-        file_utils::AndroidAssetStream spvmapStream(moduleTest.mName + ".spvmap");
+        android_utils::iassetstream spvmapStream(moduleTest.mName + ".spvmap");
         if (!spvmapStream.good())
         {
             throw std::runtime_error("cannot open module interface for " + moduleTest.mName);
