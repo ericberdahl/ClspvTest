@@ -46,6 +46,7 @@ add_library(native-activity SHARED
         test_utils.cpp
         util.cpp
         util_init.cpp
+        memmove_test.cpp
         clspv_utils/clspv_utils_interop.cpp
         clspv_utils/device.cpp
         crlf_savvy.cpp

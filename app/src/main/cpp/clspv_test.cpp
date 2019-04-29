@@ -17,6 +17,7 @@
  * limitations under the License.
  */
 
+#include "memmove_test.hpp"
 #include "test_manifest.hpp"
 #include "test_result_logging.hpp"
 #include "test_utils.hpp"
@@ -220,6 +221,8 @@ int sample_main(int argc, char *argv[]) {
 
     const auto results = test_manifest::run(manifest, device);
     test_result_logging::logResults(info, results);
+
+    memmove_test::runAllTests(info);
 
     //
     // Clean up
