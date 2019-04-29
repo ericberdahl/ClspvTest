@@ -170,6 +170,7 @@ namespace {
            << " bufferSize:" << bufferBytes
            << " count:" << stats.count
            << " mean:" << stats.mean
+           << " rate:" << bufferBytes/stats.mean
            << " variance" << stats.variance
            << " max:" << stats.max
            << " min:" << stats.min;
@@ -231,9 +232,13 @@ namespace memmove_test{
         // eTransferDest
         const vk::BufferUsageFlags usageFlags[] = {
                 vk::BufferUsageFlagBits::eStorageBuffer,
-                vk::BufferUsageFlagBits::eUniformBuffer,
                 vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferSrc,
+                vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst,
+                vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferSrc | vk::BufferUsageFlagBits::eTransferDst,
+                vk::BufferUsageFlagBits::eUniformBuffer,
                 vk::BufferUsageFlagBits::eUniformBuffer | vk::BufferUsageFlagBits::eTransferSrc,
+                vk::BufferUsageFlagBits::eUniformBuffer | vk::BufferUsageFlagBits::eTransferDst,
+                vk::BufferUsageFlagBits::eUniformBuffer | vk::BufferUsageFlagBits::eTransferSrc | vk::BufferUsageFlagBits::eTransferDst,
         };
 
         const std::size_t   bufferSize      = 3840 * 2160 * 4;
@@ -242,11 +247,21 @@ namespace memmove_test{
         const vk::Device                            device      = *info.device;
         const vk::PhysicalDeviceMemoryProperties    memProps    = info.gpu.getMemoryProperties();
 
-        const auto timeSystem2Vulkan = [&device, &memProps](std::size_t bufferSize, unsigned int numIterations) {
-            return timeSystem2VkDeviceMemory(device, bufferSize, memProps, vk::BufferUsageFlagBits::eStorageBuffer, numIterations);
-        };
+        for (auto size : bufferSizes)
+        {
+            runOneTest("system-system", size, numIterations, timeSystem2System);
 
-        runOneTest("system-system", bufferSize, numIterations, timeSystem2System);
-        runOneTest("system-vulkan", bufferSize, numIterations, timeSystem2Vulkan);
+            for (auto usage : usageFlags)
+            {
+                const auto timeSystem2Vulkan = [&device, &memProps, usage](std::size_t bufferSize,
+                                                                           unsigned int numIterations) {
+                    return timeSystem2VkDeviceMemory(device, bufferSize, memProps,
+                                                     usage,
+                                                     numIterations);
+                };
+
+                runOneTest("system-vulkan(" + vk::to_string(usage) + ")", size, numIterations, timeSystem2Vulkan);
+            }
+        }
     }
 }
