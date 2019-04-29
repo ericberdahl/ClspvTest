@@ -30,6 +30,7 @@ namespace clspv_utils {
         int     mBinding        = -1;
         int     mOffset         = -1;
         int     mSpecConstant   = -1;
+        int     mArgSize        = -1;
     };
 
     struct constant_spec_t {

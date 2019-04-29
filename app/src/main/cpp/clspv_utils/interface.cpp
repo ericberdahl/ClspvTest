@@ -166,6 +166,8 @@ namespace {
                 // arrayElemSize is ignored by clspvtest
             } else if ("arrayNumElemSpecId" == tag.first) {
                 result.mSpecConstant = std::stoi(tag.second);
+            } else if ("argSize" == tag.first) {
+                result.mArgSize = std::stoi(tag.second);
             }
 
         }
