@@ -84,6 +84,10 @@ namespace clspv_utils {
     }
 
     vk::Pipeline kernel::updatePipeline(vk::ArrayProxy<uint32_t> otherSpecConstants) {
+        // TODO Consider case where there are multiple invocations active at one.
+        // In that case, we should not delete the previous pipeline!
+        // Thus, the pipeline really needs to be in a shared state.
+
         // If the spec constants being passed are equal to the spec constants we already have,
         // the existing pipeline is up to date.
         if (mPipeline
@@ -102,34 +106,6 @@ namespace clspv_utils {
                                                           *mPipelineLayout,
                                                           mReq.mPipelineCache,
                                                           mSpecConstants);
-
-        return *mPipeline;
-
-        vector<vk::SpecializationMapEntry> specializationEntries;
-        uint32_t index = 0;
-        std::generate_n(std::back_inserter(specializationEntries),
-                        mSpecConstants.size(),
-                        [&index] () {
-                            const uint32_t current = index++;
-                            return vk::SpecializationMapEntry(current, // constantID
-                                                              current * sizeof(spec_constant_list::value_type), // offset
-                                                              sizeof(spec_constant_list::value_type)); // size
-                        });
-
-        vk::SpecializationInfo specializationInfo;
-        specializationInfo.setMapEntryCount(mSpecConstants.size())
-                .setPMapEntries(specializationEntries.data())
-                .setDataSize(mSpecConstants.size() * sizeof(spec_constant_list::value_type))
-                .setPData(mSpecConstants.data());
-
-        vk::ComputePipelineCreateInfo createInfo;
-        createInfo.setLayout(*mPipelineLayout);
-        createInfo.stage.setStage(vk::ShaderStageFlagBits::eCompute)
-                .setModule(mReq.mShaderModule)
-                .setPName(mReq.mKernelSpec.mName.c_str())
-                .setPSpecializationInfo(&specializationInfo);
-
-        mPipeline = mReq.mDevice.getDevice().createComputePipelineUnique(mReq.mPipelineCache, createInfo);
 
         return *mPipeline;
     }
