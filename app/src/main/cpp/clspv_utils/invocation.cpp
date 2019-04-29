@@ -63,7 +63,7 @@ namespace clspv_utils {
     }
 
     std::uint32_t invocation::validateArgType(std::size_t        ordinal,
-                                                     vk::DescriptorType kind) const
+                                              vk::DescriptorType kind) const
     {
         if (ordinal >= mReq.mKernelSpec.mArguments.size()) {
             fail_runtime_error("adding too many arguments to kernel invocation");
@@ -78,7 +78,7 @@ namespace clspv_utils {
     }
 
     std::uint32_t invocation::validateArgType(std::size_t        ordinal,
-                                                     arg_spec_t::kind   kind) const
+                                              arg_spec_t::kind   kind) const
     {
         if (ordinal >= mReq.mKernelSpec.mArguments.size()) {
             fail_runtime_error("adding too many arguments to kernel invocation");
