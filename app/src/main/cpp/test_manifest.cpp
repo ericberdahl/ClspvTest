@@ -18,6 +18,7 @@
 #include "kernel_tests/resample3dimage_kernel.hpp"
 #include "kernel_tests/strangeshuffle_kernel.hpp"
 #include "kernel_tests/testgreaterthanorequalto_kernel.hpp"
+#include "kernel_tests/alpha_gain_kernel.hpp"
 
 #include "crlf_savvy.hpp"
 #include "util.hpp"
@@ -60,6 +61,8 @@ namespace
                 std::make_pair("readConstantData",     createGenerator(readconstantdata_kernel::getAllTestVariants)),
                 std::make_pair("strangeShuffle",       createGenerator(strangeshuffle_kernel::getAllTestVariants)),
                 std::make_pair("testGtEq",             createGenerator(testgreaterthanorequalto_kernel::getAllTestVariants)),
+                std::make_pair("testAlphaGainCL<float4>",  createGenerator(alpha_gain_kernel::getTestVariant<gpu_types::float4>)),
+                std::make_pair("testAlphaGainGL<float4>",  createGenerator(alpha_gain_kernel::getTestVariant<gpu_types::float4>)),
         };
 
         test_utils::KernelTest::invocation_tests result;
@@ -197,6 +200,7 @@ namespace
         testEntry.mIsVerbose = verbose;
 
         std::string testName;
+        testEntry.mTimingIterations = 10;//Making every test run many times
         is >> testEntry.mEntryName
            >> testName
            >> testEntry.mWorkgroupSize.width

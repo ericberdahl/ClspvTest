@@ -1,0 +1,26 @@
+#version 450
+layout (local_size_x = 2, local_size_y = 2) in;
+layout (local_size_x_id = 0, local_size_y_id = 1) in;
+
+layout(rgba32f, binding = 0) uniform readonly image2D inTexture;
+layout(rgba32f, binding = 1) uniform writeonly image2D outTexture;
+
+layout (set = 1, binding = 1) uniform argBuffer {
+    int     inPitch;
+    int     inDeviceFormat;
+    int     inWidth;
+    int     inHeight;
+    float   inAlphaGainFactor;
+};
+
+void main()
+{
+    ivec2 coord = ivec2(gl_GlobalInvocationID.xy);
+	if (coord.x < inWidth && coord.y < inHeight)
+	{
+
+        vec4 texColor = imageLoad(inTexture, coord).rgba;
+        texColor.a *= inAlphaGainFactor;
+        imageStore(outTexture, coord, texColor);
+    }
+}

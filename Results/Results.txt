@@ -1,0 +1,17 @@
+Test 1 for Fill Comparisions
+============================
+Module:shaders_cl/Fills pass:20 fail:0 skipped:0
+   Kernel:FillWithColorKernel pass:20 fail:0 skipped:0
+      PASS variation:<dst:float4> parameters:<w:3840 h:2160 d:1>
+      NUMBER ITERATIONS = 10
+      AVERAGE  wallClockTime:19.6161 ms executionTime:12.7308 ms hostBarrierTime:3.46615 us
+      STD_DEVIATION  wallClockTime:3.73965 ms executionTime:3.69537 ms hostBarrierTime:504.818 ns
+Module:shaders/GL_Fills_reduced pass:10 fail:0 skipped:0
+   Kernel:main pass:10 fail:0 skipped:0
+      PASS variation:<dst:float4> parameters:<w:3840 h:2160 d:1>
+      NUMBER ITERATIONS = 10
+      AVERAGE  wallClockTime:15.6024 ms executionTime:9.11716 ms hostBarrierTime:3.34896 us
+      STD_DEVIATION  wallClockTime:1.62273 ms executionTime:1.36745 ms hostBarrierTime:432.323 ns
+
+Test 1 for Fill Comparisions
+============================

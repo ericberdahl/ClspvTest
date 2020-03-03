@@ -1,0 +1,13 @@
+sampler,34,samplerExpr,"CLK_ADDRESS_CLAMP_TO_EDGE|CLK_FILTER_LINEAR|CLK_NORMALIZED_COORDS_FALSE",descriptorSet,0,binding,0
+sampler,18,samplerExpr,"CLK_ADDRESS_CLAMP_TO_EDGE|CLK_FILTER_NEAREST|CLK_NORMALIZED_COORDS_FALSE",descriptorSet,0,binding,1
+sampler,16,samplerExpr,"CLK_ADDRESS_NONE|CLK_FILTER_NEAREST|CLK_NORMALIZED_COORDS_FALSE",descriptorSet,0,binding,2
+sampler,35,samplerExpr,"CLK_ADDRESS_CLAMP_TO_EDGE|CLK_FILTER_LINEAR|CLK_NORMALIZED_COORDS_TRUE",descriptorSet,0,binding,3
+sampler,19,samplerExpr,"CLK_ADDRESS_CLAMP_TO_EDGE|CLK_FILTER_NEAREST|CLK_NORMALIZED_COORDS_TRUE",descriptorSet,0,binding,4
+sampler,17,samplerExpr,"CLK_ADDRESS_NONE|CLK_FILTER_NEAREST|CLK_NORMALIZED_COORDS_TRUE",descriptorSet,0,binding,5
+kernel,main,arg,inImage,argOrdinal,0,descriptorSet,1,binding,0,offset,0,argKind,ro_image
+kernel,main,arg,outImage,argOrdinal,1,descriptorSet,1,binding,1,offset,0,argKind,wo_image
+kernel,main,arg,inPitch,argOrdinal,2,descriptorSet,1,binding,2,offset,0,argKind,pod_ubo
+kernel,main,arg,inDeviceFormat,argOrdinal,3,descriptorSet,1,binding,2,offset,4,argKind,pod_ubo
+kernel,main,arg,inWidth,argOrdinal,4,descriptorSet,1,binding,2,offset,8,argKind,pod_ubo
+kernel,main,arg,inHeight,argOrdinal,5,descriptorSet,1,binding,2,offset,12,argKind,pod_ubo
+kernel,main,arg,inAlphaGainFactor,argOrdinal,6,descriptorSet,1,binding,2,offset,16,argKind,pod_ubo

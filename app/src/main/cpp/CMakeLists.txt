@@ -31,7 +31,7 @@ get_filename_component(PROJECT_SOURCE_DIR
                        ABSOLUTE)
 
 # now build app's shared lib
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Werror -DVK_USE_PLATFORM_ANDROID_KHR")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -DVK_USE_PLATFORM_ANDROID_KHR")
 
 # Export ANativeActivity_onCreate(),
 # Refer to: https://github.com/android-ndk/ndk/issues/381.
@@ -54,6 +54,7 @@ add_library(native-activity SHARED
         clspv_utils/invocation.cpp
         clspv_utils/kernel.cpp
         clspv_utils/module.cpp
+        kernel_tests/alpha_gain_kernel.cpp
         kernel_tests/copyimagetobuffer_kernel.cpp
         kernel_tests/copybuffertobuffer_kernel.cpp
         kernel_tests/copybuffertoimage_kernel.cpp
@@ -109,6 +110,7 @@ set(SPIRV_OPT_FLAGS ${SPIRV_OPT_FLAGS} --skip-validation)
 
 set(OPENCL_KERNELS
         Fills
+        AlphaGain
         LocalMemory
         localsize
         Memory
@@ -148,6 +150,7 @@ set(GLSLANG_FLAGS ${GLSLANG_FLAGS} -V)
 
 set(GLSL_KERNELS
     GL_Fills_reduced
+    GL_AlphaGain
     GL_LocalMemory
     )
 

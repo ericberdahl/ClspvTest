@@ -15,12 +15,19 @@ if(!ndkDir || ndkDir.empty) {
 }
 
 android {
-    compileSdkVersion = 24
+    signingConfigs {
+        clspvtest_sign {
+            storePassword 'palam'
+            keyAlias = 'palam'
+            keyPassword 'palam'
+        }
+    }
+    compileSdkVersion = 29
 
     defaultConfig {
         applicationId = 'com.example.native_activity'
         minSdkVersion 24
-        targetSdkVersion  24
+        targetSdkVersion  29
         ndk {
             abiFilters 'x86', 'x86_64', 'armeabi-v7a', 'arm64-v8a'
         }

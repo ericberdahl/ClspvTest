@@ -41,68 +41,83 @@
 # end
 # Stops processing the manifest. Everything after the end verb is ignored by the manifest parser
 #
-vkValidation all
+#vkValidation all
 #
 #
 #
-module shaders_cl/StructArrays
-test2d FillStructArray fillarraystruct 32 1
+#module shaders_cl/StructArrays
+#test2d FillStructArray fillarraystruct 32 1
 #
 #
 #
-module shaders_cl/LocalMemory
-test2d StrangeShuffle strangeShuffle 256 1
+#module shaders_cl/LocalMemory
+#test2d StrangeShuffle strangeShuffle 256 1
 #
-module shaders/GL_LocalMemory
-test2d main strangeShuffle 256 1
-#
-#
-#
-module shaders_cl/localsize
-test2d ReadLocalSize readLocalSize 32 32 global_id_x
-test2d ReadLocalSize readLocalSize 32 32 global_id_y
-test2d ReadLocalSize readLocalSize 32 32 global_id_z
-test2d ReadLocalSize readLocalSize 32 32 group_id_x
-test2d ReadLocalSize readLocalSize 32 32 group_id_y
-test2d ReadLocalSize readLocalSize 32 32 group_id_z
-test2d ReadLocalSize readLocalSize 32 32 local_id_x
-test2d ReadLocalSize readLocalSize 32 32 local_id_y
-test2d ReadLocalSize readLocalSize 32 32 local_id_z
-test2d ReadLocalSize readLocalSize 32 32 global_size_x
-test2d ReadLocalSize readLocalSize 32 32 global_size_y
-test2d ReadLocalSize readLocalSize 32 32 global_size_z
-test2d ReadLocalSize readLocalSize 32 32 local_size_x
-test2d ReadLocalSize readLocalSize 32 32 local_size_y
-test2d ReadLocalSize readLocalSize 32 32 local_size_z
+#module shaders/GL_LocalMemory
+#test2d main strangeShuffle 256 1
 #
 #
 #
-module shaders_cl/Fills
-test2d FillWithColorKernel fill 16 16 -w 64 -h 64
-test2d FillWithColorKernel fill 16 16 -w 1080 -h 720
-time FillWithColorKernel generic 100 16 16 1 4 4 1 -label 64x64;16x16wgs;float4 -pb 65536 -ub 40000000010000000000000000000000400000004000000000000000000000000000803F0000803F0000803F0000803F
-#
-module shaders/GL_Fills_reduced
-test2d main fill<float4> 16 16 -w 64 -h 64
-test2d main fill<float4> 16 16 -w 1080 -h 720
-time main generic 100 16 16 1 4 4 1 -label 64x64;16x16wgs;float4 -pb 65536 -ub 40000000010000000000000000000000400000004000000000000000000000000000803F0000803F0000803F0000803F
-#
-#
-#
-module shaders_cl/Memory
-test2d CopyBufferToBufferKernel copyBufferToBuffer<float4> 32 32
-test2d CopyBufferToImageKernel copyBufferToImage 32 32
-test2d CopyImageToBufferKernel copyImageToBuffer 32 32
-test2d Resample2DImage resample2dimage 32 32
-test3d Resample3DImage resample3dimage 4 4 4
+#module shaders_cl/localsize
+#test2d ReadLocalSize readLocalSize 32 32 global_id_x
+#test2d ReadLocalSize readLocalSize 32 32 global_id_y
+#test2d ReadLocalSize readLocalSize 32 32 global_id_z
+#test2d ReadLocalSize readLocalSize 32 32 group_id_x
+#test2d ReadLocalSize readLocalSize 32 32 group_id_y
+#test2d ReadLocalSize readLocalSize 32 32 group_id_z
+#test2d ReadLocalSize readLocalSize 32 32 local_id_x
+#test2d ReadLocalSize readLocalSize 32 32 local_id_y
+#test2d ReadLocalSize readLocalSize 32 32 local_id_z
+#test2d ReadLocalSize readLocalSize 32 32 global_size_x
+#test2d ReadLocalSize readLocalSize 32 32 global_size_y
+#test2d ReadLocalSize readLocalSize 32 32 global_size_z
+#test2d ReadLocalSize readLocalSize 32 32 local_size_x
+#test2d ReadLocalSize readLocalSize 32 32 local_size_y
+#test2d ReadLocalSize readLocalSize 32 32 local_size_z
 #
 #
 #
-module shaders_cl/ReadConstantData
-test2d ReadConstantArray readConstantData 32 1
-test2d ReadConstantStruct readConstantData 32 1
+#
+module shaders_cl/AlphaGain
+test2d AlphaGainKernel testAlphaGainCL<float4> 32 32 -w 3840 -h 2160
 #
 #
 #
-module shaders_cl/TestComparisons
-test2d TestGreaterThanOrEqualTo testGtEq 32 32
+#
+module shaders/GL_AlphaGain
+test2d main testAlphaGainGL<float4> 32 32 -w 3840 -h 2160
+#
+#
+#
+#module shaders_cl/Fills
+#test2d FillWithColorKernel fill 16 16 -w 3840 -h 2160
+#test2d FillWithColorKernel fill 16 16 -w 1080 -h 720
+#time FillWithColorKernel generic 100 16 16 1 4 4 1 -label 64x64;16x16wgs;float4 -pb 65536 -ub 40000000010000000000000000000000400000004000000000000000000000000000803F0000803F0000803F0000803F
+#
+#
+#
+#
+#module shaders/GL_Fills_reduced
+#test2d main fill<float4> 16 16 -w 3840 -h 2160
+#test2d main fill<float4> 16 16 -w 1080 -h 720
+#time main generic 100 16 16 1 4 4 1 -label 64x64;16x16wgs;float4 -pb 65536 -ub 40000000010000000000000000000000400000004000000000000000000000000000803F0000803F0000803F0000803F
+#
+#
+#
+#module shaders_cl/Memory
+#test2d CopyBufferToBufferKernel copyBufferToBuffer<float4> 32 32
+#test2d CopyBufferToImageKernel copyBufferToImage 32 32
+#test2d CopyImageToBufferKernel copyImageToBuffer 32 32
+#test2d Resample2DImage resample2dimage 32 32
+#test3d Resample3DImage resample3dimage 4 4 4
+#
+#
+#
+#module shaders_cl/ReadConstantData
+#test2d ReadConstantArray readConstantData 32 1
+#test2d ReadConstantStruct readConstantData 32 1
+#
+#
+#
+#module shaders_cl/TestComparisons
+#test2d TestGreaterThanOrEqualTo testGtEq 32 32
