@@ -1,11 +1,14 @@
 #version 450
-layout (local_size_x = 2, local_size_y = 2) in;
+layout (local_size_x = 32, local_size_y = 32) in;
 layout (local_size_x_id = 0, local_size_y_id = 1) in;
 
 layout(rgba32f, binding = 0) uniform readonly image2D inTexture;
-layout(rgba32f, binding = 1) uniform writeonly image2D outTexture;
 
-layout (set = 1, binding = 1) uniform argBuffer {
+layout (set = 1, binding = 1) buffer dstBuffer {
+        vec4 outBuffer[];
+};
+
+layout (set = 1, binding = 2) uniform argBuffer {
     int     inPitch;
     int     inDeviceFormat;
     int     inWidth;
@@ -15,12 +18,11 @@ layout (set = 1, binding = 1) uniform argBuffer {
 
 void main()
 {
-    ivec2 coord = ivec2(gl_GlobalInvocationID.xy);
-	if (coord.x < inWidth && coord.y < inHeight)
+	if (gl_GlobalInvocationID.x < inWidth && gl_GlobalInvocationID.y < inHeight)
 	{
-
-        vec4 texColor = imageLoad(inTexture, coord).rgba;
+        vec4 texColor = imageLoad(inTexture, ivec2(gl_GlobalInvocationID.xy)).rgba;
         texColor.a *= inAlphaGainFactor;
-        imageStore(outTexture, coord, texColor);
+        int index = int(gl_GlobalInvocationID.y * inPitch + gl_GlobalInvocationID.x);
+        outBuffer[index] = texColor;
     }
 }

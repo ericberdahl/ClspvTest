@@ -200,7 +200,7 @@ namespace
         testEntry.mIsVerbose = verbose;
 
         std::string testName;
-        testEntry.mTimingIterations = 10;//Making every test run many times
+//        testEntry.mTimingIterations = 10;//Making every test run many times
         is >> testEntry.mEntryName
            >> testName
            >> testEntry.mWorkgroupSize.width

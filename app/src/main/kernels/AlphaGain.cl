@@ -13,7 +13,9 @@ const sampler_t copyImageToBufferSampler = CLK_NORMALIZED_COORDS_FALSE | CLK_ADD
 
 __kernel void AlphaGainKernel(
     __read_only image2d_t   inImage,
-    __write_only image2d_t  outDest,
+    __global float4*        outBuffer,
+    int                     inPitch,
+    int                     inDeviceFormat,
     int                     inWidth,
     int                     inHeight,
     float                   inAlphaGainFactor)
@@ -25,28 +27,7 @@ __kernel void AlphaGainKernel(
     {
         float4 pixel = read_imagef(inImage, copyImageToBufferSampler, (float2)(x, y));
         pixel.a *= inAlphaGainFactor;
-        write_imagef(outDest, (int2)(x, y), pixel);
+        int dstIndex = mul24(y, inPitch) + x;
+        outBuffer[dstIndex] = pixel;
     }
 }
-
-//__kernel void COMP_LUT3D(
-//        __read_only image2d_t   inImage,
-//        __read_only image3d_t   inLUT,
-//        __write_only image2d_t  outDest,
-//        int                     inWidth,
-//        int                     inHeight)
-//{
-//    int x = KernelX();
-//    int y = KernelY();
-//
-//    if (x < inWidth && y < inHeight)
-//    {
-//        float2 srcCoord = (float2)( ((float)x + 0.5f)/((float)inWidth),
-//                                    ((float)y + 0.5f)/((float)inHeight) );
-//        float4 pixel = read_imagef(inImage, linearSampler, srcCoord);
-//        float3 lutCoord = (float2)( pixel.x, pixel.y, pixel.z);
-//        float4 pixel = read_imagef(inLUT, linearSampler, lutCoord);
-//
-//        write_imagef(outDest, (int2)(x, y), pixel);
-//    }
-//}

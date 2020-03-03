@@ -9,7 +9,7 @@ namespace alpha_gain_kernel {
     clspv_utils::execution_time_t
     invoke(clspv_utils::kernel&             kernel,
            vulkan_utils::image&             src_image,
-           vulkan_utils::image&             dst_image,
+           vulkan_utils::buffer&            dst_buffer,
            int                              pitch,
            int                              device_format,
            int                              width,
@@ -45,7 +45,7 @@ namespace alpha_gain_kernel {
         clspv_utils::invocation invocation(kernel.createInvocationReq());
 
         invocation.addReadOnlyImageArgument(src_image);
-        invocation.addWriteOnlyImageArgument(dst_image);
+        invocation.addStorageBufferArgument(dst_buffer);
         invocation.addUniformBufferArgument(scalarBuffer);
         return invocation.run(num_workgroups);
     }

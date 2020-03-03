@@ -22,7 +22,7 @@ namespace alpha_gain_kernel {
     clspv_utils::execution_time_t
     invoke(clspv_utils::kernel&             kernel,
            vulkan_utils::image&             src_image,
-           vulkan_utils::image&             dst_image,
+           vulkan_utils::buffer&            dst_buffer,
            int                              pitch,
            int                              device_format,
            int                              width,
@@ -72,51 +72,26 @@ namespace alpha_gain_kernel {
                                                                  true,
                                                                  false);
 
-            mDstImage = vulkan_utils::image(mDevice.getDevice(),
-                                            mDevice.getMemoryProperties(),
-                                            vk::Extent3D(mExtent.width, mExtent.height, 1),
-                                            vk::Format(pixels::traits<PixelType>::vk_pixel_type),
-                                            vulkan_utils::image::kUsage_ReadWrite);
-
-            mDstImageStaging = vulkan_utils::createStagingBuffer(mDevice.getDevice(),
-                                                                 mDevice.getMemoryProperties(),
-                                                                 mDstImage,
-                                                                 true,
-                                                                 false);
+            mDstBuffer = vulkan_utils::createStorageBuffer(mDevice.getDevice(),
+                                                           mDevice.getMemoryProperties(),
+                                                           buffer_size);
 
             // initialize source memory with random data
             auto srcImageMap = mSrcImageStaging.map<PixelType>();
-
-            gpu_types::float4 *image_buffer_data = new gpu_types::float4[buffer_length];
-            for ( int i = 0; i < buffer_length; ++i)
+            auto row = srcImageMap.get();
+            vk::Extent3D coord;
+            for (coord.height = 0; coord.height < mExtent.height; ++coord.height, row += mExtent.width)
             {
-                gpu_types::float4 pixel = {(float)i / (float) buffer_length / 16.0f, (float)i / (float) buffer_length / 8.0f, (float)i / (float) buffer_length / 4.0f, 0.9 };
-                image_buffer_data[i] = pixel;
+                auto p = row;
+                for (coord.width = 0; coord.width < mExtent.width; ++coord.width, ++p)
+                {
+                    p->x = ((float)coord.width)/((float)mExtent.width);
+                    p->y = ((float)coord.height)/((float)mExtent.height);
+                    p->z = ((float)coord.height*coord.width)/((float)mExtent.height*mExtent.width);
+                    p->w = 0.9f;
+                }
             }
-
-            std::copy(image_buffer_data, image_buffer_data + buffer_length, srcImageMap.get());
             srcImageMap.reset();
-
-            mExpectedDstBuffer.resize(buffer_length);
-            //TODO: Add expected result
-//            for (int row = 0; row < mExtent.height; ++row)
-//            {
-//                for (int col = 0; col < mExtent.width; ++col)
-//                {
-//                    gpu_types::float2 normalizedCoordinate(((float)col + 0.5f) / ((float)mExtent.width),
-//                                                           ((float)row + 0.5f) / ((float)mExtent.height));
-//
-//                    gpu_types::float2 sampledCoordinate(clampf(normalizedCoordinate.x*image_width - 0.5f, 0.0f, image_width - 1)/(image_width - 1),
-//                                                        clampf(normalizedCoordinate.y*image_height - 0.5f, 0.0f, image_height - 1)/(image_height - 1));
-//
-//                    auto index = (row * mExtent.width) + col;
-//                    mExpectedDstBuffer[index] = BufferPixelType(sampledCoordinate.x,
-//                                                                sampledCoordinate.y,
-//                                                                0.0f,
-//                                                                0.0f);
-//                }
-//            }
-            delete [] image_buffer_data;
         }
 
         virtual std::string getParameterString() const override
@@ -130,8 +105,8 @@ namespace alpha_gain_kernel {
         {
             return invoke(kernel,
                           mSrcImage,
-                          mDstImage,
-                          mExtent.width,//TODO: Do we need to maintain a pitch separately?
+                          mDstBuffer,
+                          mExtent.width * sizeof(PixelType),//TODO: Do we need to maintain a pitch separately?
                           pixels::traits<PixelType>::device_pixel_format,
                           mExtent.width,
                           mExtent.height,
@@ -140,22 +115,42 @@ namespace alpha_gain_kernel {
 
         virtual test_utils::Evaluation evaluate(bool verbose) override
         {
-            auto dstBufferMap = mDstImageStaging.map<PixelType>();
-            return test_utils::check_results(dstBufferMap.get(),
-                                             mExtent,
-                                             mExtent.width,
-                                             mAlphaGainFactor,
-                                             verbose);
+            auto dstBufferMap = mDstBuffer.map<PixelType>();
+            test_utils::Evaluation result;
+
+            auto row = dstBufferMap.get();
+            vk::Extent3D coord;
+            bool testPass = true;
+            const float expectedAlpha = 0.314f * 0.9f;
+            for (coord.height = 0; coord.height < mExtent.height; ++coord.height, row += mExtent.width)
+            {
+                auto p = row;
+                for (coord.width = 0; coord.width < mExtent.width; ++coord.width, ++p)
+                {
+                     testPass = (p->w == expectedAlpha);
+                     if (!testPass) break;
+                }
+                if (!testPass) break;
+            }
+
+            if (!testPass)
+            {
+                result.mNumErrors++;
+            } else
+            {
+                result.mNumCorrect++;
+            }
+
+            dstBufferMap.reset();
+            return result;
         }
 
         clspv_utils::device     mDevice;
         vk::Extent3D            mExtent;
-        vulkan_utils::image     mDstImage;
-        vulkan_utils::buffer    mDstImageStaging;
+        vulkan_utils::buffer    mDstBuffer;
         vulkan_utils::image     mSrcImage;
         vulkan_utils::buffer    mSrcImageStaging;
         float                   mAlphaGainFactor;
-        std::vector<PixelType>  mExpectedDstBuffer;
     };
 
     template <typename PixelType>
