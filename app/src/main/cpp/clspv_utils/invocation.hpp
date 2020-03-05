@@ -49,6 +49,7 @@ namespace clspv_utils {
 
         void    addStorageBufferArgument(vulkan_utils::buffer& buffer);
         void    addUniformBufferArgument(vulkan_utils::buffer& buffer);
+        void    addCombinedImageSampler(vulkan_utils::image& image);
         void    addReadOnlyImageArgument(vulkan_utils::image& image);
         void    addWriteOnlyImageArgument(vulkan_utils::image& image);
         void    addSamplerArgument(vk::Sampler samp);

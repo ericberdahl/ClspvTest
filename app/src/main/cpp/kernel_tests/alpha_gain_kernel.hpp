@@ -78,20 +78,34 @@ namespace alpha_gain_kernel {
 
             // initialize source memory with random data
             auto srcImageMap = mSrcImageStaging.map<PixelType>();
-            auto row = srcImageMap.get();
+            PixelType* base = (PixelType*) srcImageMap.get();
             vk::Extent3D coord;
-            for (coord.height = 0; coord.height < mExtent.height; ++coord.height, row += mExtent.width)
+            for (coord.height = 0; coord.height < mExtent.height; ++coord.height)
             {
-                auto p = row;
-                for (coord.width = 0; coord.width < mExtent.width; ++coord.width, ++p)
+                for (coord.width = 0; coord.width < mExtent.width; ++coord.width)
                 {
-                    p->x = ((float)coord.width)/((float)mExtent.width);
-                    p->y = ((float)coord.height)/((float)mExtent.height);
-                    p->z = ((float)coord.height*coord.width)/((float)mExtent.height*mExtent.width);
+                    PixelType* p = base + mExtent.width * coord.height + coord.width;
+                    p->x = coord.width;
+                    p->y = coord.height;
+                    p->z = coord.height*coord.width;
                     p->w = 0.9f;
                 }
             }
             srcImageMap.reset();
+
+            // complete setup of the image
+            auto setupCommand = vulkan_utils::allocate_command_buffer(mDevice.getDevice(),
+                                                                      mDevice.getCommandPool());
+            setupCommand->begin(vk::CommandBufferBeginInfo());
+            vulkan_utils::copyBufferToImage(*setupCommand, mSrcImageStaging, mSrcImage);
+            setupCommand->end();
+
+            vk::CommandBuffer rawCommand = *setupCommand;
+            vk::SubmitInfo submitInfo;
+            submitInfo.setCommandBufferCount(1)
+                    .setPCommandBuffers(&rawCommand);
+
+            mDevice.getComputeQueue().submit(submitInfo, nullptr);
         }
 
         virtual std::string getParameterString() const override
@@ -106,7 +120,7 @@ namespace alpha_gain_kernel {
             return invoke(kernel,
                           mSrcImage,
                           mDstBuffer,
-                          mExtent.width * sizeof(PixelType),//TODO: Do we need to maintain a pitch separately?
+                          mExtent.width,
                           pixels::traits<PixelType>::device_pixel_format,
                           mExtent.width,
                           mExtent.height,
@@ -118,28 +132,25 @@ namespace alpha_gain_kernel {
             auto dstBufferMap = mDstBuffer.map<PixelType>();
             test_utils::Evaluation result;
 
-            auto row = dstBufferMap.get();
+            PixelType* base = (PixelType*) dstBufferMap.get();
             vk::Extent3D coord;
             bool testPass = true;
-            const float expectedAlpha = 0.314f * 0.9f;
-            for (coord.height = 0; coord.height < mExtent.height; ++coord.height, row += mExtent.width)
+            const float expectedAlpha = 0.9f * mAlphaGainFactor;
+            for (coord.height = 0; coord.height < mExtent.height; ++coord.height)
             {
-                auto p = row;
-                for (coord.width = 0; coord.width < mExtent.width; ++coord.width, ++p)
+                for (coord.width = 0; coord.width < mExtent.width; ++coord.width)
                 {
-                     testPass = (p->w == expectedAlpha);
-                     if (!testPass) break;
+                    PixelType* p = base + mExtent.width * coord.height + coord.width;
+                    testPass = (p->w == expectedAlpha);
+                     if (!testPass)
+                     {
+                         break;
+                     }
                 }
                 if (!testPass) break;
             }
 
-            if (!testPass)
-            {
-                result.mNumErrors++;
-            } else
-            {
-                result.mNumCorrect++;
-            }
+            testPass ? result.mNumCorrect++ : result.mNumErrors++;
 
             dstBufferMap.reset();
             return result;

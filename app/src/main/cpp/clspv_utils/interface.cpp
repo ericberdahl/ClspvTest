@@ -35,6 +35,7 @@ namespace {
             std::make_pair(arg_spec_t::kind_pod,        vk::DescriptorType::eStorageBuffer),
             std::make_pair(arg_spec_t::kind_buffer,     vk::DescriptorType::eStorageBuffer),
             std::make_pair(arg_spec_t::kind_buffer_ubo, vk::DescriptorType::eUniformBuffer),
+            std::make_pair(arg_spec_t::kind_combined_image_sampler,   vk::DescriptorType::eCombinedImageSampler),
             std::make_pair(arg_spec_t::kind_ro_image,   vk::DescriptorType::eSampledImage),
             std::make_pair(arg_spec_t::kind_wo_image,   vk::DescriptorType::eStorageImage),
             std::make_pair(arg_spec_t::kind_sampler,    vk::DescriptorType::eSampler)
@@ -45,6 +46,7 @@ namespace {
             std::make_pair("pod_ubo",    arg_spec_t::kind_pod_ubo),
             std::make_pair("buffer",     arg_spec_t::kind_buffer),
             std::make_pair("buffer_ubo", arg_spec_t::kind_buffer_ubo),
+            std::make_pair("combined_image_sampler",   arg_spec_t::kind_combined_image_sampler),
             std::make_pair("ro_image",   arg_spec_t::kind_ro_image),
             std::make_pair("wo_image",   arg_spec_t::kind_wo_image),
             std::make_pair("sampler",    arg_spec_t::kind_sampler),

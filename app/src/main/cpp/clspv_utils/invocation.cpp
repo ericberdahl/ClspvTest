@@ -138,6 +138,43 @@ namespace clspv_utils {
         mArgumentDescriptorWrites.push_back(argSet);
     }
 
+    void invocation::addCombinedImageSampler(vulkan_utils::image& image) {
+        mImageMemoryBarriers.push_back(image.prepare(vk::ImageLayout::eShaderReadOnlyOptimal));
+        vk::DescriptorImageInfo imageInfo = image.use();
+
+        //create sampler
+        VkSamplerCreateInfo aVkSamplerCreateInfo = {};
+        aVkSamplerCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+        aVkSamplerCreateInfo.pNext = nullptr;
+        aVkSamplerCreateInfo.magFilter = VK_FILTER_NEAREST;
+        aVkSamplerCreateInfo.minFilter = VK_FILTER_NEAREST;
+        aVkSamplerCreateInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        aVkSamplerCreateInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        aVkSamplerCreateInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        aVkSamplerCreateInfo.mipLodBias = 0.0f;
+        aVkSamplerCreateInfo.maxAnisotropy = 1;
+        aVkSamplerCreateInfo.compareOp = VK_COMPARE_OP_NEVER;
+        aVkSamplerCreateInfo.minLod = 0.0f;
+        aVkSamplerCreateInfo.maxLod = 0.0f;
+        aVkSamplerCreateInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+        aVkSamplerCreateInfo.unnormalizedCoordinates = VK_FALSE;
+
+        vk::SamplerCreateInfo samplerCreateInfo(aVkSamplerCreateInfo);
+        vk::Sampler textureSampler;
+        mReq.mDevice.getDevice().createSampler(&samplerCreateInfo, nullptr, &textureSampler);
+        imageInfo.setSampler(textureSampler);
+        mImageArgumentInfo.push_back(imageInfo);
+
+        //addSamplerArgument()
+        vk::WriteDescriptorSet argSet;
+        argSet.setDstSet(mReq.mArgumentsDescriptor)
+                .setDstBinding(validateArgType(countArguments(), vk::DescriptorType::eCombinedImageSampler))
+                .setDescriptorCount(1)
+                .setPImageInfo(&imageInfo)
+                .setDescriptorType(vk::DescriptorType::eCombinedImageSampler);
+        mArgumentDescriptorWrites.push_back(argSet);
+    }
+
     void invocation::addReadOnlyImageArgument(vulkan_utils::image& image) {
         mImageMemoryBarriers.push_back(image.prepare(vk::ImageLayout::eShaderReadOnlyOptimal));
         mImageArgumentInfo.push_back(image.use());
@@ -182,6 +219,7 @@ namespace clspv_utils {
                 case vk::DescriptorType::eStorageImage:
                 case vk::DescriptorType::eSampledImage:
                 case vk::DescriptorType::eSampler:
+                case vk::DescriptorType::eCombinedImageSampler:
                     a.setPImageInfo(&(*nextImage));
                     ++nextImage;
                     break;

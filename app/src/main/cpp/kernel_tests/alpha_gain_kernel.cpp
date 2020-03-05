@@ -44,7 +44,7 @@ namespace alpha_gain_kernel {
 
         clspv_utils::invocation invocation(kernel.createInvocationReq());
 
-        invocation.addReadOnlyImageArgument(src_image);
+        invocation.addCombinedImageSampler(src_image);
         invocation.addStorageBufferArgument(dst_buffer);
         invocation.addUniformBufferArgument(scalarBuffer);
         return invocation.run(num_workgroups);

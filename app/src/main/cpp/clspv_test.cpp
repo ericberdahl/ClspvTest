@@ -116,6 +116,7 @@ void my_init_descriptor_pool(struct sample_info &info) {
         { vk::DescriptorType::eStorageBuffer,   16 },
         { vk::DescriptorType::eUniformBuffer,   16 },
         { vk::DescriptorType::eSampler,         16 },
+        { vk::DescriptorType::eCombinedImageSampler, 16 },
         { vk::DescriptorType::eSampledImage,    16 },
         { vk::DescriptorType::eStorageImage,    16 }
     };
