@@ -26,7 +26,7 @@ __kernel void AlphaGainKernel(
     if (x < inWidth && y < inHeight)
     {
         float4 pixel = read_imagef(inImage, copyImageToBufferSampler, (float2)(x, y));
-        pixel.a *= inAlphaGainFactor;
+        pixel.w *= inAlphaGainFactor;
         int dstIndex = mul24(y, inPitch) + x;
         outBuffer[dstIndex] = pixel;
     }
