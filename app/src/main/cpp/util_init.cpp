@@ -73,11 +73,13 @@ void init_instance(struct sample_info &info, char const *const app_short_name) {
     info.instance_extension_names.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
 
     vk::ApplicationInfo app_info;
+    int version_number = VK_API_VERSION_1_0;
+    version_number = (((1) << 22) | ((1) << 12) | (0));
     app_info.setPApplicationName(app_short_name)
             .setApplicationVersion(1)
             .setPEngineName(app_short_name)
             .setEngineVersion(1)
-            .setApiVersion(VK_API_VERSION_1_0);
+            .setApiVersion(version_number);
 
     vk::InstanceCreateInfo inst_info;
     inst_info.setPApplicationInfo(&app_info)
