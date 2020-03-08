@@ -78,14 +78,14 @@
 #
 #
 #
-module shaders_cl/AlphaGain
-test2d AlphaGainKernel testAlphaGainCL<float4> 32 32 -w 3840 -h 2160
+#module shaders_cl/AlphaGain
+#test2d AlphaGainKernel testAlphaGainCL<float4> 32 32 -w 3840 -h 2160
 #
 #
 #
 #
-#module shaders/GL_AlphaGain
-#test2d main testAlphaGainGL<float4> 32 32 -w 3840 -h 2160
+module shaders/GL_AlphaGain
+test2d main testAlphaGainGL<float4> 32 32 -w 3840 -h 2160
 #
 #
 #
